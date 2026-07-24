@@ -80,7 +80,7 @@ export class EscalaGeneratorService {
 
         // REGRA DE DOMINGOS (CCT)
         if (isDomingo) {
-          const eUltimoDomingoDoMes = dia === domingosDoMes[domingosDoMes.length - 1];
+          const eUltimoDomingoDoMes = dia === domingosDoMes.at(-1);
 
           // 1. Mulher não pode 2 domingos seguidos trabalhados
           const forcarFolgaMulher = souFeminino && domingoAnteriorTrabalhado;
