@@ -66,21 +66,13 @@ export class SupabaseService {
           email: email
         };
         const mockLoja: Loja = {
-          id: 'loja-matriz-demo',
+          id: 'loja-02-demo',
           empresa_id: 'empresa-demo',
-          nome: 'Matriz - Centro',
-          codigo: 'MATRIZ'
+          nome: 'Filial - Loja 002',
+          codigo: 'LOJA002'
         };
         this.currentUser.set(mockUser);
-        this.userLojas.set([
-          mockLoja,
-          {
-            id: 'loja-02-demo',
-            empresa_id: 'empresa-demo',
-            nome: 'Filial - Loja 02',
-            codigo: 'LOJA02'
-          }
-        ]);
+        this.userLojas.set([mockLoja]);
         this.activeLoja.set(mockLoja);
         return { user: mockUser };
       } else {
@@ -268,101 +260,101 @@ export class SupabaseService {
   // Array local de dados de demonstração para testes offline com TODOS os colaboradores da loja
   private readonly mockFuncionarios = signal<Funcionario[]>([
     // 1. Frente de Caixa (25 Colaboradores)
-    { id: 'm1', loja_id: 'loja-matriz-demo', primeiro_nome: 'Nayle', matricula_aleatoria: '748291', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
-    { id: 'm2', loja_id: 'loja-matriz-demo', primeiro_nome: 'Alane', matricula_aleatoria: '482019', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
-    { id: 'm3', loja_id: 'loja-matriz-demo', primeiro_nome: 'Ana Paula', matricula_aleatoria: '920148', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
-    { id: 'm4', loja_id: 'loja-matriz-demo', primeiro_nome: 'John', matricula_aleatoria: '830194', setor: 'Frente de Caixa', cargo: 'Operador de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
-    { id: 'm5', loja_id: 'loja-matriz-demo', primeiro_nome: 'Ana Luísa', matricula_aleatoria: '502918', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
-    { id: 'm6', loja_id: 'loja-matriz-demo', primeiro_nome: 'Jaqueline', matricula_aleatoria: '392018', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
-    { id: 'm7', loja_id: 'loja-matriz-demo', primeiro_nome: 'Ana Beatriz', matricula_aleatoria: '719204', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
-    { id: 'm8', loja_id: 'loja-matriz-demo', primeiro_nome: 'Jaine', matricula_aleatoria: '640192', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '10:00 às 18:00', ativo: true },
-    { id: 'm9', loja_id: 'loja-matriz-demo', primeiro_nome: 'Kamilly', matricula_aleatoria: '649201', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '10:00 às 18:00', ativo: true },
-    { id: 'm10', loja_id: 'loja-matriz-demo', primeiro_nome: 'Ana Félix', matricula_aleatoria: '319482', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '10:00 às 18:00', ativo: true },
-    { id: 'm11', loja_id: 'loja-matriz-demo', primeiro_nome: 'Sabrina', matricula_aleatoria: '619284', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '10:00 às 18:00', ativo: true },
-    { id: 'm12', loja_id: 'loja-matriz-demo', primeiro_nome: 'Viviane', matricula_aleatoria: '840192', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '10:00 às 18:00', ativo: true },
-    { id: 'm13', loja_id: 'loja-matriz-demo', primeiro_nome: 'Laísa', matricula_aleatoria: '183920', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm14', loja_id: 'loja-matriz-demo', primeiro_nome: 'Ana Cláudia', matricula_aleatoria: '572910', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm15', loja_id: 'loja-matriz-demo', primeiro_nome: 'Claudia', matricula_aleatoria: '294018', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm16', loja_id: 'loja-matriz-demo', primeiro_nome: 'Joesiane', matricula_aleatoria: '940182', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm17', loja_id: 'loja-matriz-demo', primeiro_nome: 'Sueli', matricula_aleatoria: '381029', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm18', loja_id: 'loja-matriz-demo', primeiro_nome: 'Luciene', matricula_aleatoria: '729104', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm19', loja_id: 'loja-matriz-demo', primeiro_nome: 'Luciana', matricula_aleatoria: '610294', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm20', loja_id: 'loja-matriz-demo', primeiro_nome: 'Mateus', matricula_aleatoria: '492018', setor: 'Frente de Caixa', cargo: 'Operador de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm21', loja_id: 'loja-matriz-demo', primeiro_nome: 'Natália', matricula_aleatoria: '819204', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm22', loja_id: 'loja-matriz-demo', primeiro_nome: 'Edma', matricula_aleatoria: '302948', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '14:00 às 22:00', ativo: true },
-    { id: 'm23', loja_id: 'loja-matriz-demo', primeiro_nome: 'Analandia', matricula_aleatoria: '694018', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '14:00 às 22:00', ativo: true },
-    { id: 'm24', loja_id: 'loja-matriz-demo', primeiro_nome: 'Roseli', matricula_aleatoria: '192048', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '14:00 às 22:00', ativo: true },
-    { id: 'm25', loja_id: 'loja-matriz-demo', primeiro_nome: 'Edinalia', matricula_aleatoria: '583920', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '14:00 às 22:00', ativo: true },
+    { id: 'm1', loja_id: 'loja-02-demo', primeiro_nome: 'Nayle', matricula_aleatoria: '748291', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
+    { id: 'm2', loja_id: 'loja-02-demo', primeiro_nome: 'Alane', matricula_aleatoria: '482019', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
+    { id: 'm3', loja_id: 'loja-02-demo', primeiro_nome: 'Ana Paula', matricula_aleatoria: '920148', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
+    { id: 'm4', loja_id: 'loja-02-demo', primeiro_nome: 'John', matricula_aleatoria: '830194', setor: 'Frente de Caixa', cargo: 'Operador de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
+    { id: 'm5', loja_id: 'loja-02-demo', primeiro_nome: 'Ana Luísa', matricula_aleatoria: '502918', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
+    { id: 'm6', loja_id: 'loja-02-demo', primeiro_nome: 'Jaqueline', matricula_aleatoria: '392018', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
+    { id: 'm7', loja_id: 'loja-02-demo', primeiro_nome: 'Ana Beatriz', matricula_aleatoria: '719204', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '08:00 às 16:00', ativo: true },
+    { id: 'm8', loja_id: 'loja-02-demo', primeiro_nome: 'Jaine', matricula_aleatoria: '640192', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '10:00 às 18:00', ativo: true },
+    { id: 'm9', loja_id: 'loja-02-demo', primeiro_nome: 'Kamilly', matricula_aleatoria: '649201', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '10:00 às 18:00', ativo: true },
+    { id: 'm10', loja_id: 'loja-02-demo', primeiro_nome: 'Ana Félix', matricula_aleatoria: '319482', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '10:00 às 18:00', ativo: true },
+    { id: 'm11', loja_id: 'loja-02-demo', primeiro_nome: 'Sabrina', matricula_aleatoria: '619284', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '10:00 às 18:00', ativo: true },
+    { id: 'm12', loja_id: 'loja-02-demo', primeiro_nome: 'Viviane', matricula_aleatoria: '840192', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '10:00 às 18:00', ativo: true },
+    { id: 'm13', loja_id: 'loja-02-demo', primeiro_nome: 'Laísa', matricula_aleatoria: '183920', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm14', loja_id: 'loja-02-demo', primeiro_nome: 'Ana Cláudia', matricula_aleatoria: '572910', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm15', loja_id: 'loja-02-demo', primeiro_nome: 'Claudia', matricula_aleatoria: '294018', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm16', loja_id: 'loja-02-demo', primeiro_nome: 'Joesiane', matricula_aleatoria: '940182', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm17', loja_id: 'loja-02-demo', primeiro_nome: 'Sueli', matricula_aleatoria: '381029', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm18', loja_id: 'loja-02-demo', primeiro_nome: 'Luciene', matricula_aleatoria: '729104', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm19', loja_id: 'loja-02-demo', primeiro_nome: 'Luciana', matricula_aleatoria: '610294', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm20', loja_id: 'loja-02-demo', primeiro_nome: 'Mateus', matricula_aleatoria: '492018', setor: 'Frente de Caixa', cargo: 'Operador de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm21', loja_id: 'loja-02-demo', primeiro_nome: 'Natália', matricula_aleatoria: '819204', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm22', loja_id: 'loja-02-demo', primeiro_nome: 'Edma', matricula_aleatoria: '302948', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '14:00 às 22:00', ativo: true },
+    { id: 'm23', loja_id: 'loja-02-demo', primeiro_nome: 'Analandia', matricula_aleatoria: '694018', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '14:00 às 22:00', ativo: true },
+    { id: 'm24', loja_id: 'loja-02-demo', primeiro_nome: 'Roseli', matricula_aleatoria: '192048', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '14:00 às 22:00', ativo: true },
+    { id: 'm25', loja_id: 'loja-02-demo', primeiro_nome: 'Edinalia', matricula_aleatoria: '583920', setor: 'Frente de Caixa', cargo: 'Operadora de Caixa', turno_padrao: '14:00 às 22:00', ativo: true },
 
     // 2. Reposição (17 Colaboradores)
-    { id: 'm26', loja_id: 'loja-matriz-demo', primeiro_nome: 'Jovando', matricula_aleatoria: '402918', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '07:00 às 15:00', ativo: true },
-    { id: 'm27', loja_id: 'loja-matriz-demo', primeiro_nome: 'Cláudio', matricula_aleatoria: '918204', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '07:00 às 15:00', ativo: true },
-    { id: 'm28', loja_id: 'loja-matriz-demo', primeiro_nome: 'Daniel', matricula_aleatoria: '673920', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '07:00 às 15:00', ativo: true },
-    { id: 'm29', loja_id: 'loja-matriz-demo', primeiro_nome: 'Mateus (Rep)', matricula_aleatoria: '204918', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '07:00 às 15:00', ativo: true },
-    { id: 'm30', loja_id: 'loja-matriz-demo', primeiro_nome: 'Suzaine', matricula_aleatoria: '859201', setor: 'Reposição', cargo: 'Repositora', turno_padrao: '07:00 às 15:00', ativo: true },
-    { id: 'm31', loja_id: 'loja-matriz-demo', primeiro_nome: 'Wellington', matricula_aleatoria: '392014', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '09:00 às 17:00', ativo: true },
-    { id: 'm32', loja_id: 'loja-matriz-demo', primeiro_nome: 'Roberto Jose', matricula_aleatoria: '740192', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '09:00 às 17:00', ativo: true },
-    { id: 'm33', loja_id: 'loja-matriz-demo', primeiro_nome: 'Danilo', matricula_aleatoria: '294810', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '09:00 às 17:00', ativo: true },
-    { id: 'm34', loja_id: 'loja-matriz-demo', primeiro_nome: 'Marcelo (Rep)', matricula_aleatoria: '683019', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '09:00 às 17:00', ativo: true },
-    { id: 'm35', loja_id: 'loja-matriz-demo', primeiro_nome: 'Catarino', matricula_aleatoria: '104928', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm36', loja_id: 'loja-matriz-demo', primeiro_nome: 'André Santana', matricula_aleatoria: '930291', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm37', loja_id: 'loja-matriz-demo', primeiro_nome: 'Giovanne', matricula_aleatoria: '482910', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm38', loja_id: 'loja-matriz-demo', primeiro_nome: 'Emerson', matricula_aleatoria: '104920', setor: 'Reposição', cargo: 'Repositor Líder', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm39', loja_id: 'loja-matriz-demo', primeiro_nome: 'Leandro', matricula_aleatoria: '759201', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '14:00 às 22:00', ativo: true },
-    { id: 'm40', loja_id: 'loja-matriz-demo', primeiro_nome: 'Fagner', matricula_aleatoria: '392018', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '14:00 às 22:00', ativo: true },
-    { id: 'm41', loja_id: 'loja-matriz-demo', primeiro_nome: 'Rafael (Rep)', matricula_aleatoria: '602941', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '14:00 às 22:00', ativo: true },
+    { id: 'm26', loja_id: 'loja-02-demo', primeiro_nome: 'Jovando', matricula_aleatoria: '402918', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '07:00 às 15:00', ativo: true },
+    { id: 'm27', loja_id: 'loja-02-demo', primeiro_nome: 'Cláudio', matricula_aleatoria: '918204', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '07:00 às 15:00', ativo: true },
+    { id: 'm28', loja_id: 'loja-02-demo', primeiro_nome: 'Daniel', matricula_aleatoria: '673920', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '07:00 às 15:00', ativo: true },
+    { id: 'm29', loja_id: 'loja-02-demo', primeiro_nome: 'Mateus (Rep)', matricula_aleatoria: '204918', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '07:00 às 15:00', ativo: true },
+    { id: 'm30', loja_id: 'loja-02-demo', primeiro_nome: 'Suzaine', matricula_aleatoria: '859201', setor: 'Reposição', cargo: 'Repositora', turno_padrao: '07:00 às 15:00', ativo: true },
+    { id: 'm31', loja_id: 'loja-02-demo', primeiro_nome: 'Wellington', matricula_aleatoria: '392014', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '09:00 às 17:00', ativo: true },
+    { id: 'm32', loja_id: 'loja-02-demo', primeiro_nome: 'Roberto Jose', matricula_aleatoria: '740192', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '09:00 às 17:00', ativo: true },
+    { id: 'm33', loja_id: 'loja-02-demo', primeiro_nome: 'Danilo', matricula_aleatoria: '294810', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '09:00 às 17:00', ativo: true },
+    { id: 'm34', loja_id: 'loja-02-demo', primeiro_nome: 'Marcelo (Rep)', matricula_aleatoria: '683019', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '09:00 às 17:00', ativo: true },
+    { id: 'm35', loja_id: 'loja-02-demo', primeiro_nome: 'Catarino', matricula_aleatoria: '104928', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm36', loja_id: 'loja-02-demo', primeiro_nome: 'André Santana', matricula_aleatoria: '930291', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm37', loja_id: 'loja-02-demo', primeiro_nome: 'Giovanne', matricula_aleatoria: '482910', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm38', loja_id: 'loja-02-demo', primeiro_nome: 'Emerson', matricula_aleatoria: '104920', setor: 'Reposição', cargo: 'Repositor Líder', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm39', loja_id: 'loja-02-demo', primeiro_nome: 'Leandro', matricula_aleatoria: '759201', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '14:00 às 22:00', ativo: true },
+    { id: 'm40', loja_id: 'loja-02-demo', primeiro_nome: 'Fagner', matricula_aleatoria: '392018', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '14:00 às 22:00', ativo: true },
+    { id: 'm41', loja_id: 'loja-02-demo', primeiro_nome: 'Rafael (Rep)', matricula_aleatoria: '602941', setor: 'Reposição', cargo: 'Repositor', turno_padrao: '14:00 às 22:00', ativo: true },
 
     // 3. Assistente de Lanchonete (8 Colaboradores)
-    { id: 'm42', loja_id: 'loja-matriz-demo', primeiro_nome: 'Eduarda', matricula_aleatoria: '194028', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '08:00 às 17:00', ativo: true },
-    { id: 'm43', loja_id: 'loja-matriz-demo', primeiro_nome: 'Valdenice', matricula_aleatoria: '850192', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '08:00 às 17:00', ativo: true },
-    { id: 'm44', loja_id: 'loja-matriz-demo', primeiro_nome: 'Nicole', matricula_aleatoria: '302948', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '08:00 às 17:00', ativo: true },
-    { id: 'm45', loja_id: 'loja-matriz-demo', primeiro_nome: 'Normelia', matricula_aleatoria: '694018', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '08:00 às 17:00', ativo: true },
-    { id: 'm46', loja_id: 'loja-matriz-demo', primeiro_nome: 'Marielle', matricula_aleatoria: '192048', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '10:00 às 18:00', ativo: true },
-    { id: 'm47', loja_id: 'loja-matriz-demo', primeiro_nome: 'Angela', matricula_aleatoria: '583920', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '10:00 às 18:00', ativo: true },
-    { id: 'm48', loja_id: 'loja-matriz-demo', primeiro_nome: 'Ivonete', matricula_aleatoria: '402918', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm49', loja_id: 'loja-matriz-demo', primeiro_nome: 'Claudio (Lanch)', matricula_aleatoria: '918204', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm42', loja_id: 'loja-02-demo', primeiro_nome: 'Eduarda', matricula_aleatoria: '194028', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '08:00 às 17:00', ativo: true },
+    { id: 'm43', loja_id: 'loja-02-demo', primeiro_nome: 'Valdenice', matricula_aleatoria: '850192', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '08:00 às 17:00', ativo: true },
+    { id: 'm44', loja_id: 'loja-02-demo', primeiro_nome: 'Nicole', matricula_aleatoria: '302948', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '08:00 às 17:00', ativo: true },
+    { id: 'm45', loja_id: 'loja-02-demo', primeiro_nome: 'Normelia', matricula_aleatoria: '694018', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '08:00 às 17:00', ativo: true },
+    { id: 'm46', loja_id: 'loja-02-demo', primeiro_nome: 'Marielle', matricula_aleatoria: '192048', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '10:00 às 18:00', ativo: true },
+    { id: 'm47', loja_id: 'loja-02-demo', primeiro_nome: 'Angela', matricula_aleatoria: '583920', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '10:00 às 18:00', ativo: true },
+    { id: 'm48', loja_id: 'loja-02-demo', primeiro_nome: 'Ivonete', matricula_aleatoria: '402918', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm49', loja_id: 'loja-02-demo', primeiro_nome: 'Claudio (Lanch)', matricula_aleatoria: '918204', setor: 'Assistente de Lanchonete', cargo: 'Atendente de Lanchonete', turno_padrao: '12:00 às 20:00', ativo: true },
 
     // 4. Açougue (10 Colaboradores)
-    { id: 'm50', loja_id: 'loja-matriz-demo', primeiro_nome: 'Gabriel', matricula_aleatoria: '673920', setor: 'Açougue', cargo: 'Açougueiro', turno_padrao: '08:00 às 16:00', ativo: true },
-    { id: 'm51', loja_id: 'loja-matriz-demo', primeiro_nome: 'Erick (Açougue)', matricula_aleatoria: '204918', setor: 'Açougue', cargo: 'Açougueiro', turno_padrao: '08:00 às 16:00', ativo: true },
-    { id: 'm52', loja_id: 'loja-matriz-demo', primeiro_nome: 'Roberto (Açougue)', matricula_aleatoria: '859201', setor: 'Açougue', cargo: 'Açougueiro Líder', turno_padrao: '08:00 às 16:00', ativo: true },
-    { id: 'm53', loja_id: 'loja-matriz-demo', primeiro_nome: 'Ana (Açougue)', matricula_aleatoria: '392014', setor: 'Açougue', cargo: 'Auxiliar de Açougue', turno_padrao: '08:00 às 16:00', ativo: true },
-    { id: 'm54', loja_id: 'loja-matriz-demo', primeiro_nome: 'Paulo', matricula_aleatoria: '740192', setor: 'Açougue', cargo: 'Açougueiro', turno_padrao: '09:00 às 18:00', ativo: true },
-    { id: 'm55', loja_id: 'loja-matriz-demo', primeiro_nome: 'Vagner', matricula_aleatoria: '294810', setor: 'Açougue', cargo: 'Auxiliar de Açougue', turno_padrao: '09:00 às 18:00', ativo: true },
-    { id: 'm56', loja_id: 'loja-matriz-demo', primeiro_nome: 'Marcos', matricula_aleatoria: '683019', setor: 'Açougue', cargo: 'Açougueiro', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm57', loja_id: 'loja-matriz-demo', primeiro_nome: 'Kauam', matricula_aleatoria: '104928', setor: 'Açougue', cargo: 'Auxiliar de Açougue', turno_padrao: '12:00 às 20:00', ativo: true },
-    { id: 'm58', loja_id: 'loja-matriz-demo', primeiro_nome: 'Rafael', matricula_aleatoria: '930291', setor: 'Açougue', cargo: 'Auxiliar de Açougue', turno_padrao: '09:00 às 18:00', ativo: true },
-    { id: 'm59', loja_id: 'loja-matriz-demo', primeiro_nome: 'Marcelo', matricula_aleatoria: '482910', setor: 'Açougue', cargo: 'Atendente', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm50', loja_id: 'loja-02-demo', primeiro_nome: 'Gabriel', matricula_aleatoria: '673920', setor: 'Açougue', cargo: 'Açougueiro', turno_padrao: '08:00 às 16:00', ativo: true },
+    { id: 'm51', loja_id: 'loja-02-demo', primeiro_nome: 'Erick (Açougue)', matricula_aleatoria: '204918', setor: 'Açougue', cargo: 'Açougueiro', turno_padrao: '08:00 às 16:00', ativo: true },
+    { id: 'm52', loja_id: 'loja-02-demo', primeiro_nome: 'Roberto (Açougue)', matricula_aleatoria: '859201', setor: 'Açougue', cargo: 'Açougueiro Líder', turno_padrao: '08:00 às 16:00', ativo: true },
+    { id: 'm53', loja_id: 'loja-02-demo', primeiro_nome: 'Ana (Açougue)', matricula_aleatoria: '392014', setor: 'Açougue', cargo: 'Auxiliar de Açougue', turno_padrao: '08:00 às 16:00', ativo: true },
+    { id: 'm54', loja_id: 'loja-02-demo', primeiro_nome: 'Paulo', matricula_aleatoria: '740192', setor: 'Açougue', cargo: 'Açougueiro', turno_padrao: '09:00 às 18:00', ativo: true },
+    { id: 'm55', loja_id: 'loja-02-demo', primeiro_nome: 'Vagner', matricula_aleatoria: '294810', setor: 'Açougue', cargo: 'Auxiliar de Açougue', turno_padrao: '09:00 às 18:00', ativo: true },
+    { id: 'm56', loja_id: 'loja-02-demo', primeiro_nome: 'Marcos', matricula_aleatoria: '683019', setor: 'Açougue', cargo: 'Açougueiro', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm57', loja_id: 'loja-02-demo', primeiro_nome: 'Kauam', matricula_aleatoria: '104928', setor: 'Açougue', cargo: 'Auxiliar de Açougue', turno_padrao: '12:00 às 20:00', ativo: true },
+    { id: 'm58', loja_id: 'loja-02-demo', primeiro_nome: 'Rafael', matricula_aleatoria: '930291', setor: 'Açougue', cargo: 'Auxiliar de Açougue', turno_padrao: '09:00 às 18:00', ativo: true },
+    { id: 'm59', loja_id: 'loja-02-demo', primeiro_nome: 'Marcelo', matricula_aleatoria: '482910', setor: 'Açougue', cargo: 'Atendente', turno_padrao: '12:00 às 20:00', ativo: true },
 
     // 5. Padaria (Produção) (8 Colaboradores)
-    { id: 'm60', loja_id: 'loja-matriz-demo', primeiro_nome: 'Evandro', matricula_aleatoria: '104920', setor: 'Padaria (Produção)', cargo: 'Padeiro Líder', turno_padrao: '05:00 às 15:00', ativo: true },
-    { id: 'm61', loja_id: 'loja-matriz-demo', primeiro_nome: 'Maisa', matricula_aleatoria: '759201', setor: 'Padaria (Produção)', cargo: 'Auxiliar de Padaria', turno_padrao: '05:00 às 15:00', ativo: true },
-    { id: 'm62', loja_id: 'loja-matriz-demo', primeiro_nome: 'Erick (Padaria)', matricula_aleatoria: '392018', setor: 'Padaria (Produção)', cargo: 'Padeiro', turno_padrao: '05:00 às 15:00', ativo: true },
-    { id: 'm63', loja_id: 'loja-matriz-demo', primeiro_nome: 'Jeane', matricula_aleatoria: '602941', setor: 'Padaria (Produção)', cargo: 'Atendente', turno_padrao: '05:00 às 15:00', ativo: true },
-    { id: 'm64', loja_id: 'loja-matriz-demo', primeiro_nome: 'Raquel', matricula_aleatoria: '194028', setor: 'Padaria (Produção)', cargo: 'Auxiliar de Padaria', turno_padrao: '05:00 às 15:00', ativo: true },
-    { id: 'm65', loja_id: 'loja-matriz-demo', primeiro_nome: 'Yuri', matricula_aleatoria: '850192', setor: 'Padaria (Produção)', cargo: 'Atendente', turno_padrao: '05:00 às 15:00', ativo: true },
-    { id: 'm66', loja_id: 'loja-matriz-demo', primeiro_nome: 'Thais', matricula_aleatoria: '302948', setor: 'Padaria (Produção)', cargo: 'Atendente', turno_padrao: '05:00 às 15:00', ativo: true },
-    { id: 'm67', loja_id: 'loja-matriz-demo', primeiro_nome: 'Ivandro', matricula_aleatoria: '694018', setor: 'Padaria (Produção)', cargo: 'Padeiro Líder', turno_padrao: '05:00 às 15:00', ativo: true },
+    { id: 'm60', loja_id: 'loja-02-demo', primeiro_nome: 'Evandro', matricula_aleatoria: '104920', setor: 'Padaria (Produção)', cargo: 'Padeiro Líder', turno_padrao: '05:00 às 15:00', ativo: true },
+    { id: 'm61', loja_id: 'loja-02-demo', primeiro_nome: 'Maisa', matricula_aleatoria: '759201', setor: 'Padaria (Produção)', cargo: 'Auxiliar de Padaria', turno_padrao: '05:00 às 15:00', ativo: true },
+    { id: 'm62', loja_id: 'loja-02-demo', primeiro_nome: 'Erick (Padaria)', matricula_aleatoria: '392018', setor: 'Padaria (Produção)', cargo: 'Padeiro', turno_padrao: '05:00 às 15:00', ativo: true },
+    { id: 'm63', loja_id: 'loja-02-demo', primeiro_nome: 'Jeane', matricula_aleatoria: '602941', setor: 'Padaria (Produção)', cargo: 'Atendente', turno_padrao: '05:00 às 15:00', ativo: true },
+    { id: 'm64', loja_id: 'loja-02-demo', primeiro_nome: 'Raquel', matricula_aleatoria: '194028', setor: 'Padaria (Produção)', cargo: 'Auxiliar de Padaria', turno_padrao: '05:00 às 15:00', ativo: true },
+    { id: 'm65', loja_id: 'loja-02-demo', primeiro_nome: 'Yuri', matricula_aleatoria: '850192', setor: 'Padaria (Produção)', cargo: 'Atendente', turno_padrao: '05:00 às 15:00', ativo: true },
+    { id: 'm66', loja_id: 'loja-02-demo', primeiro_nome: 'Thais', matricula_aleatoria: '302948', setor: 'Padaria (Produção)', cargo: 'Atendente', turno_padrao: '05:00 às 15:00', ativo: true },
+    { id: 'm67', loja_id: 'loja-02-demo', primeiro_nome: 'Ivandro', matricula_aleatoria: '694018', setor: 'Padaria (Produção)', cargo: 'Padeiro Líder', turno_padrao: '05:00 às 15:00', ativo: true },
 
     // 6. Fiscal de Caixa (4 Colaboradores)
-    { id: 'm68', loja_id: 'loja-matriz-demo', primeiro_nome: 'Walta', matricula_aleatoria: '192048', setor: 'Fiscal de Caixa', cargo: 'Fiscal de Caixa Líder', turno_padrao: '08:00 às 17:00', ativo: true },
-    { id: 'm69', loja_id: 'loja-matriz-demo', primeiro_nome: 'Ualas', matricula_aleatoria: '583920', setor: 'Fiscal de Caixa', cargo: 'Fiscal de Caixa', turno_padrao: '10:00 às 20:00', ativo: true },
-    { id: 'm70', loja_id: 'loja-matriz-demo', primeiro_nome: 'Lane', matricula_aleatoria: '402918', setor: 'Fiscal de Caixa', cargo: 'Fiscal de Caixa', turno_padrao: '08:00 às 17:00', ativo: true },
-    { id: 'm71', loja_id: 'loja-matriz-demo', primeiro_nome: 'Romildo', matricula_aleatoria: '918204', setor: 'Fiscal de Caixa', cargo: 'Fiscal de Caixa', turno_padrao: '10:00 às 20:00', ativo: true },
+    { id: 'm68', loja_id: 'loja-02-demo', primeiro_nome: 'Walta', matricula_aleatoria: '192048', setor: 'Fiscal de Caixa', cargo: 'Fiscal de Caixa Líder', turno_padrao: '08:00 às 17:00', ativo: true },
+    { id: 'm69', loja_id: 'loja-02-demo', primeiro_nome: 'Ualas', matricula_aleatoria: '583920', setor: 'Fiscal de Caixa', cargo: 'Fiscal de Caixa', turno_padrao: '10:00 às 20:00', ativo: true },
+    { id: 'm70', loja_id: 'loja-02-demo', primeiro_nome: 'Lane', matricula_aleatoria: '402918', setor: 'Fiscal de Caixa', cargo: 'Fiscal de Caixa', turno_padrao: '08:00 às 17:00', ativo: true },
+    { id: 'm71', loja_id: 'loja-02-demo', primeiro_nome: 'Romildo', matricula_aleatoria: '918204', setor: 'Fiscal de Caixa', cargo: 'Fiscal de Caixa', turno_padrao: '10:00 às 20:00', ativo: true },
 
     // 7. Operador de Empilhadeira (1 Colaborador)
-    { id: 'm72', loja_id: 'loja-matriz-demo', primeiro_nome: 'Reginaldo', matricula_aleatoria: '673920', setor: 'Operador de Empilhadeira', cargo: 'Operador de Empilhadeira', turno_padrao: '07:00 às 15:00', ativo: true },
+    { id: 'm72', loja_id: 'loja-02-demo', primeiro_nome: 'Reginaldo', matricula_aleatoria: '673920', setor: 'Operador de Empilhadeira', cargo: 'Operador de Empilhadeira', turno_padrao: '07:00 às 15:00', ativo: true },
 
     // 8. Higienização (3 Colaboradores)
-    { id: 'm73', loja_id: 'loja-matriz-demo', primeiro_nome: 'Eliomar', matricula_aleatoria: '204918', setor: 'Higienização', cargo: 'Auxiliar de Serviços Gerais', turno_padrao: '08:00 às 17:00', ativo: true },
-    { id: 'm74', loja_id: 'loja-matriz-demo', primeiro_nome: 'Acleia', matricula_aleatoria: '859201', setor: 'Higienização', cargo: 'Auxiliar de Serviços Gerais', turno_padrao: '08:00 às 17:00', ativo: true },
-    { id: 'm75', loja_id: 'loja-matriz-demo', primeiro_nome: 'Gilvan', matricula_aleatoria: '392014', setor: 'Higienização', cargo: 'Auxiliar de Serviços Gerais', turno_padrao: '08:00 às 17:00', ativo: true },
+    { id: 'm73', loja_id: 'loja-02-demo', primeiro_nome: 'Eliomar', matricula_aleatoria: '204918', setor: 'Higienização', cargo: 'Auxiliar de Serviços Gerais', turno_padrao: '08:00 às 17:00', ativo: true },
+    { id: 'm74', loja_id: 'loja-02-demo', primeiro_nome: 'Acleia', matricula_aleatoria: '859201', setor: 'Higienização', cargo: 'Auxiliar de Serviços Gerais', turno_padrao: '08:00 às 17:00', ativo: true },
+    { id: 'm75', loja_id: 'loja-02-demo', primeiro_nome: 'Gilvan', matricula_aleatoria: '392014', setor: 'Higienização', cargo: 'Auxiliar de Serviços Gerais', turno_padrao: '08:00 às 17:00', ativo: true },
 
     // 9. Manutenção (4 Colaboradores)
-    { id: 'm76', loja_id: 'loja-matriz-demo', primeiro_nome: 'Thiago', matricula_aleatoria: '100001', setor: 'Manutenção', cargo: 'Supervisor de TI & Manutenção', turno_padrao: '07:30 às 17:18', ativo: true },
-    { id: 'm77', loja_id: 'loja-matriz-demo', primeiro_nome: 'Marcos (Manut)', matricula_aleatoria: '710294', setor: 'Manutenção', cargo: 'Oficial de Manutenção Líder', turno_padrao: '07:30 às 17:18', ativo: true },
-    { id: 'm78', loja_id: 'loja-matriz-demo', primeiro_nome: 'José (Manut)', matricula_aleatoria: '492018', setor: 'Manutenção', cargo: 'Auxiliar de Manutenção Predial', turno_padrao: '07:30 às 17:18', ativo: true },
-    { id: 'm79', loja_id: 'loja-matriz-demo', primeiro_nome: 'Edilson', matricula_aleatoria: '839201', setor: 'Manutenção', cargo: 'Eletricista de Manutenção', turno_padrao: '07:30 às 17:18', ativo: true }
+    { id: 'm76', loja_id: 'loja-02-demo', primeiro_nome: 'Thiago', matricula_aleatoria: '100001', setor: 'Manutenção', cargo: 'Supervisor de TI & Manutenção', turno_padrao: '07:30 às 17:18', ativo: true },
+    { id: 'm77', loja_id: 'loja-02-demo', primeiro_nome: 'Marcos (Manut)', matricula_aleatoria: '710294', setor: 'Manutenção', cargo: 'Oficial de Manutenção Líder', turno_padrao: '07:30 às 17:18', ativo: true },
+    { id: 'm78', loja_id: 'loja-02-demo', primeiro_nome: 'José (Manut)', matricula_aleatoria: '492018', setor: 'Manutenção', cargo: 'Auxiliar de Manutenção Predial', turno_padrao: '07:30 às 17:18', ativo: true },
+    { id: 'm79', loja_id: 'loja-02-demo', primeiro_nome: 'Edilson', matricula_aleatoria: '839201', setor: 'Manutenção', cargo: 'Eletricista de Manutenção', turno_padrao: '07:30 às 17:18', ativo: true }
   ]);
 
   // Funcionários CRUD (Com Minimização LGPD)
