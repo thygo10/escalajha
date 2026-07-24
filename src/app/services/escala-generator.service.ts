@@ -29,9 +29,9 @@ export class EscalaGeneratorService {
         const isDomingo = diaSemana === 0;
 
         if (isDomingo) {
-          // Revezamento de domingo: 1 a cada 3 domingos de folga garantido
+          // Revezamento de domingo Convenção Coletiva: Garantia de pelo menos 1 folga de domingo no mês para cada colaborador
           const domingoNum = Math.ceil(dia / 7);
-          const folgaNoDomingo = (idx + domingoNum) % 3 === 0;
+          const folgaNoDomingo = (domingoNum === ((idx % 4) + 1));
 
           if (folgaNoDomingo || diasTrabalhadosSeguidos >= 6) {
             dias[dia] = 'DOMINGO';

@@ -323,9 +323,9 @@ begin
   insert into public.regras_escala (loja_id, titulo, descricao, categoria, status, obrigatoria) values
     (v_loja_id, 'Descanso Semanal Remunerado (DSR 6x1)', 'Todo colaborador tem direito a 1 folga semanal preferencialmente no domingo após no máximo 6 dias consecutivos de trabalho (Art. 67 da CLT).', 'CLT', 'IMPLEMENTADA', true),
     (v_loja_id, 'Revezamento Dominical Quinzenal (Mulheres)', 'Para colaboradoras do sexo feminino, é obrigatória a concessão de folga no domingo a cada 15 dias (Art. 386 da CLT).', 'CLT', 'IMPLEMENTADA', true),
-    (v_loja_id, 'Revezamento Dominical Máximo (Homens)', 'Colaboradores do sexo masculino não podem trabalhar mais de 7 domingos consecutivos sem folga dominical (Lei nº 10.101/2000).', 'Acordo Coletivo', 'IMPLEMENTADA', true),
+    (v_loja_id, 'Revezamento Dominical Mensal (CCT)', 'Garantia de pelo menos 1 folga no domingo dentro de cada mês trabalhado para todos os colaboradores (Convenção Coletiva de Trabalho).', 'Acordo Coletivo', 'IMPLEMENTADA', true),
     (v_loja_id, 'Intervalo Interjornada de 11 Horas', 'Entre duas jornadas de trabalho é obrigatório o intervalo mínimo de 11 horas consecutivas para descanso (Art. 66 da CLT).', 'CLT', 'IMPLEMENTADA', true),
-    (v_loja_id, 'Intervalo Intrajornada (Refeição/Almoço)', 'Em qualquer trabalho contínuo superior a 6 horas é obrigatória a concessão de intervalo de 1 a 2 horas para refeição (Art. 71 da CLT).', 'CLT', 'IMPLEMENTADA', true),
+    (v_loja_id, 'Intervalo Intrajornada Flexível (Refeição)', 'Concessão de intervalo de refeição ajustável em 30 min, 1h, 1h30min, 2h, 2h30min, 2h40min ou 3h para jornadas acima de 6 horas (Salvo Convenção Coletiva).', 'Acordo Coletivo', 'IMPLEMENTADA', true),
     (v_loja_id, 'Feriados Municipais de Poções-BA', 'Garantir folga ou compensação em dobro para feriados municipais de Poções (Festa do Divino Espírito Santo e Emancipação).', 'Interna RH', 'IMPLEMENTADA', true),
     (v_loja_id, 'Prioridade de Folga Véspera de Feriado (Reposição)', 'Solicitação do RH: O pessoal da reposição que folgar no sábado véspera de feriado estadual não deve dobrar o turno na segunda-feira.', 'Solicitação RH', 'PENDENTE_PROGRAMADOR', false);
 
