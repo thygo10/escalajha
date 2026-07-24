@@ -161,10 +161,10 @@ interface ConfirmModalData {
         <!-- Rodapé do Usuário Logado -->
         <div class="sidebar-footer">
           <div class="user-card">
-            <div class="user-avatar">RH</div>
+            <div class="user-avatar">{{ userInitials() }}</div>
             <div class="user-info">
-              <div class="user-name" [title]="currentUser()?.email || 'rh.matriz@joaohenrique.com.br'">
-                {{ currentUser()?.email || 'rh.matriz@joaohenrique.com.br' }}
+              <div class="user-name" [title]="currentUser()?.email || 'rhjoaohenriqueatacadista@gmail.com'">
+                {{ currentUser()?.email || 'rhjoaohenriqueatacadista@gmail.com' }}
               </div>
               <div class="user-role">Gestão de RH & Escalas</div>
             </div>
@@ -189,16 +189,12 @@ interface ConfirmModalData {
 
             <!-- Loja Ativa Tag -->
             <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 800; color: #0b2a52;">
-              🏬 {{ activeLoja()?.nome || 'Matriz - Centro' }}
+              🏬 {{ activeLoja()?.nome || 'Filial - Loja 002' }}
             </div>
           </div>
 
-          <!-- Barra de Utilidades da Direita (Baixar App, Modo Escuro, Notificações, Perfil Avatar) -->
+          <!-- Barra de Utilidades da Direita (Modo Escuro, Notificações, Perfil Avatar) -->
           <div class="topbar-actions" style="display: flex; align-items: center; gap: 16px;">
-            <span style="font-size: 0.82rem; font-weight: 700; color: #64748b; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-              Baixar App 📱
-            </span>
-
             <button title="Alternar Modo Escuro" style="background: transparent; border: none; font-size: 1.1rem; cursor: pointer; color: #64748b;">
               🌙
             </button>
@@ -208,9 +204,9 @@ interface ConfirmModalData {
               <span style="position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%;"></span>
             </button>
 
-            <!-- User Avatar Circle TF / RH -->
-            <div style="width: 38px; height: 38px; border-radius: 50%; background: #10b981; color: #ffffff; font-weight: 900; font-size: 0.88rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);">
-              RH
+            <!-- User Avatar Circle com Iniciais -->
+            <div style="width: 38px; height: 38px; border-radius: 50%; background: #0b2a52; color: #ffffff; font-weight: 900; font-size: 0.88rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(11, 42, 82, 0.3);" [title]="currentUser()?.email">
+              {{ userInitials() }}
             </div>
 
             <!-- Botão de Opções de Impressão A4 -->
@@ -489,7 +485,7 @@ interface ConfirmModalData {
           <!-- ABA 1: ESCALA DO MÊS -->
           @if (activeTab() === 'escala') {
             <div class="clean-card no-print">
-              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;">
                 <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; width: 100%; max-width: 500px;">
                   <div style="flex: 1; min-width: 140px;">
                     <label>Mês / Ano Ref:</label>
@@ -505,13 +501,52 @@ interface ConfirmModalData {
                   </div>
                 </div>
 
-                <div style="display: flex; gap: 12px; flex-wrap: wrap; width: 100%; justify-content: flex-end;">
-                  <button (click)="gerarNovaEscala()" class="btn-premium btn-primary-gradient">
-                    ⚡ Gerar Escala Automática (6x1)
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
+                  <button (click)="gerarNovaEscala()" class="btn-premium btn-primary-gradient" style="font-weight: 800; border-radius: 8px;">
+                    ⚡ Gerar Escala 6x1 Giratória
                   </button>
-                  <button (click)="salvarEscala()" class="btn-premium btn-yellow-gradient" [disabled]="saving()">
-                    {{ saving() ? 'Salvando...' : '💾 Salvar no Supabase' }}
+                  <button (click)="salvarEscala()" class="btn-secondary" style="background: #0b2a52; color: #ffffff; font-weight: 800; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;" [disabled]="saving()">
+                    💾 {{ saving() ? 'Salvando...' : 'Salvar' }}
                   </button>
+                </div>
+              </div>
+
+              <!-- PAINEL DE CONTROLE DA ESCALA 6X1 GIRATÓRIA & CONVENÇÃO COLETIVA -->
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px 18px; border-radius: 12px; margin-bottom: 20px;">
+                <div style="font-size: 0.85rem; font-weight: 800; color: #0b2a52; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                  ⚙️ Configurações da Rotação 6x1 Giratória (Convenção Coletiva)
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center;">
+                  <!-- Seleção de Dias Permitidos para Distribuição de Folga -->
+                  <div>
+                    <label style="font-size: 0.78rem; font-weight: 700; color: #64748b; display: block; margin-bottom: 6px;">
+                      Dias da semana permitidos para folga giratória:
+                    </label>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                      <button type="button" (click)="toggleDiaFolgaPermitido(1)" [class.active]="isDiaFolgaPermitido(1)" class="pill-btn" style="padding: 4px 12px; font-size: 0.78rem; border-radius: 16px;">Seg</button>
+                      <button type="button" (click)="toggleDiaFolgaPermitido(2)" [class.active]="isDiaFolgaPermitido(2)" class="pill-btn" style="padding: 4px 12px; font-size: 0.78rem; border-radius: 16px;">Ter</button>
+                      <button type="button" (click)="toggleDiaFolgaPermitido(3)" [class.active]="isDiaFolgaPermitido(3)" class="pill-btn" style="padding: 4px 12px; font-size: 0.78rem; border-radius: 16px;">Qua</button>
+                      <button type="button" (click)="toggleDiaFolgaPermitido(4)" [class.active]="isDiaFolgaPermitido(4)" class="pill-btn" style="padding: 4px 12px; font-size: 0.78rem; border-radius: 16px;">Qui</button>
+                      <button type="button" (click)="toggleDiaFolgaPermitido(5)" [class.active]="isDiaFolgaPermitido(5)" class="pill-btn" style="padding: 4px 12px; font-size: 0.78rem; border-radius: 16px;">Sex</button>
+                      <button type="button" (click)="toggleDiaFolgaPermitido(6)" [class.active]="isDiaFolgaPermitido(6)" class="pill-btn" style="padding: 4px 12px; font-size: 0.78rem; border-radius: 16px;">Sáb</button>
+                      <button type="button" (click)="toggleDiaFolgaPermitido(0)" [class.active]="isDiaFolgaPermitido(0)" class="pill-btn" style="padding: 4px 12px; font-size: 0.78rem; border-radius: 16px;">Dom</button>
+                    </div>
+                  </div>
+
+                  <!-- Toggle para Permitir 2 Dias Consecutivos de Folga -->
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; color: #334155;">
+                    <input
+                      type="checkbox"
+                      id="chkConsecutivos"
+                      [ngModel]="permitirDoisDiasConsecutivos()"
+                      (ngModelChange)="permitirDoisDiasConsecutivos.set($event)"
+                      style="width: 16px; height: 16px; accent-color: #0b2a52; cursor: pointer;"
+                    />
+                    <label for="chkConsecutivos" style="cursor: pointer; margin: 0;">
+                      Permitir 2 folgas consecutivas quando necessário
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -1810,8 +1845,28 @@ export class DashboardComponent implements OnInit {
   activeTab = signal<'dashboard' | 'escala' | 'funcionarios' | 'setores' | 'feriados' | 'regras' | 'detalhes-funcionario'>('dashboard');
   isMobileMenuOpen = signal<boolean>(false);
 
-  selectedMonth = '2026-08';
+  private readonly now = new Date();
+  readonly currentYearMonth = `${this.now.getFullYear()}-${String(this.now.getMonth() + 1).padStart(2, '0')}`;
+
+  selectedMonth = this.currentYearMonth;
   selectedSetor = 'Frente de Caixa';
+
+  // Configurações 6x1 Giratória (Convenção Coletiva)
+  permitirDoisDiasConsecutivos = signal<boolean>(false);
+  diasPermitidosFolga = signal<number[]>([0, 1, 2, 3, 4, 5, 6]); // 0=Dom, 1=Seg, 2=Ter...
+
+  userInitials = computed(() => {
+    const email = this.currentUser()?.email || 'rhjoaohenriqueatacadista@gmail.com';
+    const clean = email.split('@')[0].toUpperCase();
+    if (clean.includes('.')) {
+      const parts = clean.split('.');
+      return (parts[0][0] + (parts[1]?.[0] || '')).substring(0, 2);
+    }
+    if (clean.length >= 2) {
+      return clean.substring(0, 2);
+    }
+    return 'RH';
+  });
 
   // Signals de Dados
   funcionarios = signal<Funcionario[]>([]);
@@ -1824,7 +1879,7 @@ export class DashboardComponent implements OnInit {
 
   // Perfil Detalhado do Colaborador
   selectedFuncionarioForPage = signal<Funcionario | null>(null);
-  selectedMonthHistorico = '2026-08';
+  selectedMonthHistorico = this.currentYearMonth;
   filterTipoHistorico = 'TODOS';
 
   // Modal de Impressão A4 (Modos + Estilos)
@@ -2294,6 +2349,24 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  toggleDiaFolgaPermitido(diaSemana: number) {
+    this.diasPermitidosFolga.update(current => {
+      if (current.includes(diaSemana)) {
+        if (current.length === 1) {
+          this.toastService.warning('Atenção', 'Selecione pelo menos 1 dia da semana para folgas.');
+          return current;
+        }
+        return current.filter(d => d !== diaSemana);
+      } else {
+        return [...current, diaSemana].sort((a, b) => a - b);
+      }
+    });
+  }
+
+  isDiaFolgaPermitido(diaSemana: number): boolean {
+    return this.diasPermitidosFolga().includes(diaSemana);
+  }
+
   gerarNovaEscala() {
     const funcsDoSetor = this.funcionarios().filter(f => f.setor === this.selectedSetor);
     if (funcsDoSetor.length === 0) {
@@ -2302,9 +2375,12 @@ export class DashboardComponent implements OnInit {
     }
 
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
-    const gerada = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes);
+    const gerada = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes, {
+      permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
+      diasPermitidosFolga: this.diasPermitidosFolga()
+    });
     this.escalaItens.set(gerada);
-    this.toastService.success('Escala Gerada!', `Matriz 6x1 calculada com sucesso para ${funcsDoSetor.length} colaboradores.`);
+    this.toastService.success('Escala Gerada!', `Escala 6x1 Giratória calculada com sucesso para ${funcsDoSetor.length} colaboradores.`);
   }
 
   async salvarEscala() {
