@@ -125,8 +125,15 @@ export class SupabaseService {
       (email === 'rh.matriz@joaohenrique.com.br' || email === 'admin@joaohenrique.com.br');
 
     if (isRhUser || isThygoUser || isDemoUser) {
+      let userId = 'demo-user-rh-01';
+      if (isThygoUser) {
+        userId = 'user-thygo-10';
+      } else if (isRhUser) {
+        userId = 'user-rh-jh-01';
+      }
+
       const mockUser: any = {
-        id: isThygoUser ? 'user-thygo-10' : isRhUser ? 'user-rh-jh-01' : 'demo-user-rh-01',
+        id: userId,
         email: email
       };
       const mockLoja: Loja = {
