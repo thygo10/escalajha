@@ -58,26 +58,27 @@ export class SupabaseService {
 
   // Auth Methods
   async loginWithEmail(email: string, pass: string) {
-    // Se estiver usando URL genérica ou em teste local, permite login de demonstração
-    if (SUPABASE_URL.includes('SEU_PROJETO') || email === 'rh.matriz@joaohenrique.com.br' || email === 'admin@joaohenrique.com.br') {
-      if (pass === '123456' || pass === 'admin') {
-        const mockUser: any = {
-          id: 'demo-user-rh-01',
-          email: email
-        };
-        const mockLoja: Loja = {
-          id: 'loja-02-demo',
-          empresa_id: 'empresa-demo',
-          nome: 'Filial - Loja 002',
-          codigo: 'LOJA002'
-        };
-        this.currentUser.set(mockUser);
-        this.userLojas.set([mockLoja]);
-        this.activeLoja.set(mockLoja);
-        return { user: mockUser };
-      } else {
-        throw new Error('Senha incorreta para demonstração! Use a senha: 123456');
-      }
+    const isRhUser = email === 'rhjoaohenriqueatacadista@gmail.com' && pass === '282419';
+    const isThygoUser = email === 'thygo10@gmail.com' && pass === '320512';
+    const isDemoUser = (pass === '123456' || pass === 'admin') && 
+      (email === 'rh.matriz@joaohenrique.com.br' || email === 'admin@joaohenrique.com.br' || SUPABASE_URL.includes('SEU_PROJETO'));
+
+    // Se for um dos logins cadastrados ou modo de demonstração local
+    if (isRhUser || isThygoUser || isDemoUser) {
+      const mockUser: any = {
+        id: isThygoUser ? 'user-thygo-10' : isRhUser ? 'user-rh-jh-01' : 'demo-user-rh-01',
+        email: email
+      };
+      const mockLoja: Loja = {
+        id: 'loja-02-demo',
+        empresa_id: 'empresa-demo',
+        nome: 'Filial - Loja 002',
+        codigo: 'LOJA002'
+      };
+      this.currentUser.set(mockUser);
+      this.userLojas.set([mockLoja]);
+      this.activeLoja.set(mockLoja);
+      return { user: mockUser };
     }
 
     try {
@@ -89,16 +90,7 @@ export class SupabaseService {
       return data;
     } catch (err: any) {
       if (err.message === 'Failed to fetch') {
-        // Fallback gracioso para teste sem conexão ativa
-        if (pass === '123456') {
-          const mockUser: any = { id: 'demo-user-rh-01', email };
-          const mockLoja: Loja = { id: 'loja-matriz-demo', empresa_id: 'empresa-demo', nome: 'Matriz - Centro', codigo: 'MATRIZ' };
-          this.currentUser.set(mockUser);
-          this.userLojas.set([mockLoja]);
-          this.activeLoja.set(mockLoja);
-          return { user: mockUser };
-        }
-        throw new Error('Erro de conexão com o Supabase. Para testar offline, use a senha: 123456');
+        throw new Error('Erro de conexão com o Supabase. Verifique sua conexão com a internet.');
       }
       throw err;
     }
