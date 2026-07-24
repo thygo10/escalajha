@@ -129,7 +129,8 @@ as $$
   );
 $$;
 
--- RLS: Empresas (Apenas usuários vinculados a alguma loja da empresa)
+-- RLS: Empresas
+drop policy if exists "empresas_select_policy" on public.empresas;
 create policy "empresas_select_policy" on public.empresas
   for select using (
     exists (
@@ -139,61 +140,83 @@ create policy "empresas_select_policy" on public.empresas
     )
   );
 
--- RLS: Lojas (Usuário só enxerga as lojas às quais tem acesso explícito)
+-- RLS: Lojas
+drop policy if exists "lojas_select_policy" on public.lojas;
 create policy "lojas_select_policy" on public.lojas
   for select using (
     public.user_has_loja_access(id)
   );
 
--- RLS: Usuario_Lojas (Usuário pode ler seus próprios vínculos)
+-- RLS: Usuario_Lojas
+drop policy if exists "usuario_lojas_select_policy" on public.usuario_lojas;
 create policy "usuario_lojas_select_policy" on public.usuario_lojas
   for select using (user_id = auth.uid());
 
--- RLS: Funcionários (Strict Multi-Tenancy & Sanitização por Loja)
+-- RLS: Funcionários
+drop policy if exists "funcionarios_select_policy" on public.funcionarios;
 create policy "funcionarios_select_policy" on public.funcionarios
   for select using (public.user_has_loja_access(loja_id));
 
+drop policy if exists "funcionarios_insert_policy" on public.funcionarios;
 create policy "funcionarios_insert_policy" on public.funcionarios
   for insert with check (public.user_has_loja_access(loja_id));
 
+drop policy if exists "funcionarios_update_policy" on public.funcionarios;
 create policy "funcionarios_update_policy" on public.funcionarios
   for update using (public.user_has_loja_access(loja_id))
   with check (public.user_has_loja_access(loja_id));
 
+drop policy if exists "funcionarios_delete_policy" on public.funcionarios;
 create policy "funcionarios_delete_policy" on public.funcionarios
   for delete using (public.user_has_loja_access(loja_id));
 
--- RLS: Escalas (Usuário só lê/escreve escalas da sua loja)
+-- RLS: Escalas
+drop policy if exists "escalas_select_policy" on public.escalas;
 create policy "escalas_select_policy" on public.escalas
   for select using (public.user_has_loja_access(loja_id));
 
+drop policy if exists "escalas_insert_policy" on public.escalas;
 create policy "escalas_insert_policy" on public.escalas
   for insert with check (public.user_has_loja_access(loja_id));
 
+drop policy if exists "escalas_update_policy" on public.escalas;
 create policy "escalas_update_policy" on public.escalas
   for update using (public.user_has_loja_access(loja_id))
   with check (public.user_has_loja_access(loja_id));
 
+drop policy if exists "escalas_delete_policy" on public.escalas;
 create policy "escalas_delete_policy" on public.escalas
   for delete using (public.user_has_loja_access(loja_id));
+
+-- RLS: Feriados & Regras
+drop policy if exists "feriados_select_policy" on public.feriados;
+create policy "feriados_select_policy" on public.feriados for select using (true);
+
+drop policy if exists "regras_select_policy" on public.regras_escala;
+create policy "regras_select_policy" on public.regras_escala for select using (true);
 
 
 -- ==============================================================================
 -- 3. SEED / DADOS INICIAIS DE DEMONSTRAÇÃO
 -- ==============================================================================
 
--- Inserir empresa e lojas de teste
 do $$
 declare
   v_empresa_id uuid;
   v_loja_id uuid;
 begin
-  insert into public.empresas (nome) values ('Grupo João Henrique Atacadista')
-  returning id into v_empresa_id;
+  select id into v_empresa_id from public.empresas limit 1;
+  if v_empresa_id is null then
+    insert into public.empresas (nome) values ('Grupo João Henrique Atacadista')
+    returning id into v_empresa_id;
+  end if;
 
-  insert into public.lojas (empresa_id, nome, codigo)
-  values (v_empresa_id, 'Filial - Loja 002', 'LOJA002')
-  returning id into v_loja_id;
+  select id into v_loja_id from public.lojas where codigo = 'LOJA002' limit 1;
+  if v_loja_id is null then
+    insert into public.lojas (empresa_id, nome, codigo)
+    values (v_empresa_id, 'Filial - Loja 002', 'LOJA002')
+    returning id into v_loja_id;
+  end if;
 
   -- Inserir todos os 75 colaboradores reais da Loja 002 com matrículas aleatórias de 6 dígitos (LGPD Art. 6º, III)
   insert into public.funcionarios (loja_id, primeiro_nome, matricula_aleatoria, setor, cargo, turno_padrao) values
