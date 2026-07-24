@@ -1085,11 +1085,92 @@ interface ConfirmModalData {
           }
 
           <!-- ============================================================================== -->
-          <!-- ÁREA DE IMPRESSÃO A4 (2 ESTILOS DE LAYOUT: FORMAL RH VS MURAL VISUAL MODERNO) -->
+          <!-- ÁREA DE IMPRESSÃO A4 (EXCLUSIVA DE FOLGAS POR SETOR CONFORME IMAGEM ANEXADA) -->
           <!-- ============================================================================== -->
           <div class="print-area" style="display: none;">
 
-            <!-- ESTILO 1: FORMAL / OFICIAL RH COM ASSINATURAS -->
+            <!-- ESTILO 1: MURAL EXCLUSIVO DE FOLGAS POR SETOR (CONFORME IMAGEM ANEXADA) -->
+            @if (printEstilo() === 'mural-folgas') {
+              <div style="padding: 10px;">
+                <!-- CABEÇALHO OFICIAL JOÃO HENRIQUE ATACADISTA - ESCALA DE FOLGA -->
+                <div style="display: flex; height: 80px; border-radius: 10px; overflow: hidden; margin-bottom: 16px; border: 2px solid #0b2a52;">
+                  <!-- LADO ESQUERDO: AZUL MARINHO (#0b2a52) COM NOME E SLOGAN -->
+                  <div style="flex: 1.4; background: #0b2a52; color: #ffffff; padding: 12px 20px; display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 50px; height: 50px; background: #f7c600; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #0b2a52; flex-shrink: 0;">
+                      🛒
+                    </div>
+                    <div>
+                      <h2 style="margin: 0; font-size: 1.35rem; font-weight: 900; letter-spacing: 0.5px; color: #ffffff; line-height: 1.1;">
+                        JOÃO HENRIQUE ATACADISTA
+                      </h2>
+                      <p style="margin: 3px 0 0 0; font-size: 0.68rem; font-weight: 800; color: #f7c600; text-transform: uppercase; letter-spacing: 1px;">
+                        TRABALHO • RESPEITO • COMPROMISSO
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- LADO DIREITO: AMARELO CANÁRIO (#f7c600) COM TÍTULO E ÍCONE DE CALENDÁRIO -->
+                  <div style="flex: 1; background: #f7c600; color: #0b2a52; padding: 12px 22px; display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                      <h1 style="margin: 0; font-size: 1.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #0b2a52; line-height: 1.1;">
+                        ESCALA DE FOLGA
+                      </h1>
+                      <span style="font-size: 0.78rem; font-weight: 800; color: #1e293b; text-transform: uppercase; margin-top: 2px; display: block;">
+                        {{ activeLoja()?.nome || 'Filial - Loja 002' }} | Mês Ref: {{ selectedMonth }}
+                      </span>
+                    </div>
+                    <div style="font-size: 2.2rem; line-height: 1;">
+                      📅
+                    </div>
+                  </div>
+                </div>
+
+                <!-- TABELA EXCLUSIVA DE FOLGAS POR SETOR CONFORME MODELO DA IMAGEM -->
+                <table style="width: 100%; border-collapse: collapse; background: #ffffff; font-family: inherit; border: 2px solid #0b2a52;">
+                  <tbody>
+                    @for (setor of setores(); track setor.id) {
+                      <tr style="border-bottom: 2px solid #0b2a52;">
+                        <!-- COLUNA DA ESQUERDA: NOME DO SETOR COM ÍCONE E COR OFICIAL DA MARCA -->
+                        <td style="width: 220px; vertical-align: middle; padding: 12px; color: #ffffff !important; font-weight: 900; font-size: 0.88rem; text-transform: uppercase; letter-spacing: 0.5px;" [style.background-color]="getSetorColor(setor.nome)">
+                          <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 1.3rem;">{{ getSetorIcon(setor.nome) }}</span>
+                            <span>{{ $index + 1 }}. {{ setor.nome }}</span>
+                          </div>
+                        </td>
+
+                        <!-- COLUNAS DOS DIAS DA SEMANA COM APENAS OS NOMES DOS COLABORADORES EM FOLGA -->
+                        @for (d of diasDaSemanaImpressao(); track d) {
+                          <td style="vertical-align: top; padding: 0; border-left: 1px solid #cbd5e1; width: calc((100% - 220px) / 7);">
+                            <!-- CABEÇALHO DO DIA DA SEMANA NA COR DO SETOR -->
+                            <div style="padding: 6px 4px; text-align: center; color: #ffffff !important; font-weight: 900; font-size: 0.76rem; text-transform: uppercase;" [style.background-color]="getSetorColor(setor.nome)">
+                              {{ getDiaSemanaAbrevUpper(d) }}
+                              <div style="font-size: 0.65rem; opacity: 0.9; font-weight: 700;">(Dia {{ d }})</div>
+                            </div>
+
+                            <!-- APENAS OS NOMES DOS COLABORADORES QUE ESTÃO DE FOLGA -->
+                            <div style="padding: 8px 4px; text-align: center; min-height: 48px;">
+                              @if (getFolgasPorSetorEDia(setor.nome, d).length > 0) {
+                                <div style="display: flex; flex-direction: column; gap: 3px;">
+                                  @for (nome of getFolgasPorSetorEDia(setor.nome, d); track $index) {
+                                    <span style="font-weight: 800; color: #0f172a; font-size: 0.84rem; display: block; line-height: 1.2;">
+                                      {{ nome }}
+                                    </span>
+                                  }
+                                </div>
+                              } @else {
+                                <span style="color: #94a3b8; font-weight: 700; font-size: 1rem;">-</span>
+                              }
+                            </div>
+                          </td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+
+            <!-- ESTILO 2: FORMAL / OFICIAL RH COM ASSINATURAS -->
             @if (printEstilo() === 'formal') {
               <!-- FORMATO 1: ESCALA DE FOLGAS DE DOMINGO (A4) -->
               @if (activePrintMode() === 'domingos') {
@@ -1323,23 +1404,23 @@ interface ConfirmModalData {
                 <label style="font-size: 0.82rem; font-weight: 800; color: #0b2a52; display: block; margin-bottom: 8px;">
                   1. Escolha o Estilo Visual do Relatório A4:
                 </label>
-                <div style="display: flex; gap: 12px;">
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                  <button
+                    (click)="printEstilo.set('mural-folgas')"
+                    [style.background]="printEstilo() === 'mural-folgas' ? '#0b2a52' : '#ffffff'"
+                    [style.color]="printEstilo() === 'mural-folgas' ? '#ffffff' : '#475569'"
+                    style="flex: 1; min-width: 200px; padding: 12px; border: 2px solid #cbd5e1; border-radius: 8px; font-weight: 800; font-size: 0.82rem; cursor: pointer; text-align: center;"
+                  >
+                    🎨 Mural Exclusivo de Folgas (Modelo Anexado)
+                  </button>
+
                   <button
                     (click)="printEstilo.set('formal')"
                     [style.background]="printEstilo() === 'formal' ? '#0b2a52' : '#ffffff'"
                     [style.color]="printEstilo() === 'formal' ? '#ffffff' : '#475569'"
-                    style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 800; font-size: 0.82rem; cursor: pointer;"
+                    style="flex: 1; min-width: 200px; padding: 12px; border: 2px solid #cbd5e1; border-radius: 8px; font-weight: 800; font-size: 0.82rem; cursor: pointer; text-align: center;"
                   >
-                    📜 Formal / Oficial (Com Assinaturas)
-                  </button>
-
-                  <button
-                    (click)="printEstilo.set('mural-moderno')"
-                    [style.background]="printEstilo() === 'mural-moderno' ? '#0b2a52' : '#ffffff'"
-                    [style.color]="printEstilo() === 'mural-moderno' ? '#ffffff' : '#475569'"
-                    style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 800; font-size: 0.82rem; cursor: pointer;"
-                  >
-                    🎨 Mural Visual Moderno (Cards de Dias)
+                    📜 Relatório Oficial RH (Com Assinaturas)
                   </button>
                 </div>
               </div>
@@ -1884,10 +1965,10 @@ export class DashboardComponent implements OnInit {
 
   // Modal de Impressão A4 (Modos + Estilos)
   printModalVisible = signal(false);
-  selectedPrintMode = signal<'domingos' | 'semanal' | 'painel-4-a4'>('painel-4-a4');
-  activePrintMode = signal<'domingos' | 'semanal' | 'painel-4-a4'>('painel-4-a4');
+  selectedPrintMode = signal<'domingos' | 'semanal' | 'painel-4-a4'>('semanal');
+  activePrintMode = signal<'domingos' | 'semanal' | 'painel-4-a4'>('semanal');
   printSemanaSelecionada = signal<number>(1);
-  printEstilo = signal<'formal' | 'mural-moderno'>('formal');
+  printEstilo = signal<'mural-folgas' | 'formal' | 'mural-moderno'>('mural-folgas');
 
   // Estrutura dos 4 blocos A4 do painel contínuo
   blocosPainelA4 = [
@@ -2365,6 +2446,51 @@ export class DashboardComponent implements OnInit {
 
   isDiaFolgaPermitido(diaSemana: number): boolean {
     return this.diasPermitidosFolga().includes(diaSemana);
+  }
+
+  getDiaSemanaAbrevUpper(dia: number): string {
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    const dateObj = new Date(ano, mes - 1, dia);
+    const name = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase();
+    return name.replace('-FEIRA', '');
+  }
+
+  getSetorIcon(setorNome: string): string {
+    const n = setorNome.toLowerCase();
+    if (n.includes('caixa') && !n.includes('fiscal')) return '🖩';
+    if (n.includes('reposi')) return '🛒';
+    if (n.includes('lanchonete') || n.includes('assist')) return '🍔';
+    if (n.includes('açougue') || n.includes('acougue')) return '🥩';
+    if (n.includes('padaria') || n.includes('produç')) return '🍞';
+    if (n.includes('fiscal')) return '👤';
+    if (n.includes('empilhadeira')) return '🚜';
+    if (n.includes('higieni') || n.includes('limpeza')) return '🧹';
+    if (n.includes('manuten')) return '🛠️';
+    return '🏢';
+  }
+
+  getFolgasPorSetorEDia(setorNome: string, dia: number): string[] {
+    let itensSetor = this.escalaItens().filter(item => item.setor === setorNome);
+    if (itensSetor.length === 0) {
+      const funcs = this.funcionarios().filter(f => f.setor === setorNome && f.ativo);
+      if (funcs.length > 0) {
+        const [ano, mes] = this.selectedMonth.split('-').map(Number);
+        itensSetor = this.generator.gerarEscalaMensal(funcs, ano, mes, {
+          permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
+          diasPermitidosFolga: this.diasPermitidosFolga()
+        });
+      }
+    }
+
+    const folgados: string[] = [];
+    itensSetor.forEach(item => {
+      const status = item.dias[dia];
+      if (status === 'FOLGA' || status === 'DOMINGO') {
+        folgados.push(item.nome);
+      }
+    });
+
+    return folgados;
   }
 
   gerarNovaEscala() {

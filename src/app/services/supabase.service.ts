@@ -57,8 +57,35 @@ export class SupabaseService {
     { id: 'c22', setor_nome: 'Manutenção', nome: 'Eletricista de Manutenção' }
   ]);
 
-  public readonly localFeriados = signal<Feriado[]>([]);
-  public readonly localRegras = signal<RegraEscala[]>([]);
+  public readonly localFeriados = signal<Feriado[]>([
+    { id: 'f1', nome: 'Ano Novo (Confraternização Universal)', data: '2026-01-01', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
+    { id: 'f2', nome: 'Carnaval (Terça-Feira)', data: '2026-02-17', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Ponto Facultativo / Feriado Nacional' },
+    { id: 'f3', nome: 'Paixão de Cristo (Sexta-Feira Santa)', data: '2026-04-03', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Religioso Nacional' },
+    { id: 'f4', nome: 'Tiradentes', data: '2026-04-21', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
+    { id: 'f5', nome: 'Dia do Trabalhador', data: '2026-05-01', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
+    { id: 'f6', nome: 'Corpus Christi', data: '2026-06-04', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Religioso Nacional' },
+    { id: 'f7', nome: 'Independência do Brasil (7 de Setembro)', data: '2026-09-07', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
+    { id: 'f8', nome: 'Nossa Senhora Aparecida (Padroeira do Brasil)', data: '2026-10-12', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
+    { id: 'f9', nome: 'Finados', data: '2026-11-02', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
+    { id: 'f10', nome: 'Proclamação da República', data: '2026-11-15', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
+    { id: 'f11', nome: 'Dia da Consciência Negra', data: '2026-11-20', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional Zumbi dos Palmares' },
+    { id: 'f12', nome: 'Natal', data: '2026-12-25', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Celebração de Natal' },
+    { id: 'f13', nome: 'São João', data: '2026-06-24', tipo: 'Estadual', abrangencia: 'Bahia', descricao: 'Festa Junina Tradicional da Bahia' },
+    { id: 'f14', nome: 'Independência da Bahia', data: '2026-07-02', tipo: 'Estadual', abrangencia: 'Bahia', descricao: '2 de Julho - Data Magna da Bahia' },
+    { id: 'f15', nome: 'Festa do Divino Espírito Santo', data: '2026-05-24', tipo: 'Municipal', abrangencia: 'Poções - BA', descricao: 'Festa do Padroeiro da Cidade de Poções' },
+    { id: 'f16', nome: 'Emancipação Política de Poções', data: '2026-06-26', tipo: 'Municipal', abrangencia: 'Poções - BA', descricao: 'Aniversário da Cidade de Poções - BA' },
+    { id: 'f17', nome: 'Dia da Consciência Evangélica', data: '2026-10-31', tipo: 'Municipal', abrangencia: 'Poções - BA', descricao: 'Dia da Cultura Evangélica de Poções' }
+  ]);
+
+  public readonly localRegras = signal<RegraEscala[]>([
+    { id: 'r1', titulo: 'Descanso Semanal Remunerado (DSR 6x1)', descricao: 'Todo colaborador tem direito a 1 folga semanal preferencialmente no domingo após no máximo 6 dias consecutivos de trabalho (Art. 67 da CLT).', categoria: 'CLT', status: 'IMPLEMENTADA', obrigatoria: true },
+    { id: 'r2', titulo: 'Revezamento Dominical Quinzenal (Mulheres)', 'descricao': 'Para colaboradoras do sexo feminino, é proibido trabalhar 2 domingos consecutivos (Art. 386 da CLT).', categoria: 'CLT', status: 'IMPLEMENTADA', obrigatoria: true },
+    { id: 'r3', titulo: 'Revezamento Dominical Mensal (CCT)', descricao: 'Garantia de pelo menos 1 folga no domingo dentro de cada mês trabalhado para todos os colaboradores (Convenção Coletiva de Trabalho).', categoria: 'Acordo Coletivo', status: 'IMPLEMENTADA', obrigatoria: true },
+    { id: 'r4', titulo: 'Intervalo Interjornada de 11 Horas', descricao: 'Entre duas jornadas de trabalho é obrigatório o intervalo mínimo de 11 horas consecutivas para descanso (Art. 66 da CLT).', categoria: 'CLT', status: 'IMPLEMENTADA', obrigatoria: true },
+    { id: 'r5', titulo: 'Intervalo Intrajornada Flexível (Refeição)', descricao: 'Concessão de intervalo de refeição ajustável em 30 min, 1h, 1h30min, 2h, 2h30min, 2h40min ou 3h para jornadas acima de 6 horas (Salvo Convenção Coletiva).', categoria: 'Acordo Coletivo', status: 'IMPLEMENTADA', obrigatoria: true },
+    { id: 'r6', titulo: 'Feriados Municipais de Poções-BA', descricao: 'Garantir folga ou compensação em dobro para feriados municipais de Poções (Festa do Divino Espírito Santo e Emancipação).', categoria: 'Interna RH', status: 'IMPLEMENTADA', obrigatoria: true },
+    { id: 'r7', titulo: 'Prioridade de Folga Véspera de Feriado (Reposição)', descricao: 'Solicitação do RH: O pessoal da reposição que folgar no sábado véspera de feriado estadual não deve dobrar o turno na segunda-feira.', categoria: 'Solicitação RH', status: 'PENDENTE_PROGRAMADOR', obrigatoria: false }
+  ]);
 
   constructor() {
     this.client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
