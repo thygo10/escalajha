@@ -666,7 +666,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         <span>Importar JSON</span>
       </button>
-      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importBackupJSON(event)">
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importBackupJSON(event)" aria-label="Importar arquivo de backup JSON">
     </div>
 
     <div class="action-group">
@@ -1042,11 +1042,11 @@ let pendingAction = null;
 function escapeText(str) {
   if (typeof str !== 'string') return '';
   return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replaceAll('&', "&amp;")
+    .replaceAll('<', "&lt;")
+    .replaceAll('>', "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function markUnsaved(isUnsaved) {
@@ -1147,8 +1147,8 @@ function checkA4Overflow() {
   if (isOverflowing) {
     if (overflowNotice) overflowNotice.style.display = 'inline-flex';
     statusEl.innerHTML = '⚠️ <strong style="color: #c1272d;">ALERTA DE IMPRESSÃO:</strong> O conteúdo excedeu a folha A4 e será cortado!';
-  } else {
-    if (overflowNotice) overflowNotice.style.display = 'none';
+  } else if (overflowNotice) {
+    overflowNotice.style.display = 'none';
   }
   return isOverflowing;
 }
@@ -1205,24 +1205,21 @@ function exportBackupJSON() {
   }
 }
 
-function importBackupJSON(event) {
-  const file = event.target.files[0];
+async function importBackupJSON(event) {
+  const file = event.target.files && event.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (typeof data !== 'object' || data === null) throw new Error('Formato de arquivo inválido.');
-      applyData(data);
-      saveData(true);
-      adaptSections();
-      checkA4Overflow();
-      statusEl.textContent = 'Backup restaurado com sucesso! ✓';
-    } catch (err) {
-      alert('Erro ao importar backup: ' + err.message);
-    }
-  };
-  reader.readAsText(file);
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (typeof data !== 'object' || data === null) throw new Error('Formato de arquivo inválido.');
+    applyData(data);
+    saveData(true);
+    adaptSections();
+    checkA4Overflow();
+    statusEl.textContent = 'Backup restaurado com sucesso! ✓';
+  } catch (err) {
+    alert('Erro ao importar backup: ' + err.message);
+  }
   event.target.value = '';
 }
 
