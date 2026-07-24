@@ -26,7 +26,7 @@ import { SupabaseService } from '../../services/supabase.service';
               [(ngModel)]="email"
               name="email"
               class="form-control"
-              placeholder="rh.matriz@joaohenrique.com.br"
+              placeholder="rhjoaohenriqueatacadista@gmail.com"
               required
             />
           </div>
@@ -50,7 +50,7 @@ import { SupabaseService } from '../../services/supabase.service';
             </div>
           }
 
-          <button type="submit" class="btn btn-yellow w-full" [disabled]="loading()">
+          <button type="submit" class="btn btn-yellow w-full" [disabled]="loading()" style="background: #f7c600; color: #0b2a52; font-weight: 800; border: none; padding: 12px; border-radius: 8px; cursor: pointer;">
             @if (loading()) {
               <span>Entrando...</span>
             } @else {
@@ -58,6 +58,32 @@ import { SupabaseService } from '../../services/supabase.service';
             }
           </button>
         </form>
+
+        <!-- CREDENCIAIS PRÉ-CONFIGURADAS DE ACESSO RÁPIDO -->
+        <div style="margin-top: 20px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 14px; border-radius: 12px;">
+          <span style="font-size: 0.74rem; font-weight: 800; color: #0b2a52; display: block; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+            🔑 Credenciais Pré-cadastradas (Clique para Preencher):
+          </span>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button
+              type="button"
+              (click)="fillCredentials('rhjoaohenriqueatacadista@gmail.com', '282419')"
+              style="padding: 8px 12px; font-size: 0.78rem; font-weight: 800; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 8px; cursor: pointer; text-align: left;"
+            >
+              👤 RH João Henrique<br>
+              <small style="font-size: 0.7rem; opacity: 0.9;">rhjoaohenriqueatacadista&#64;gmail.com | Senha: 282419</small>
+            </button>
+
+            <button
+              type="button"
+              (click)="fillCredentials('thygo10@gmail.com', '320512')"
+              style="padding: 8px 12px; font-size: 0.78rem; font-weight: 800; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; border-radius: 8px; cursor: pointer; text-align: left;"
+            >
+              👤 Thygo Admin<br>
+              <small style="font-size: 0.7rem; opacity: 0.9;">thygo10&#64;gmail.com | Senha: 320512</small>
+            </button>
+          </div>
+        </div>
 
         <div class="login-footer">
           <span class="badge-lgpd">
@@ -149,10 +175,15 @@ export class LoginComponent {
   private supabase = inject(SupabaseService);
   private router = inject(Router);
 
-  email = '';
-  password = '';
+  email = 'rhjoaohenriqueatacadista@gmail.com';
+  password = '282419';
   loading = signal(false);
   errorMessage = signal<string | null>(null);
+
+  fillCredentials(userEmail: string, pass: string) {
+    this.email = userEmail;
+    this.password = pass;
+  }
 
   async handleLogin() {
     this.errorMessage.set(null);
