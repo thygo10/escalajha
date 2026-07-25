@@ -137,23 +137,24 @@ export const INITIAL_CARGOS: Cargo[] = [
 ];
 
 export const INITIAL_FERIADOS: Feriado[] = [
-  { id: 'f1', nome: 'Ano Novo (Confraternização Universal)', data: '2026-01-01', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
-  { id: 'f2', nome: 'Carnaval (Terça-Feira)', data: '2026-02-17', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Ponto Facultativo / Feriado Nacional' },
-  { id: 'f3', nome: 'Paixão de Cristo (Sexta-Feira Santa)', data: '2026-04-03', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Religioso Nacional' },
-  { id: 'f4', nome: 'Tiradentes', data: '2026-04-21', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
-  { id: 'f5', nome: 'Dia do Trabalhador', data: '2026-05-01', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
-  { id: 'f6', nome: 'Corpus Christi', data: '2026-06-04', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Religioso Nacional' },
-  { id: 'f7', nome: 'Independência do Brasil (7 de Setembro)', data: '2026-09-07', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
-  { id: 'f8', nome: 'Nossa Senhora Aparecida (Padroeira do Brasil)', data: '2026-10-12', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
-  { id: 'f9', nome: 'Finados', data: '2026-11-02', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
-  { id: 'f10', nome: 'Proclamação da República', data: '2026-11-15', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional' },
-  { id: 'f11', nome: 'Dia da Consciência Negra', data: '2026-11-20', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional Zumbi dos Palmares' },
-  { id: 'f12', nome: 'Natal', data: '2026-12-25', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Celebração de Natal' },
-  { id: 'f13', nome: 'São João', data: '2026-06-24', tipo: 'Estadual', abrangencia: 'Bahia', descricao: 'Festa Junina Tradicional da Bahia' },
-  { id: 'f14', nome: 'Independência da Bahia', data: '2026-07-02', tipo: 'Estadual', abrangencia: 'Bahia', descricao: '2 de Julho - Data Magna da Bahia' },
-  { id: 'f15', nome: 'Festa do Divino Espírito Santo', data: '2026-05-24', tipo: 'Municipal', abrangencia: 'Poções - BA', descricao: 'Festa do Padroeiro da Cidade de Poções' },
-  { id: 'f16', nome: 'Emancipação Política de Poções', data: '2026-06-26', tipo: 'Municipal', abrangencia: 'Poções - BA', descricao: 'Aniversário da Cidade de Poções - BA' },
-  { id: 'f17', nome: 'Dia da Consciência Evangélica', data: '2026-10-31', tipo: 'Municipal', abrangencia: 'Poções - BA', descricao: 'Dia da Cultura Evangélica de Poções' }
+  { id: 'f1', nome: 'Ano Novo (Confraternização Universal)', data: '2026-01-01', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional', funcionamento_proibido: true },
+  { id: 'f2', nome: 'Carnaval (Terça-Feira)', data: '2026-02-17', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Ponto Facultativo / Feriado Nacional', funcionamento_proibido: false },
+  { id: 'f3', nome: 'Paixão de Cristo (Sexta-Feira Santa)', data: '2026-04-03', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Religioso Nacional', funcionamento_proibido: true },
+  { id: 'f4', nome: 'Tiradentes', data: '2026-04-21', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional', funcionamento_proibido: false },
+  { id: 'f5', nome: 'Dia do Trabalhador', data: '2026-05-01', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional', funcionamento_proibido: true },
+  { id: 'f6', nome: 'Corpus Christi', data: '2026-06-04', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Religioso Nacional', funcionamento_proibido: false },
+  { id: 'f7', nome: 'Independência do Brasil (7 de Setembro)', data: '2026-09-07', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional', funcionamento_proibido: false },
+  { id: 'f8', nome: 'Nossa Senhora Aparecida (Padroeira do Brasil)', data: '2026-10-12', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional', funcionamento_proibido: false },
+  { id: 'f9', nome: 'Finados', data: '2026-11-02', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional', funcionamento_proibido: false },
+  { id: 'f10', nome: 'Proclamação da República', data: '2026-11-15', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional', funcionamento_proibido: false },
+  { id: 'f11', nome: 'Dia da Consciência Negra', data: '2026-11-20', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Feriado Nacional Zumbi dos Palmares', funcionamento_proibido: false },
+  { id: 'f12', nome: 'Natal', data: '2026-12-25', tipo: 'Nacional', abrangencia: 'Brasil', descricao: 'Celebração de Natal', funcionamento_proibido: true },
+  { id: 'f13', nome: 'São João', data: '2026-06-24', tipo: 'Estadual', abrangencia: 'Bahia', descricao: 'Festa Junina Tradicional da Bahia', funcionamento_proibido: false },
+  { id: 'f14', nome: 'Independência da Bahia', data: '2026-07-02', tipo: 'Estadual', abrangencia: 'Bahia', descricao: '2 de Julho - Data Magna da Bahia', funcionamento_proibido: false },
+  { id: 'f15', nome: 'Festa do Divino Espírito Santo', data: '2026-05-24', tipo: 'Municipal', abrangencia: 'Poções - BA', descricao: 'Festa do Padroeiro da Cidade de Poções', funcionamento_proibido: false },
+  { id: 'f16', nome: 'Emancipação Política de Poções', data: '2026-06-26', tipo: 'Municipal', abrangencia: 'Poções - BA', descricao: 'Aniversário da Cidade de Poções - BA', funcionamento_proibido: false },
+  { id: 'f17', nome: 'Dia da Consciência Evangélica', data: '2026-10-31', tipo: 'Municipal', abrangencia: 'Poções - BA', descricao: 'Dia da Cultura Evangélica de Poções', funcionamento_proibido: false },
+  { id: 'f18', nome: 'Dia do Comerciário (Carnaval)', data: '2026-02-16', tipo: 'Municipal', abrangencia: 'Brumado Região - BA', descricao: 'Segunda-feira de carnaval, funcionamento proibido CCT', funcionamento_proibido: true }
 ];
 
 export const INITIAL_REGRAS: RegraEscala[] = [

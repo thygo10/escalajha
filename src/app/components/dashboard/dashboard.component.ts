@@ -42,8 +42,37 @@ export class DashboardComponent implements OnInit {
   private readonly now = new Date();
   readonly currentYearMonth = `${this.now.getFullYear()}-${String(this.now.getMonth() + 1).padStart(2, '0')}`;
 
-  selectedMonth = this.currentYearMonth;
-  selectedSetor = 'Frente de Caixa';
+  private _selectedMonth = this.currentYearMonth;
+  get selectedMonth() { return this._selectedMonth; }
+  set selectedMonth(val: string) {
+    this._selectedMonth = val;
+    this.triggerRecalculoEscala.update(v => v + 1);
+  }
+
+  private _selectedSetor = 'Frente de Caixa';
+  get selectedSetor() { return this._selectedSetor; }
+  set selectedSetor(val: string) {
+    this._selectedSetor = val;
+    this.triggerRecalculoEscala.update(v => v + 1);
+  }
+
+  // Gatilho manual para forçar re-cálculo da escala completa quando mês/setor mudam
+  triggerRecalculoEscala = signal<number>(0);
+
+  // Cache central da escala gerada para a loja inteira (todas as pessoas ativas no mês atual)
+  escalaCompletaDaLojaCache = computed(() => {
+    // Registra dependência dos signals
+    this.triggerRecalculoEscala();
+    const funcs = this.funcionarios().filter(f => f.ativo);
+    const feriados = this.feriados();
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    
+    return this.generator.gerarEscalaMensal(funcs, ano, mes, {
+      permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
+      diasPermitidosFolga: this.diasPermitidosFolga(),
+      feriados: feriados
+    });
+  });
 
   // Configurações 6x1 Giratória (Convenção Coletiva)
   permitirDoisDiasConsecutivos = signal<boolean>(false);
@@ -82,6 +111,7 @@ export class DashboardComponent implements OnInit {
   activePrintMode = signal<'domingos' | 'semanal' | 'painel-4-a4'>('semanal');
   printSemanaSelecionada = signal<number>(1);
   printEstilo = signal<'mural-folgas' | 'formal' | 'mural-moderno'>('mural-folgas');
+  mostrarApenasFolgasImpressao = signal<boolean>(false);
 
   // Estrutura dos 4 blocos A4 do painel contínuo
   blocosPainelA4 = [
@@ -106,6 +136,7 @@ export class DashboardComponent implements OnInit {
   novoSetor = signal<string>('Frente de Caixa');
   novoCargo = signal<string>('Operadora de Caixa');
   novoTurno = '08:00 às 16:20';
+  novoGenero: 'M' | 'F' = 'F';
 
   dataAtualFormatted = new Date().toLocaleDateString('pt-BR');
 
@@ -128,12 +159,13 @@ export class DashboardComponent implements OnInit {
   cargoModalForm = { setor_nome: 'Frente de Caixa', nome: '', descricao: '' };
 
   feriadoModal = signal<{ visible: boolean; isEdit: boolean; feriadoId?: string }>({ visible: false, isEdit: false });
-  feriadoModalForm: { nome: string; data: string; tipo: 'Nacional' | 'Estadual' | 'Municipal'; abrangencia: string; descricao: string } = {
+  feriadoModalForm: { nome: string; data: string; tipo: 'Nacional' | 'Estadual' | 'Municipal' | 'Ponto Facultativo'; abrangencia: string; descricao: string; funcionamento_proibido: boolean } = {
     nome: '',
     data: new Date().toISOString().split('T')[0],
     tipo: 'Municipal',
     abrangencia: 'Poções - BA',
-    descricao: ''
+    descricao: '',
+    funcionamento_proibido: false
   };
 
   regraModal = signal<{ visible: boolean; isEdit: boolean; regraId?: string }>({ visible: false, isEdit: false });
@@ -248,7 +280,13 @@ export class DashboardComponent implements OnInit {
       } else if (dataObj.getDay() === 0) {
         status = 'DOMINGO';
       }
-      const tipo: 'TRABALHO' | 'FOLGA' | 'DOMINGO' | 'FERIADO' = (status as any) || 'TRABALHO';
+      
+      // Mapear status atualizado para tipos do histórico
+      let tipo: 'TRABALHO' | 'FOLGA' | 'DOMINGO' | 'FERIADO' = 'TRABALHO';
+      if (status === 'F' || status === 'FD' || status === 'FE') tipo = 'FOLGA';
+      else if (status === 'TD' || status === 'DOMINGO') tipo = 'DOMINGO';
+      else if (status === 'TF') tipo = 'FERIADO';
+      else tipo = 'TRABALHO';
 
       result.push({
         dia: d,
@@ -314,15 +352,12 @@ export class DashboardComponent implements OnInit {
   });
 
   folgasHojeInfo = computed(() => {
-    const funcs = this.funcionarios();
     const hojeDia = new Date().getDate();
-    const ano = new Date().getFullYear();
-    const mes = new Date().getMonth() + 1;
-
-    const itens = this.generator.gerarEscalaMensal(funcs, ano, mes);
+    const itens = this.escalaCompletaDaLojaCache();
+    
     const emFolga = itens.filter(item => {
       const status = item.dias[hojeDia];
-      return status === 'FOLGA' || status === 'DOMINGO';
+      return status === 'F' || status === 'FD' || status === 'FE';
     });
 
     return {
@@ -439,12 +474,13 @@ export class DashboardComponent implements OnInit {
   getFolgasPorSetor(setorNome: string): Funcionario[] {
     const funcs = this.funcionarios().filter(f => f.setor === setorNome);
     const hojeDia = new Date().getDate();
-    const ano = new Date().getFullYear();
-    const mes = new Date().getMonth() + 1;
-
-    const itens = this.generator.gerarEscalaMensal(funcs, ano, mes);
+    
+    const itens = this.escalaCompletaDaLojaCache().filter(item => item.setor === setorNome);
     const matriculasFolga = new Set(
-      itens.filter(item => item.dias[hojeDia] === 'FOLGA' || item.dias[hojeDia] === 'DOMINGO').map(i => i.matricula)
+      itens.filter(item => {
+        const status = item.dias[hojeDia];
+        return status === 'F' || status === 'FD' || status === 'FE';
+      }).map(i => i.matricula)
     );
 
     return funcs.filter(f => matriculasFolga.has(f.matricula_aleatoria));
@@ -605,20 +641,14 @@ export class DashboardComponent implements OnInit {
   getFolgasPorSetorEDia(setorNome: string, dia: number): string[] {
     let itensSetor = this.escalaItens().filter(item => item.setor === setorNome);
     if (itensSetor.length === 0) {
-      const funcs = this.funcionarios().filter(f => f.setor === setorNome && f.ativo);
-      if (funcs.length > 0) {
-        const [ano, mes] = this.selectedMonth.split('-').map(Number);
-        itensSetor = this.generator.gerarEscalaMensal(funcs, ano, mes, {
-          permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
-          diasPermitidosFolga: this.diasPermitidosFolga()
-        });
-      }
+      // Usa o cache ao invés de recalcular do zero!
+      itensSetor = this.escalaCompletaDaLojaCache().filter(item => item.setor === setorNome);
     }
 
     const folgados: string[] = [];
     itensSetor.forEach(item => {
       const status = item.dias[dia];
-      if (status === 'FOLGA' || status === 'DOMINGO') {
+      if (status === 'F' || status === 'FD' || status === 'FE') {
         folgados.push(item.nome);
       }
     });
@@ -627,7 +657,7 @@ export class DashboardComponent implements OnInit {
   }
 
   gerarNovaEscala() {
-    const funcsDoSetor = this.funcionarios().filter(f => f.setor === this.selectedSetor);
+    const funcsDoSetor = this.funcionarios().filter(f => f.setor === this.selectedSetor && f.ativo);
     if (funcsDoSetor.length === 0) {
       this.toastService.warning('Sem Colaboradores Ativos', `Nenhum colaborador ativo cadastrado para o setor "${this.selectedSetor}".`);
       return;
@@ -636,9 +666,11 @@ export class DashboardComponent implements OnInit {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
     const gerada = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes, {
       permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
-      diasPermitidosFolga: this.diasPermitidosFolga()
+      diasPermitidosFolga: this.diasPermitidosFolga(),
+      feriados: this.feriados()
     });
     this.escalaItens.set(gerada);
+    this.triggerRecalculoEscala.update(v => v + 1); // Atualiza os computeds de cache
     this.toastService.success('Escala Gerada!', `Escala 6x1 Giratória calculada com sucesso para ${funcsDoSetor.length} colaboradores.`);
   }
 
@@ -696,6 +728,7 @@ export class DashboardComponent implements OnInit {
         setor: this.novoSetor(),
         cargo: this.novoCargo(),
         turno_padrao: this.novoTurno,
+        genero: this.novoGenero,
         ativo: true
       });
 
@@ -871,7 +904,8 @@ export class DashboardComponent implements OnInit {
       data: new Date().toISOString().split('T')[0],
       tipo: 'Municipal',
       abrangencia: 'Poções - BA',
-      descricao: ''
+      descricao: '',
+      funcionamento_proibido: false
     };
     this.feriadoModal.set({ visible: true, isEdit: false });
   }
@@ -893,12 +927,13 @@ export class DashboardComponent implements OnInit {
       data: feriado.data,
       tipo: feriado.tipo,
       abrangencia,
-      descricao: feriado.descricao || ''
+      descricao: feriado.descricao || '',
+      funcionamento_proibido: feriado.funcionamento_proibido || false
     };
     this.feriadoModal.set({ visible: true, isEdit: true, feriadoId: feriado.id });
   }
 
-  onFeriadoTipoChange(tipo: 'Nacional' | 'Estadual' | 'Municipal') {
+  onFeriadoTipoChange(tipo: 'Nacional' | 'Estadual' | 'Municipal' | 'Ponto Facultativo') {
     if (tipo === 'Municipal') this.feriadoModalForm.abrangencia = 'Poções - BA';
     else if (tipo === 'Estadual') this.feriadoModalForm.abrangencia = 'Bahia';
     else this.feriadoModalForm.abrangencia = 'Brasil';
@@ -922,7 +957,8 @@ export class DashboardComponent implements OnInit {
           data: this.feriadoModalForm.data,
           tipo: this.feriadoModalForm.tipo,
           abrangencia: this.feriadoModalForm.abrangencia.trim(),
-          descricao: this.feriadoModalForm.descricao.trim()
+          descricao: this.feriadoModalForm.descricao.trim(),
+          funcionamento_proibido: this.feriadoModalForm.funcionamento_proibido
         });
         this.toastService.success('Feriado Atualizado', `Feriado "${this.feriadoModalForm.nome}" alterado com sucesso.`);
       } else {
@@ -931,7 +967,8 @@ export class DashboardComponent implements OnInit {
           data: this.feriadoModalForm.data,
           tipo: this.feriadoModalForm.tipo,
           abrangencia: this.feriadoModalForm.abrangencia.trim(),
-          descricao: this.feriadoModalForm.descricao.trim()
+          descricao: this.feriadoModalForm.descricao.trim(),
+          funcionamento_proibido: this.feriadoModalForm.funcionamento_proibido
         });
         this.toastService.success('Feriado Cadastrado', `Feriado "${this.feriadoModalForm.nome}" cadastrado com sucesso.`);
       }

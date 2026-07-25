@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
-import { Funcionario, EscalaItem } from '../models/types';
+import { Funcionario, EscalaItem, TipoDia, Feriado } from '../models/types';
 
 export interface OpcionesGeracaoEscala {
   permitirDoisDiasConsecutivos: boolean;
   diasPermitidosFolga: number[]; // Array de dias da semana (0 = Dom, 1 = Seg, 2 = Ter, 3 = Qua, 4 = Qui, 5 = Sex, 6 = Sáb)
+  feriados: Feriado[];
 }
 
 @Injectable({
@@ -12,32 +13,12 @@ export interface OpcionesGeracaoEscala {
 export class EscalaGeneratorService {
 
   /**
-   * Identifica se a colaboradora é do sexo feminino para regras da CLT / CCT
-   */
-  private isFeminino(func: Funcionario): boolean {
-    if (func.genero === 'F') return true;
-    if (func.genero === 'M') return false;
-
-    const n = func.primeiro_nome.trim().toLowerCase();
-    const nomesFemininosExatos = new Set([
-      'nayle', 'alane', 'ana', 'jaqueline', 'jaine', 'kamilly', 'sabrina', 'viviane',
-      'laísa', 'claudia', 'joesiane', 'sueli', 'luciene', 'luciana', 'natália', 'edma',
-      'analandia', 'roseli', 'edinalia', 'suzaine', 'eduarda', 'valdenice', 'nicole',
-      'normelia', 'marielle', 'angela', 'ivonete', 'maisa', 'jeane', 'raquel', 'thais',
-      'walta', 'lane', 'acleia', 'ana paula', 'ana luísa', 'ana beatriz', 'ana félix', 'ana cláudia'
-    ]);
-
-    const primeiroNome = n.split(' ')[0];
-    return nomesFemininosExatos.has(n) || nomesFemininosExatos.has(primeiroNome);
-  }
-
-  /**
-   * Gera a escala 6x1 Giratória sem fixar dias de folga, respeitando:
-   * 1. 6x1 Giratória perfeita (a folga roda pelos dias permitidos).
-   * 2. Revezamento feminino: Mulheres NÃO podem trabalhar 2 domingos seguidos.
-   * 3. Revezamento masculino: Homens DEVEM ter pelo menos 1 domingo de folga no mês.
-   * 4. Opção de permitir/bloquear folgas em dias consecutivos.
-   * 5. Distribuição justa e igualitária sem priorizar nenhum colaborador.
+   * Gera a escala 6x1 Giratória respeitando:
+   * 1. 6 dias de trabalho máximo consecutivos (INVIOLÁVEL).
+   * 2. Revezamento feminino: quinzenal (1 trab -> 1 folga).
+   * 3. Revezamento masculino: ciclo 2x1 (2 trab -> 1 folga).
+   * 4. Feriados de funcionamento proibido contam como folga.
+   * 5. Rotação giratória justa baseada na semana do mês.
    */
   gerarEscalaMensal(
     funcionarios: Funcionario[],
@@ -52,89 +33,143 @@ export class EscalaGeneratorService {
       permitirDoisDiasConsecutivos: opcoes?.permitirDoisDiasConsecutivos ?? false,
       diasPermitidosFolga: (opcoes?.diasPermitidosFolga && opcoes.diasPermitidosFolga.length > 0)
         ? opcoes.diasPermitidosFolga
-        : [0, 1, 2, 3, 4, 5, 6]
+        : [0, 1, 2, 3, 4, 5, 6],
+      feriados: opcoes?.feriados || []
     };
 
-    // Identificar os domingos do mês
-    const domingosDoMes: number[] = [];
-    for (let d = 1; d <= totalDias; d++) {
-      if (new Date(ano, mes - 1, d).getDay() === 0) {
-        domingosDoMes.push(d);
+    // Feriados de fechamento proibido no mês atual
+    const feriadosFechados = new Set<number>();
+    const feriadosAbertos = new Set<number>();
+    
+    for (const f of config.feriados) {
+      const parts = f.data.split('-');
+      if (parts.length === 3) {
+        const fAno = parseInt(parts[0], 10);
+        const fMes = parseInt(parts[1], 10);
+        const fDia = parseInt(parts[2], 10);
+        
+        if (fAno === ano && fMes === mes) {
+          if (f.funcionamento_proibido) {
+            feriadosFechados.add(fDia);
+          } else {
+            feriadosAbertos.add(fDia);
+          }
+        }
       }
     }
 
     funcionarios.forEach((func, idx) => {
-      const dias: Record<number, string> = {};
-      const souFeminino = this.isFeminino(func);
+      const dias: Record<number, TipoDia> = {};
+      const souFeminino = func.genero === 'F';
+      
+      const turmaOffset = idx % 7; // Distribui em 7 turmas
 
       let diasTrabalhadosSeguidos = 0;
-      let domingoAnteriorTrabalhado = false;
-      let domingosFolgadosNoMes = 0;
+      let domingosSeguidos = 0;
+      let ultimoDomingoTrabalhado = false; // Em um sistema real viria do DB
       let ultimoDiaFoiFolga = false;
-
-      // Ponto de partida inicial na lista de dias permitidos para girar igualitariamente
-      let ponteiroFolgaIndex = (idx * 2) % config.diasPermitidosFolga.length;
 
       for (let dia = 1; dia <= totalDias; dia++) {
         const dateObj = new Date(ano, mes - 1, dia);
         const diaSemana = dateObj.getDay();
         const isDomingo = diaSemana === 0;
 
-        // REGRA DE DOMINGOS (CCT)
+        // REGRA 0: Feriado de fechamento obrigatório
+        if (feriadosFechados.has(dia)) {
+          dias[dia] = 'FE';
+          diasTrabalhadosSeguidos = 0;
+          ultimoDiaFoiFolga = true;
+          continue;
+        }
+
+        // REGRA 1: Limite inviolável de 6 dias
+        if (diasTrabalhadosSeguidos >= 6) {
+          dias[dia] = isDomingo ? 'FD' : 'F';
+          diasTrabalhadosSeguidos = 0;
+          ultimoDiaFoiFolga = true;
+          if (isDomingo) {
+             domingosSeguidos = 0;
+             ultimoDomingoTrabalhado = false;
+          }
+          continue;
+        }
+
+        // REGRA 2: Domingos
         if (isDomingo) {
-          const eUltimoDomingoDoMes = dia === domingosDoMes.at(-1);
-
-          // 1. Mulher não pode 2 domingos seguidos trabalhados
-          const forcarFolgaMulher = souFeminino && domingoAnteriorTrabalhado;
-
-          // 2. Homem deve ter pelo menos 1 domingo de folga no mês
-          const forcarFolgaHomem = !souFeminino && eUltimoDomingoDoMes && (domingosFolgadosNoMes === 0);
-
-          // 3. Checagem se o dia atual coincide com a rotação ou 6 dias seguidos de trabalho
-          const coincideRotacao = config.diasPermitidosFolga.includes(0) &&
-            (config.diasPermitidosFolga[ponteiroFolgaIndex] === 0);
-
-          const darFolgaNoDomingo = forcarFolgaMulher || forcarFolgaHomem || coincideRotacao || (diasTrabalhadosSeguidos >= 6);
-
-          if (darFolgaNoDomingo) {
-            dias[dia] = 'DOMINGO';
-            diasTrabalhadosSeguidos = 0;
-            domingoAnteriorTrabalhado = false;
-            domingosFolgadosNoMes++;
-            ultimoDiaFoiFolga = true;
-
-            // Avançar ponteiro de rotação giratória
-            ponteiroFolgaIndex = (ponteiroFolgaIndex + 1) % config.diasPermitidosFolga.length;
+          if (souFeminino) {
+            // CLT Art 386 - quinzenal
+            if (ultimoDomingoTrabalhado) {
+              dias[dia] = 'FD';
+              domingosSeguidos = 0;
+              ultimoDomingoTrabalhado = false;
+              diasTrabalhadosSeguidos = 0;
+              ultimoDiaFoiFolga = true;
+              continue;
+            }
           } else {
-            dias[dia] = 'TRABALHO';
-            diasTrabalhadosSeguidos++;
-            domingoAnteriorTrabalhado = true;
-            ultimoDiaFoiFolga = false;
+            // CCT - 2x1
+            if (domingosSeguidos >= 2) {
+              dias[dia] = 'FD';
+              domingosSeguidos = 0;
+              ultimoDomingoTrabalhado = false;
+              diasTrabalhadosSeguidos = 0;
+              ultimoDiaFoiFolga = true;
+              continue;
+            }
           }
 
-        } else {
-          // DIAS DE SEMANA (SEG A SÁB)
-          const diaEstaPermitido = config.diasPermitidosFolga.includes(diaSemana);
-          const coincideRotacaoSemana = diaEstaPermitido && (config.diasPermitidosFolga[ponteiroFolgaIndex] === diaSemana);
-
-          // Regra de Dias Consecutivos
-          const proibeFolgaConsecutiva = ultimoDiaFoiFolga && !config.permitirDoisDiasConsecutivos;
-
-          const deveFolgarHoje = (diasTrabalhadosSeguidos >= 6 || coincideRotacaoSemana) && !proibeFolgaConsecutiva;
-
-          if (deveFolgarHoje) {
-            dias[dia] = 'FOLGA';
-            diasTrabalhadosSeguidos = 0;
-            ultimoDiaFoiFolga = true;
-
-            // Avançar ponteiro de rotação giratória
-            ponteiroFolgaIndex = (ponteiroFolgaIndex + 1) % config.diasPermitidosFolga.length;
+          // Checar se a folga giratória cai no domingo
+          const semanaDoMes = Math.ceil(dia / 7);
+          const diaFolgaRotacao = (turmaOffset + semanaDoMes) % 7;
+          
+          if (diaFolgaRotacao === 0 && config.diasPermitidosFolga.includes(0)) {
+            // Regra de proibir dias consecutivos
+            if (!config.permitirDoisDiasConsecutivos && ultimoDiaFoiFolga) {
+               // Perde a folga do domingo para não emendar, trabalha
+               dias[dia] = 'TD';
+               domingosSeguidos++;
+               ultimoDomingoTrabalhado = true;
+               diasTrabalhadosSeguidos++;
+               ultimoDiaFoiFolga = false;
+            } else {
+               dias[dia] = 'FD';
+               domingosSeguidos = 0;
+               ultimoDomingoTrabalhado = false;
+               diasTrabalhadosSeguidos = 0;
+               ultimoDiaFoiFolga = true;
+            }
           } else {
-            dias[dia] = 'TRABALHO';
+            dias[dia] = 'TD';
+            domingosSeguidos++;
+            ultimoDomingoTrabalhado = true;
             diasTrabalhadosSeguidos++;
             ultimoDiaFoiFolga = false;
+          }
+          continue;
+        }
+
+        // REGRA 3: Dias Úteis
+        const semanaDoMes = Math.ceil(dia / 7);
+        const diaFolgaRotacao = (turmaOffset + semanaDoMes) % 7;
+        
+        if (diaFolgaRotacao === diaSemana && config.diasPermitidosFolga.includes(diaSemana)) {
+          if (config.permitirDoisDiasConsecutivos || !ultimoDiaFoiFolga) {
+            dias[dia] = 'F';
+            diasTrabalhadosSeguidos = 0;
+            ultimoDiaFoiFolga = true;
+            continue;
           }
         }
+
+        // Default
+        if (feriadosAbertos.has(dia)) {
+           dias[dia] = 'TF';
+        } else {
+           dias[dia] = 'T';
+        }
+        
+        diasTrabalhadosSeguidos++;
+        ultimoDiaFoiFolga = false;
       }
 
       itens.push({
@@ -142,6 +177,7 @@ export class EscalaGeneratorService {
         nome: func.primeiro_nome,
         setor: func.setor,
         turno: func.turno_padrao,
+        genero: func.genero,
         dias
       });
     });
@@ -149,3 +185,4 @@ export class EscalaGeneratorService {
     return itens;
   }
 }
+

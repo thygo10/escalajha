@@ -32,16 +32,19 @@ export interface Funcionario {
   setor: string;
   cargo: string;
   turno_padrao: string;
-  genero?: 'M' | 'F' | 'OUTRO'; // Gênero para conformidade CLT (ex: Art 386)
+  genero: 'M' | 'F'; // Gênero obrigatório
   ativo: boolean; // Soft delete for CLT/LGPD legal compliance
 }
+
+export type TipoDia = 'T' | 'TD' | 'TF' | 'F' | 'FD' | 'FE';
 
 export interface EscalaItem {
   matricula: string;
   nome: string;
   setor: string;
   turno: string;
-  dias: Record<number, string>; // Key: day of month (1-31), Value: 'TRABALHO' | 'FOLGA' | 'FERIAS' | 'DOMINGO'
+  genero: 'M' | 'F';
+  dias: Record<number, TipoDia>; 
 }
 
 export interface Escala {
@@ -67,9 +70,10 @@ export interface Feriado {
   id: string;
   nome: string;
   data: string; // 'YYYY-MM-DD'
-  tipo: 'Nacional' | 'Estadual' | 'Municipal';
+  tipo: 'Nacional' | 'Estadual' | 'Municipal' | 'Ponto Facultativo';
   abrangencia?: string;
   descricao?: string;
+  funcionamento_proibido: boolean;
 }
 
 export interface DiaHistoricoTrabalho {
