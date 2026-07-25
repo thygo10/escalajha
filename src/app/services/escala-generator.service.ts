@@ -60,6 +60,7 @@ export class EscalaGeneratorService {
   }
 
 
+  /**
    * Gera a escala 6x1 Giratória respeitando:
    * 1. 6 dias de trabalho máximo consecutivos (INVIOLÁVEL).
    * 2. Revezamento feminino: quinzenal (1 trab -> 1 folga).

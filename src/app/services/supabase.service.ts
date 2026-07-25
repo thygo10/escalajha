@@ -215,6 +215,7 @@ export class SupabaseService {
       setor: func.setor,
       cargo: func.cargo,
       turno_padrao: func.turno_padrao,
+      genero: func.genero || 'F',
       ativo: true
     };
 

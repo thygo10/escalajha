@@ -318,7 +318,7 @@ export class DashboardComponent implements OnInit {
       }
       
       // Mapear status atualizado para tipos do histórico
-      let tipo: 'TRABALHO' | 'FOLGA' | 'DOMINGO' | 'FERIADO' = 'TRABALHO';
+      let tipo: 'TRABALHO' | 'FOLGA' | 'DOMINGO' | 'FERIADO';
       if (status === 'F' || status === 'FD' || status === 'FE') tipo = 'FOLGA';
       else if (status === 'TD' || status === 'DOMINGO') tipo = 'DOMINGO';
       else if (status === 'TF') tipo = 'FERIADO';
@@ -491,7 +491,11 @@ export class DashboardComponent implements OnInit {
   }
 
   getDomingosFolga(item: EscalaItem): number {
-    return Object.values(item.dias).filter(v => v === 'DOMINGO').length;
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    return Object.entries(item.dias).filter(([dia, status]) => {
+      const dateObj = new Date(ano, mes - 1, Number(dia));
+      return dateObj.getDay() === 0 && (status === 'F' || status === 'FD' || status === 'FE');
+    }).length;
   }
 
   getDomingosTrabalhados(item: EscalaItem): number {
@@ -545,7 +549,7 @@ export class DashboardComponent implements OnInit {
     if (this.cargoModal().visible)     { this.closeCargoModal(); return; }
     if (this.feriadoModal().visible)   { this.closeFeriadoModal(); return; }
     if (this.regraModal().visible)     { this.closeRegraModal(); return; }
-    if (this.printModalVisible())      { this.printModalVisible.set(false); return; }
+    if (this.printModalVisible())      { this.printModalVisible.set(false); }
   }
 
   getRegrasPorCategoria(cat: string): RegraEscala[] {
