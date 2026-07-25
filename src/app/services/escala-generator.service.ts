@@ -196,10 +196,7 @@ export class EscalaGeneratorService {
 
         // REGRA 2: Trata Domingos
         if (isDomingo) {
-          // Permite folga no domingo apenas se não folgou no sábado e já trabalhou 5 ou 6 dias
-          const podeFolgarNoDom = domingosFolgaSet.has(dia) && !diaAnteriorEhFolga && (diasTrabalhadosSeguidos >= 4 || totalDias <= 7);
-          
-          if (podeFolgarNoDom) {
+          if (domingosFolgaSet.has(dia) && !diaAnteriorEhFolga) {
             dias[dia] = 'FD';
             domingosSeguidos = 0;
             diasTrabalhadosSeguidos = 0;
@@ -376,6 +373,18 @@ export class EscalaGeneratorService {
           const item = folgando[k];
           const isDomingo = (item.dias[dia] === 'FD');
           
+          // Se for domingo e o setor for de regra geral (ex: Caixa), não altera FD para TD se causar 2 domingos seguidos trabalhados
+          const setorClean = (item.setor || '').toLowerCase();
+          const eExcecao = setorClean.includes('padaria') || setorClean.includes('acougue') || setorClean.includes('açougue');
+          
+          if (isDomingo && !eExcecao) {
+            const domAnteriorTrab = (dia > 7) && (item.dias[dia - 7] === 'TD' || item.dias[dia - 7] === 'T' || item.dias[dia - 7] === 'TF');
+            const domSeguinteTrab = (dia + 7 <= totalDias) && (item.dias[dia + 7] === 'TD' || item.dias[dia + 7] === 'T' || item.dias[dia + 7] === 'TF');
+            if (domAnteriorTrab || domSeguinteTrab) {
+              continue; // Pula este colaborador para preservar a regra 1T : 2F
+            }
+          }
+
           // Altera a folga deste colaborador para trabalho no dia deficitário
           item.dias[dia] = isDomingo ? 'TD' : 'T';
 
