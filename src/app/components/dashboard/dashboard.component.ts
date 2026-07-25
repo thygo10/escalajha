@@ -1,11 +1,11 @@
-import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener, ChangeDetectionStrategy, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SupabaseService } from '../../services/supabase.service';
 import { EscalaGeneratorService } from '../../services/escala-generator.service';
 import { ToastService } from '../../services/toast.service';
-import { Funcionario, Escala, EscalaItem, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho } from '../../models/types';
+import { Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho } from '../../models/types';
 import { IconComponent } from '../shared/icon.component';
 
 interface ConfirmModalData {
@@ -23,7 +23,8 @@ interface ConfirmModalData {
   standalone: true,
   imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.css'
+  styleUrl: './dashboard.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DashboardComponent implements OnInit {
   private readonly supabase = inject(SupabaseService);
@@ -39,8 +40,11 @@ export class DashboardComponent implements OnInit {
   activeTab = signal<'dashboard' | 'escala' | 'funcionarios' | 'setores' | 'feriados' | 'regras' | 'detalhes-funcionario'>('dashboard');
   isMobileMenuOpen = signal<boolean>(false);
 
-  private readonly now = new Date();
-  readonly currentYearMonth = `${this.now.getFullYear()}-${String(this.now.getMonth() + 1).padStart(2, '0')}`;
+  // Data centralizada — evita múltiplas instâncias de Date inconsistentes (BUG-P4)
+  private readonly _hoje = new Date();
+  readonly hojeDia = this._hoje.getDate();
+  readonly hojeStr = this._hoje.toISOString().split('T')[0];
+  readonly currentYearMonth = `${this._hoje.getFullYear()}-${String(this._hoje.getMonth() + 1).padStart(2, '0')}`;
 
   private _selectedMonth = this.currentYearMonth;
   get selectedMonth() { return this._selectedMonth; }
@@ -76,7 +80,7 @@ export class DashboardComponent implements OnInit {
   });
 
   folgasPorSetorMap = computed(() => {
-    const hojeDia = new Date().getDate();
+    const hojeDia = this.hojeDia;
     const itens = this.escalaCompletaDaLojaCache();
     const funcs = this.funcionarios();
     const map = new Map<string, Funcionario[]>();
@@ -139,7 +143,7 @@ export class DashboardComponent implements OnInit {
   // Perfil Detalhado do Colaborador
   selectedFuncionarioForPage = signal<Funcionario | null>(null);
   selectedMonthHistorico = signal(this.currentYearMonth);
-  filterTipoHistorico = 'TODOS';
+  filterTipoHistorico = signal<string>('TODOS');
 
   // Modal de Impressão A4 (Modos + Estilos)
   printModalVisible = signal(false);
@@ -174,7 +178,112 @@ export class DashboardComponent implements OnInit {
   novoTurno = '08:00 às 16:20';
   novoGenero: 'M' | 'F' = 'F';
 
-  dataAtualFormatted = new Date().toLocaleDateString('pt-BR');
+  dataAtualFormatted = this._hoje.toLocaleDateString('pt-BR');
+
+  // ============================================================
+  // COMPUTED SIGNALS PRÉ-COMPUTADOS (substituem métodos no template — BUG-P1)
+  // ============================================================
+
+  /** Mapa pré-computado: setorNome → cor hex */
+  private readonly _setorColorMap = computed(() => {
+    const map = new Map<string, string>();
+    for (const setor of this.setores()) {
+      map.set(setor.nome, this._computeSetorColor(setor.nome));
+    }
+    return map;
+  });
+
+  /** Mapa pré-computado: setorNome → lista de Funcionarios */
+  readonly funcionariosPorSetorMap = computed(() => {
+    const map = new Map<string, Funcionario[]>();
+    for (const setor of this.setores()) {
+      map.set(setor.nome, this.funcionarios().filter(f => f.setor === setor.nome));
+    }
+    return map;
+  });
+
+  /** Mapa pré-computado: setorNome → lista de Cargos */
+  readonly cargosPorSetorMap = computed(() => {
+    const map = new Map<string, Cargo[]>();
+    for (const setor of this.setores()) {
+      map.set(setor.nome, this.cargos().filter(c => c.setor_nome === setor.nome));
+    }
+    return map;
+  });
+
+  /** Mapa pré-computado: setorNome → % cobertura hoje */
+  readonly coberturaPercentMap = computed(() => {
+    const map = new Map<string, number>();
+    const hojeDia = this.hojeDia;
+    const escala = this.escalaCompletaDaLojaCache();
+    const funcsPorSetor = this.funcionariosPorSetorMap();
+    for (const setor of this.setores()) {
+      const total = (funcsPorSetor.get(setor.nome) ?? []).length;
+      if (total === 0) { map.set(setor.nome, 100); continue; }
+      const emFolga = escala.filter(i => {
+        if (i.setor !== setor.nome) return false;
+        const s = i.dias[hojeDia];
+        return s === 'F' || s === 'FD' || s === 'FE';
+      }).length;
+      map.set(setor.nome, Math.round(((total - emFolga) / total) * 100));
+    }
+    return map;
+  });
+
+  /** Mapa pré-computado: dia → abreviação do dia da semana (para tabela de escala) */
+  readonly diasSemanaAbrevMap = computed(() => {
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    const totalDias = new Date(ano, mes, 0).getDate();
+    const map = new Map<number, string>();
+    for (let d = 1; d <= totalDias; d++) {
+      const dateObj = new Date(ano, mes - 1, d);
+      map.set(d, dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase());
+    }
+    return map;
+  });
+
+  /** Mapa pré-computado: dia → nome completo do dia UPPER (para impressão) */
+  readonly diasSemanaUpperMap = computed(() => {
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    const totalDias = new Date(ano, mes, 0).getDate();
+    const map = new Map<number, string>();
+    for (let d = 1; d <= totalDias; d++) {
+      const dateObj = new Date(ano, mes - 1, d);
+      const name = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase();
+      map.set(d, name.replace('-FEIRA', ''));
+    }
+    return map;
+  });
+
+  /** Mapa pré-computado: "setor|dia" → string[] nomes de folgados */
+  readonly folgasPorSetorEDiaMap = computed(() => {
+    const map = new Map<string, string[]>();
+    const escalaItens = this.escalaItens();
+    const cacheItens = this.escalaCompletaDaLojaCache();
+    const dias = this.diasDoMes();
+
+    for (const setor of this.setores()) {
+      let itensSetor = escalaItens.filter(item => item.setor === setor.nome);
+      if (itensSetor.length === 0) {
+        itensSetor = cacheItens.filter(item => item.setor === setor.nome);
+      }
+      for (const d of dias) {
+        const key = `${setor.nome}|${d}`;
+        const folgados: string[] = [];
+        for (const item of itensSetor) {
+          const status = item.dias[d];
+          if (status === 'F' || status === 'FD' || status === 'FE') {
+            folgados.push(item.nome);
+          }
+        }
+        map.set(key, folgados);
+      }
+    }
+    return map;
+  });
+
+  // Signal para controlar área de impressão (BUG-P5)
+  isPrintingActive = signal(false);
 
   // Modais State
   confirmModal = signal<ConfirmModalData>({ visible: false, title: '', message: '', onConfirm: () => {} });
@@ -292,16 +401,20 @@ export class DashboardComponent implements OnInit {
   });
 
   // Perfil Detalhado do Colaborador: Histórico Computado Completo (Sem Filtros)
+  // BUG-L2 FIX: agora passa as mesmas opções do cache principal
   diasHistoricoCompleto = computed<DiaHistoricoTrabalho[]>(() => {
     const func = this.selectedFuncionarioForPage();
     if (!func) return [];
 
     const [ano, mes] = this.selectedMonthHistorico().split('-').map(Number);
     const totalDias = new Date(ano, mes, 0).getDate();
-    const funcsDoSetor = this.funcionarios().filter(f => f.setor === func.setor);
+    const funcsDoSetor = this.funcionarios().filter(f => f.setor === func.setor && f.ativo);
 
-    const escalaItem = this.generator.gerarEscalaMensalCached(funcsDoSetor, ano, mes)
-      .find(i => i.matricula === func.matricula_aleatoria);
+    const escalaItem = this.generator.gerarEscalaMensalCached(funcsDoSetor, ano, mes, {
+      permitirDoisDiasConsecutivos: untracked(() => this.permitirDoisDiasConsecutivos()),
+      diasPermitidosFolga: untracked(() => this.diasPermitidosFolga()),
+      feriados: untracked(() => this.feriados())
+    }).find(i => i.matricula === func.matricula_aleatoria);
 
     const result: DiaHistoricoTrabalho[] = [];
 
@@ -336,9 +449,10 @@ export class DashboardComponent implements OnInit {
   });
 
   // Perfil Detalhado do Colaborador: Histórico Filtrado para exibição
+  // BUG-L4 FIX: agora lê filterTipoHistorico como signal
   diasHistoricoFiltrados = computed<DiaHistoricoTrabalho[]>(() => {
     const completo = this.diasHistoricoCompleto();
-    const tipoFilter = this.filterTipoHistorico;
+    const tipoFilter = this.filterTipoHistorico();
     if (tipoFilter === 'TODOS') return completo;
     return completo.filter(d => d.tipo === tipoFilter);
   });
@@ -358,12 +472,12 @@ export class DashboardComponent implements OnInit {
     const list = this.feriados();
     if (list.length === 0) return { nome: 'Nenhum feriado', dataFormatted: '-', diasRestantesText: 'Nenhum' };
 
-    const hojeStr = new Date().toISOString().split('T')[0];
-    const proximos = list.filter(f => f.data >= hojeStr).sort((a, b) => a.data.localeCompare(b.data));
+    const hojeStrLocal = this.hojeStr;
+    const proximos = list.filter(f => f.data >= hojeStrLocal).sort((a, b) => a.data.localeCompare(b.data));
     const target = proximos.length > 0 ? proximos[0] : list[0];
 
     const targetDate = new Date(target.data + 'T00:00:00');
-    const hojeDate = new Date();
+    const hojeDate = new Date(this._hoje);
     hojeDate.setHours(0, 0, 0, 0);
 
     const diffTime = targetDate.getTime() - hojeDate.getTime();
@@ -388,11 +502,11 @@ export class DashboardComponent implements OnInit {
   });
 
   folgasHojeInfo = computed(() => {
-    const hojeDia = new Date().getDate();
+    const hojeDiaLocal = this.hojeDia;
     const itens = this.escalaCompletaDaLojaCache();
     
     const emFolga = itens.filter(item => {
-      const status = item.dias[hojeDia];
+      const status = item.dias[hojeDiaLocal];
       return status === 'F' || status === 'FD' || status === 'FE';
     });
 
@@ -415,20 +529,18 @@ export class DashboardComponent implements OnInit {
     this.isMobileMenuOpen.set(false);
   }
 
+  // Agora usa mapa pré-computado (BUG-P1)
   getDiaSemanaAbrev(diaNum: number): string {
-    const [ano, mes] = this.selectedMonth.split('-').map(Number);
-    const dateObj = new Date(ano, mes - 1, diaNum);
-    return dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
+    return this.diasSemanaAbrevMap().get(diaNum) ?? '';
   }
 
   // Quick Blur Modal Controller
+  // BUG-L3 FIX: usa cache principal em vez de recalcular
   openQuickBlurModal(func: Funcionario) {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
-    const funcsDoSetor = this.funcionarios().filter(f => f.setor === func.setor);
-    const escalaItem = this.generator.gerarEscalaMensalCached(funcsDoSetor, ano, mes, {
-      permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
-      diasPermitidosFolga: this.diasPermitidosFolga()
-    }).find(i => i.matricula === func.matricula_aleatoria);
+    // Reutiliza cache principal em vez de gerar nova escala
+    const escalaItem = this.escalaCompletaDaLojaCache()
+      .find(i => i.matricula === func.matricula_aleatoria);
 
     const domingosReais: { dataStr: string; descricao: string }[] = [];
     if (escalaItem) {
@@ -445,9 +557,9 @@ export class DashboardComponent implements OnInit {
       }
     }
 
-    const hojeStr = new Date().toISOString().split('T')[0];
+    const hojeStrLocal = this.hojeStr;
     const feriadosPassados = this.feriados()
-      .filter(f => f.data <= hojeStr)
+      .filter(f => f.data <= hojeStrLocal)
       .sort((a, b) => b.data.localeCompare(a.data));
 
     const ultimoFeriadoReal = feriadosPassados.length > 0 ? {
@@ -481,9 +593,11 @@ export class DashboardComponent implements OnInit {
   executePrint() {
     this.activePrintMode.set(this.selectedPrintMode());
     this.printModalVisible.set(false);
+    this.isPrintingActive.set(true);
     setTimeout(() => {
       window.print();
-    }, 200);
+      this.isPrintingActive.set(false);
+    }, 300);
   }
 
   getDiasIntervalo(inicio: number, fim: number): number[] {
@@ -492,18 +606,22 @@ export class DashboardComponent implements OnInit {
 
   getDomingosFolga(item: EscalaItem): number {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
-    return Object.entries(item.dias).filter(([dia, status]) => {
+    let count = 0;
+    for (const [dia, status] of Object.entries(item.dias)) {
       const dateObj = new Date(ano, mes - 1, Number(dia));
-      return dateObj.getDay() === 0 && (status === 'F' || status === 'FD' || status === 'FE');
-    }).length;
+      if (dateObj.getDay() === 0 && (status === 'F' || status === 'FD' || status === 'FE')) count++;
+    }
+    return count;
   }
 
   getDomingosTrabalhados(item: EscalaItem): number {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
-    return Object.entries(item.dias).filter(([dia, status]) => {
+    let count = 0;
+    for (const [dia, status] of Object.entries(item.dias)) {
       const dateObj = new Date(ano, mes - 1, Number(dia));
-      return dateObj.getDay() === 0 && (status === 'T' || status === 'TD' || status === 'TF');
-    }).length;
+      if (dateObj.getDay() === 0 && (status === 'T' || status === 'TD' || status === 'TF')) count++;
+    }
+    return count;
   }
 
   getCargoPorMatricula(matricula: string): string {
@@ -511,6 +629,7 @@ export class DashboardComponent implements OnInit {
     return func ? func.cargo : '-';
   }
 
+  // Agora usam os mapas pré-computados (BUG-P1)
   getFolgasPorSetorFiltradas(setorNome: string): Funcionario[] {
     let list = this.folgasPorSetorMap().get(setorNome) ?? [];
     const query = this.searchQueryDashboard().toLowerCase().trim();
@@ -524,20 +643,11 @@ export class DashboardComponent implements OnInit {
   }
 
   getFuncionariosPorSetor(setorNome: string): Funcionario[] {
-    return this.funcionarios().filter(f => f.setor === setorNome);
+    return this.funcionariosPorSetorMap().get(setorNome) ?? [];
   }
 
   getCoberturaPercent(setorNome: string): number {
-    const total = this.getFuncionariosPorSetor(setorNome).length;
-    if (total === 0) return 100;
-    const hojeDia = new Date().getDate();
-    const emFolga = this.escalaCompletaDaLojaCache()
-      .filter(i => {
-        if (i.setor !== setorNome) return false;
-        const s = i.dias[hojeDia];
-        return s === 'F' || s === 'FD' || s === 'FE';
-      }).length;
-    return Math.round(((total - emFolga) / total) * 100);
+    return this.coberturaPercentMap().get(setorNome) ?? 100;
   }
 
   @HostListener('document:keydown.escape')
@@ -556,7 +666,12 @@ export class DashboardComponent implements OnInit {
     return this.regras().filter(r => r.categoria === cat);
   }
 
+  // Lookup rápido via mapa pré-computado (BUG-P1)
   getSetorColor(setorNome: string): string {
+    return this._setorColorMap().get(setorNome) ?? this._computeSetorColor(setorNome);
+  }
+
+  private _computeSetorColor(setorNome: string): string {
     const name = setorNome
       .toLowerCase()
       .normalize('NFD')
@@ -594,6 +709,9 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  // BUG-L1 FIX: separar loading de dados do loading de escala
+  isEscalaLoading = signal(false);
+
   async loadData() {
     const loja = this.activeLoja();
     if (!loja) return;
@@ -608,6 +726,7 @@ export class DashboardComponent implements OnInit {
         this.supabase.getRegras()
       ]);
 
+      // Batch update — seta todos antes de liberar isLoading para minimizar re-renders
       this.funcionarios.set(funcs);
       this.setores.set(sets);
       this.cargos.set(crgs);
@@ -615,16 +734,23 @@ export class DashboardComponent implements OnInit {
       this.regras.set(rgrs);
 
       if (sets.length > 0 && !sets.some(s => s.nome === this.selectedSetor)) {
-        this.selectedSetor = sets[0].nome;
+        this._selectedSetor = sets[0].nome;
+        this.triggerRecalculoEscala.update(v => v + 1);
       }
       this.syncNovoSetorAndCargo();
-
-      await this.loadEscala();
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       this.toastService.error('Erro ao Carregar Dados', 'Não foi possível buscar as informações no Supabase.');
     } finally {
       this.isLoading.set(false);
+    }
+
+    // Carrega escala de forma independente — não bloqueia o skeleton
+    try {
+      this.isEscalaLoading.set(true);
+      await this.loadEscala();
+    } finally {
+      this.isEscalaLoading.set(false);
     }
   }
 
@@ -648,8 +774,9 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  // Agora usa mapa pré-computado (BUG-P1)
   getCargosDoSetor(setorNome: string): Cargo[] {
-    return this.cargos().filter(c => c.setor_nome === setorNome);
+    return this.cargosPorSetorMap().get(setorNome) ?? [];
   }
 
   async loadEscala() {
@@ -687,29 +814,14 @@ export class DashboardComponent implements OnInit {
     return this.diasPermitidosFolga().includes(diaSemana);
   }
 
+  // Agora usa mapa pré-computado (BUG-P1)
   getDiaSemanaAbrevUpper(dia: number): string {
-    const [ano, mes] = this.selectedMonth.split('-').map(Number);
-    const dateObj = new Date(ano, mes - 1, dia);
-    const name = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase();
-    return name.replace('-FEIRA', '');
+    return this.diasSemanaUpperMap().get(dia) ?? '';
   }
 
+  // Agora usa mapa pré-computado (BUG-P1)
   getFolgasPorSetorEDia(setorNome: string, dia: number): string[] {
-    let itensSetor = this.escalaItens().filter(item => item.setor === setorNome);
-    if (itensSetor.length === 0) {
-      // Usa o cache ao invés de recalcular do zero!
-      itensSetor = this.escalaCompletaDaLojaCache().filter(item => item.setor === setorNome);
-    }
-
-    const folgados: string[] = [];
-    itensSetor.forEach(item => {
-      const status = item.dias[dia];
-      if (status === 'F' || status === 'FD' || status === 'FE') {
-        folgados.push(item.nome);
-      }
-    });
-
-    return folgados;
+    return this.folgasPorSetorEDiaMap().get(`${setorNome}|${dia}`) ?? [];
   }
 
   gerarNovaEscala() {
@@ -1138,6 +1250,23 @@ export class DashboardComponent implements OnInit {
   getDiaLabel(tipo: string): string {
     if (tipo === 'FOLGA') return 'F';
     if (tipo === 'DOMINGO') return 'D';
+    return 'T';
+  }
+
+  // BUG-L5 FIX: métodos separados para TipoDia na tabela de escala
+  getDiaClassFromTipoDia(tipo: TipoDia): string {
+    if (tipo === 'F' || tipo === 'FD' || tipo === 'FE') return 'status-folga';
+    if (tipo === 'TD') return 'status-domingo';
+    if (tipo === 'TF') return 'status-feriado';
+    return 'status-trabalho';
+  }
+
+  getDiaLabelFromTipoDia(tipo: TipoDia): string {
+    if (tipo === 'F') return 'F';
+    if (tipo === 'FD') return 'FD';
+    if (tipo === 'FE') return 'FE';
+    if (tipo === 'TD') return 'TD';
+    if (tipo === 'TF') return 'TF';
     return 'T';
   }
 

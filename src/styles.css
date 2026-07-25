@@ -630,6 +630,12 @@ body {
   font-weight: 800;
 }
 
+.status-feriado {
+  background: #fce7f3;
+  color: #9d174d;
+  font-weight: 700;
+}
+
 /* Toast Notifications Limpas */
 .toast-container {
   position: fixed;

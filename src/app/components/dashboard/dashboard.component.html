@@ -416,8 +416,8 @@
                       <td class="col-turno-text">{{ item.turno }}</td>
                       @for (d of diasDoMes(); track d) {
                         @if (!mostrarApenasFolgasImpressao() || item.dias[d] === 'F' || item.dias[d] === 'FD' || item.dias[d] === 'FE') {
-                          <td [class]="getDiaClass(item.dias[d])">
-                            {{ getDiaLabel(item.dias[d]) }}
+                          <td [class]="getDiaClassFromTipoDia(item.dias[d])">
+                            {{ getDiaLabelFromTipoDia(item.dias[d]) }}
                           </td>
                         } @else {
                           <td class="bg-gray-100 text-gray-400 text-center text-xs">-</td>
@@ -851,7 +851,7 @@
 
               <div class="w-180">
                 <label for="filterTipoHistoricoSelect" class="filter-lbl">Filtrar Tipo de Dia:</label>
-                <select id="filterTipoHistoricoSelect" [(ngModel)]="filterTipoHistorico" class="form-control">
+                <select id="filterTipoHistoricoSelect" [ngModel]="filterTipoHistorico()" (ngModelChange)="filterTipoHistorico.set($event)" class="form-control">
                   <option value="TODOS">Todos os Dias</option>
                   <option value="FOLGA">Apenas Folgas (F)</option>
                   <option value="DOMINGO">Apenas Domingos (D)</option>
@@ -891,8 +891,8 @@
         </div>
       }
 
-      <!-- AREA DE IMPRESSAO A4 -->
-      <div class="print-area" style="display: none;">
+      <!-- AREA DE IMPRESSAO A4 (BUG-P5 FIX: só renderiza quando imprimindo) -->
+      @if (isPrintingActive()) {
         @if (printEstilo() === 'mural-folgas') {
           <div style="padding: 10px;">
             <div class="print-official-banner">
@@ -941,7 +941,7 @@
             </table>
           </div>
         }
-      </div>
+      }
 
     </main>
   </div>
@@ -1146,8 +1146,9 @@
     </div>
   }
 
-  <!-- MODAL DE EDITAR FUNCIONÁRIO -->
+  <!-- MODAL DE EDITAR FUNCIONÁRIO (BUG-P6 FIX: usa @let para segurança) -->
   @if (editingFunc()) {
+    @let ef = editingFunc()!;
     <div class="modal-backdrop">
       <div class="modal-card">
         <div class="modal-header">
@@ -1159,12 +1160,12 @@
         <div class="modal-body space-y-14">
           <div class="form-group">
             <label for="editPrimeiroNomeInput">Primeiro Nome</label>
-            <input id="editPrimeiroNomeInput" type="text" [(ngModel)]="editingFunc()!.primeiro_nome" class="form-control" required />
+            <input id="editPrimeiroNomeInput" type="text" [(ngModel)]="ef.primeiro_nome" class="form-control" required />
           </div>
 
           <div class="form-group">
             <label for="editSetorSelect">Setor Operacional</label>
-            <select id="editSetorSelect" [ngModel]="editingFunc()!.setor" (ngModelChange)="onEditFuncSetorChange($event)" class="form-control">
+            <select id="editSetorSelect" [ngModel]="ef.setor" (ngModelChange)="onEditFuncSetorChange($event)" class="form-control">
               @for (s of setores(); track s.id) {
                 <option [value]="s.nome">{{ s.nome }}</option>
               }
@@ -1173,7 +1174,7 @@
 
           <div class="form-group">
             <label for="editCargoSelect">Função / Cargo</label>
-            <select id="editCargoSelect" [(ngModel)]="editingFunc()!.cargo" class="form-control">
+            <select id="editCargoSelect" [(ngModel)]="ef.cargo" class="form-control">
               @for (c of cargosDoEditSetor(); track c.id) {
                 <option [value]="c.nome">{{ c.nome }}</option>
               }
@@ -1182,12 +1183,12 @@
 
           <div class="form-group">
             <label for="editTurnoInput">Turno Padrão</label>
-            <input id="editTurnoInput" type="text" [(ngModel)]="editingFunc()!.turno_padrao" class="form-control" required />
+            <input id="editTurnoInput" type="text" [(ngModel)]="ef.turno_padrao" class="form-control" required />
           </div>
 
           <div class="form-group">
             <label for="editGeneroSelect">Gênero (Regras CLT/CCT)</label>
-            <select id="editGeneroSelect" [(ngModel)]="editingFunc()!.genero" class="form-control" required>
+            <select id="editGeneroSelect" [(ngModel)]="ef.genero" class="form-control" required>
               <option value="M">Masculino</option>
               <option value="F">Feminino</option>
             </select>
