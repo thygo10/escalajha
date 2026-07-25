@@ -146,7 +146,30 @@ export class EscalaGeneratorService {
 
       let diasTrabalhadosSeguidos = 0;
       let domingosSeguidos = 0;
-      let ultimoDiaFoiFolga = false;
+
+      // Pré-calcular os domingos em que este colaborador folgará no mês
+      const domingosFolgaSet = new Set<number>();
+      domingos.forEach((dDia, dIdx) => {
+        const eDomingoImpar = (dIdx % 2 === 0);
+        let deveFolgar = false;
+
+        if (!eExcecaoDomingo) {
+          // REGRA GERAL (Demais Setores): 1 Domingo Trabalhado para 2 Domingos de Folga (1T : 2F)
+          const turmaDom = idx % 3;
+          deveFolgar = (dIdx % 3 !== turmaDom);
+        } else {
+          // EXCEÇÃO (Açougue e Padaria): 2 Domingos Trabalhados para 1 Domingo de Folga (2T : 1F) ou CLT 386
+          if (souFeminino) {
+            deveFolgar = folgaDomingoImpar ? eDomingoImpar : !eDomingoImpar;
+          } else {
+            deveFolgar = (dIdx % 3 === (idx % 3));
+          }
+        }
+
+        if (deveFolgar && config.diasPermitidosFolga.includes(0)) {
+          domingosFolgaSet.add(dDia);
+        }
+      });
 
       for (let dia = 1; dia <= totalDias; dia++) {
         const dateObj = new Date(ano, mes - 1, dia);
@@ -157,7 +180,6 @@ export class EscalaGeneratorService {
         if (feriadosFechados.has(dia)) {
           dias[dia] = 'FE';
           diasTrabalhadosSeguidos = 0;
-          ultimoDiaFoiFolga = true;
           continue;
         }
 
@@ -165,67 +187,42 @@ export class EscalaGeneratorService {
         if (diasTrabalhadosSeguidos >= 6) {
           dias[dia] = isDomingo ? 'FD' : 'F';
           diasTrabalhadosSeguidos = 0;
-          ultimoDiaFoiFolga = true;
           if (isDomingo) domingosSeguidos = 0;
           continue;
         }
 
-        // REGRA 2: Trata Domingos com Escalonamento por Cohorte
+        // REGRA 2: Trata Domingos
         if (isDomingo) {
-          const domingoIndex = domingos.indexOf(dia); // 0 = 1º dom, 1 = 2º dom, 2 = 3º dom...
-          const eDomingoImpar = (domingoIndex % 2 === 0);
-
-          let deveFolgarNoDomingo = false;
-
-          if (!eExcecaoDomingo) {
-            // REGRA GERAL (Demais Setores): 1 Domingo Trabalhado para 2 Domingos de Folga (1T : 2F)
-            const turmaDom = idx % 3;
-            const deveTrabalharEsteDomingo = (domingoIndex % 3 === turmaDom);
-            deveFolgarNoDomingo = !deveTrabalharEsteDomingo;
-          } else {
-            // EXCEÇÃO (Açougue e Padaria): 2 Domingos Trabalhados para 1 Domingo de Folga (2T : 1F) ou CLT 386
-            if (souFeminino) {
-              // CLT Art 386: Quinzenal -> alterna domingos sim / domingos não
-              deveFolgarNoDomingo = folgaDomingoImpar ? eDomingoImpar : !eDomingoImpar;
-            } else if (domingosSeguidos >= 2) {
-              deveFolgarNoDomingo = true;
-            } else {
-              deveFolgarNoDomingo = folgaDomingoImpar ? eDomingoImpar : (!eDomingoImpar && domingoIndex % 3 === 2);
-            }
-          }
-
-          if (deveFolgarNoDomingo && config.diasPermitidosFolga.includes(0)) {
+          if (domingosFolgaSet.has(dia)) {
             dias[dia] = 'FD';
             domingosSeguidos = 0;
             diasTrabalhadosSeguidos = 0;
-            ultimoDiaFoiFolga = true;
           } else {
             dias[dia] = 'TD';
             domingosSeguidos++;
             diasTrabalhadosSeguidos++;
-            ultimoDiaFoiFolga = false;
           }
           continue;
         }
 
-        // REGRA 3: Dias Úteis com Rotação Giratória
-        const semanaDoMes = Math.ceil(dia / 7);
-        // Garante distribuição homogênea nos dias da semana (Segunda a Sábado = 1 a 6)
-        const diaFolgaRotacao = 1 + ((turmaOffset + semanaDoMes) % 6);
-        
-        if (diaFolgaRotacao === diaSemana && config.diasPermitidosFolga.includes(diaSemana)) {
-          if (config.permitirDoisDiasConsecutivos || !ultimoDiaFoiFolga) {
-            dias[dia] = 'F';
-            diasTrabalhadosSeguidos = 0;
-            ultimoDiaFoiFolga = true;
-            continue;
-          }
+        // REGRA 3: Dias Úteis com Rotação Giratória 6x1
+        // No ciclo 6x1, se o colaborador JÁ folga no Domingo da semana atual (ou seguinte),
+        // ele cumpre sua folga semanal no domingo e trabalha os dias úteis.
+        const semanaIndex = Math.floor((dia - 1) / 7);
+        const proximoDomingoSemana = domingos.find(d => d >= dia && d <= dia + 6);
+        const temFolgaNoDomingoDaSemana = proximoDomingoSemana ? domingosFolgaSet.has(proximoDomingoSemana) : false;
+
+        const diaFolgaRotacao = 1 + ((turmaOffset + semanaIndex) % 6); // 1=Seg, 2=Ter... 6=Sáb
+
+        if (!temFolgaNoDomingoDaSemana && diaSemana === diaFolgaRotacao && config.diasPermitidosFolga.includes(diaSemana)) {
+          dias[dia] = 'F';
+          diasTrabalhadosSeguidos = 0;
+          continue;
         }
 
         // Default: Trabalho
         dias[dia] = feriadosAbertos.has(dia) ? 'TF' : 'T';
         diasTrabalhadosSeguidos++;
-        ultimoDiaFoiFolga = false;
       }
 
       itens.push({
@@ -289,7 +286,7 @@ export class EscalaGeneratorService {
   }
 
   /**
-   * Garante que nenhum colaborador ultrapasse o limite de 5 folgas por mês.
+   * Garante que nenhum colaborador ultrapasse o limite de 5 folgas por mês, sem romper a regra dos 6 dias úteis.
    */
   private _ajustarLimiteFolgasMensais(itens: EscalaItem[], totalDias: number): void {
     itens.forEach(item => {
@@ -297,10 +294,14 @@ export class EscalaGeneratorService {
       
       if (folgas.length > 5) {
         const excesso = folgas.length - 5;
-        for (let i = 0; i < excesso; i++) {
-          const [diaStr, st] = folgas[folgas.length - 1 - i];
+        let removidos = 0;
+        for (let i = folgas.length - 1; i >= 0 && removidos < excesso; i--) {
+          const [diaStr, st] = folgas[i];
           const dia = Number(diaStr);
-          item.dias[dia] = (st === 'FD') ? 'TD' : 'T';
+          if (st === 'F') {
+            item.dias[dia] = 'T';
+            removidos++;
+          }
         }
       }
     });
