@@ -1086,8 +1086,225 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.badge-cobertura-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
 .escala-table thead tr {
   position: sticky;
   top: 0;
   z-index: 20;
 }
+
+/* Escala Guiada & Validação Real Styles */
+.btn-accent-gold {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 3px 8px rgba(217, 119, 6, 0.3);
+}
+
+.btn-accent-gold:hover {
+  background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+  transform: translateY(-1px);
+}
+
+.validation-audit-card {
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.validation-audit-card.valid-card {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.validation-audit-card.invalid-card {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.validation-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.validation-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.validation-badges-row {
+  display: flex;
+  gap: 8px;
+}
+
+.badge-status-val {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.badge-status-val.badge-success { background: #dcfce7; color: #166534; }
+.badge-status-val.badge-danger { background: #fee2e2; color: #991b1b; }
+.badge-status-val.badge-warning { background: #fef3c7; color: #92400e; }
+
+.validation-messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding-top: 10px;
+}
+
+.val-msg-item {
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.val-msg-item.msg-error { background: #fff1f2; color: #be123c; font-weight: 600; }
+.val-msg-item.msg-warning { background: #fffbebfb; color: #b45309; }
+
+/* Modal Wizard Escala Guiada */
+.wizard-header {
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+}
+
+.wizard-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #d97706;
+  background: #fef3c7;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.wizard-steps-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.wizard-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.wizard-step-item.active { opacity: 1; }
+
+.wizard-step-item .step-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wizard-step-item.active .step-num {
+  background: #0b2a52;
+  color: #ffffff;
+}
+
+.wizard-step-line {
+  flex: 1;
+  height: 2px;
+  background: #cbd5e1;
+  margin: 0 10px;
+}
+
+.wizard-step-line.active { background: #0b2a52; }
+
+.input-counter-wrapper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.btn-counter {
+  width: 40px;
+  height: 40px;
+  background: #f1f5f9;
+  border: none;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0b2a52;
+  cursor: pointer;
+}
+
+.btn-counter:hover { background: #e2e8f0; }
+
+.turnos-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.turno-card-item {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #ffffff;
+}
+
+.badge-intervalo {
+  font-size: 0.7rem;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.wizard-summary-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.summary-row:last-child { border-bottom: none; }

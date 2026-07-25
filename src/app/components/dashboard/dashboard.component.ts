@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { SupabaseService } from '../../services/supabase.service';
 import { EscalaGeneratorService } from '../../services/escala-generator.service';
 import { ToastService } from '../../services/toast.service';
-import { Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho } from '../../models/types';
+import { Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho, TurnoConfig, IntervaloOption, ValidacaoEscalaResultado } from '../../models/types';
 import { IconComponent } from '../shared/icon.component';
 
 interface ConfirmModalData {
@@ -116,6 +116,50 @@ export class DashboardComponent implements OnInit {
   // Configurações 6x1 Giratória (Convenção Coletiva)
   permitirDoisDiasConsecutivos = signal<boolean>(false);
   diasPermitidosFolga = signal<number[]>([0, 1, 2, 3, 4, 5, 6]); // 0=Dom, 1=Seg, 2=Ter...
+
+  // Escala Guiada & Cobertura Mínima
+  isEscalaGuiadaModalOpen = signal<boolean>(false);
+  guiadaStep = signal<number>(1);
+  guiadaSetor = signal<string>('Fiscal de Caixa');
+  guiadaMinFuncionarios = signal<number>(2);
+  guiadaPermitirDoisConsecutivos = signal<boolean>(false);
+
+  // Mínimo por dia no setor ativo
+  minFuncionariosPorDiaSetor = signal<number>(2);
+
+  // Turnos & Intervalos Intrajornada
+  isTurnosModalOpen = signal<boolean>(false);
+  turnosConfigs = signal<TurnoConfig[]>([
+    { id: 't1', nome: '08:00 às 17:00', entrada: '08:00', saida: '17:00', intervaloMinutos: 60, cargaHorariaLiquidaMinutos: 480, excedeLimiteDiario: false },
+    { id: 't2', nome: '10:00 às 20:00', entrada: '10:00', saida: '20:00', intervaloMinutos: 120, cargaHorariaLiquidaMinutos: 480, excedeLimiteDiario: false },
+    { id: 't3', nome: '12:00 às 20:00', entrada: '12:00', saida: '20:00', intervaloMinutos: 60, cargaHorariaLiquidaMinutos: 420, excedeLimiteDiario: false },
+    { id: 't4', nome: '14:00 às 22:00', entrada: '14:00', saida: '22:00', intervaloMinutos: 60, cargaHorariaLiquidaMinutos: 420, excedeLimiteDiario: false }
+  ]);
+
+  intervalosPresets: IntervaloOption[] = [
+    { label: '30 min', minutos: 30 },
+    { label: '1h', minutos: 60 },
+    { label: '1h 30min', minutos: 90 },
+    { label: '2h', minutos: 120 },
+    { label: '2h 30min', minutos: 150 },
+    { label: '2h 40min', minutos: 160 },
+    { label: '3h', minutos: 180 }
+  ];
+
+  // Formulário do Novo Turno
+  novoTurnoEntrada = signal<string>('08:00');
+  novoTurnoSaida = signal<string>('17:00');
+  novoTurnoIntervalo = signal<number>(60);
+  novoTurnoCustomIntervalo = signal<number | null>(null);
+
+  // Engine de Validação Real Computada da Escala Exibida
+  validacaoResultado = computed<ValidacaoEscalaResultado>(() => {
+    const itens = this.escalaItens();
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    const minReq = this.minFuncionariosPorDiaSetor();
+    const tConfigs = this.turnosConfigs();
+    return this.generator.validarEscala(itens, ano, mes, minReq, tConfigs);
+  });
 
   userInitials = computed(() => {
     const email = this.currentUser()?.email || 'gestor@empresa.com';
@@ -763,7 +807,7 @@ export class DashboardComponent implements OnInit {
     // Carrega escala de forma independente — não bloqueia o skeleton
     try {
       this.isEscalaLoading.set(true);
-      await this.onMonthOrSetorChange();
+      this.onMonthOrSetorChange();
     } finally {
       this.isEscalaLoading.set(false);
     }
@@ -861,12 +905,98 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  private _executarGeracaoEscala(funcsDoSetor: Funcionario[]) {
+  abrirEscalaGuiada() {
+    this.guiadaSetor.set(this.selectedSetor);
+    this.guiadaMinFuncionarios.set(this.selectedSetor === 'Fiscal de Caixa' ? 2 : 1);
+    this.guiadaStep.set(1);
+    this.isEscalaGuiadaModalOpen.set(true);
+  }
+
+  proximoPassoGuiada() {
+    this.guiadaStep.update(s => Math.min(4, s + 1));
+  }
+
+  passoAnteriorGuiada() {
+    this.guiadaStep.update(s => Math.max(1, s - 1));
+  }
+
+  concluirEscalaGuiada() {
+    this.selectedSetor = this.guiadaSetor();
+    this.minFuncionariosPorDiaSetor.set(this.guiadaMinFuncionarios());
+    this.permitirDoisDiasConsecutivos.set(this.guiadaPermitirDoisConsecutivos());
+    this.isEscalaGuiadaModalOpen.set(false);
+
+    const funcsDoSetor = this.funcionarios().filter(f => f.setor === this.selectedSetor && f.ativo);
+    if (funcsDoSetor.length === 0) {
+      this.toastService.warning('Sem Colaboradores Ativos', `Nenhum colaborador ativo cadastrado para o setor "${this.selectedSetor}".`);
+      return;
+    }
+    this._executarGeracaoEscala(funcsDoSetor, this.guiadaMinFuncionarios());
+  }
+
+  abrirModalTurnos() {
+    this.isTurnosModalOpen.set(true);
+  }
+
+  fecharModalTurnos() {
+    this.isTurnosModalOpen.set(false);
+  }
+
+  adicionarNovoTurno() {
+    const ent = this.novoTurnoEntrada();
+    const sai = this.novoTurnoSaida();
+    const interMin = this.novoTurnoCustomIntervalo() || this.novoTurnoIntervalo();
+
+    const calc = this.generator.calcularCargaHorariaLiquida(ent, sai, interMin);
+    const nomeTurno = `${ent} às ${sai}`;
+
+    const novoTurno: TurnoConfig = {
+      id: 't_' + Date.now(),
+      nome: nomeTurno,
+      entrada: ent,
+      saida: sai,
+      intervaloMinutos: interMin,
+      cargaHorariaLiquidaMinutos: calc.minutos,
+      excedeLimiteDiario: calc.excedeLimite
+    };
+
+    this.turnosConfigs.update(list => [...list, novoTurno]);
+    this.toastService.success('Turno Cadastrado!', `Horário ${nomeTurno} (${calc.horasFormatted} líquidos) cadastrado.`);
+    if (calc.excedeLimite) {
+      this.toastService.warning('Alerta CLT', 'Este turno excede o limite diário de 8h48m.');
+    }
+    this.novoTurnoCustomIntervalo.set(null);
+  }
+
+  formatarMinutosIntervalo(minutos: number): string {
+    const h = Math.floor(minutos / 60);
+    const m = minutos % 60;
+    if (h > 0 && m > 0) return `${h}h ${m}min`;
+    if (h > 0) return `${h}h`;
+    return `${m} min`;
+  }
+
+  diminuirGuiadaMin() {
+    this.guiadaMinFuncionarios.update(v => Math.max(1, v - 1));
+  }
+
+  aumentarGuiadaMin() {
+    this.guiadaMinFuncionarios.update(v => v + 1);
+  }
+
+  getFuncsDoSetorCount(setorNome: string): number {
+    return this.funcionarios().filter(f => f.setor === setorNome && f.ativo).length;
+  }
+
+  private _executarGeracaoEscala(funcsDoSetor: Funcionario[], minPorDia?: number) {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    const minReq = minPorDia ?? this.minFuncionariosPorDiaSetor();
+
     const gerada = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes, {
       permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
       diasPermitidosFolga: this.diasPermitidosFolga(),
-      feriados: this.feriados()
+      feriados: this.feriados(),
+      minFuncionariosPorDia: minReq
     });
     this.escalaItens.set(gerada);
 
@@ -879,7 +1009,7 @@ export class DashboardComponent implements OnInit {
     });
 
     this.triggerRecalculoEscala.update(v => v + 1); // Atualiza os computeds de cache
-    this.toastService.success('Escala Gerada!', `Escala 6x1 Giratória calculada com sucesso para ${funcsDoSetor.length} colaboradores.`);
+    this.toastService.success('Escala Gerada!', `Escala 6x1 Giratória calculada com garantia de ${minReq} colaboradores por dia.`);
   }
 
   async salvarEscala() {

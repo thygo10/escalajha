@@ -216,7 +216,8 @@ export class SupabaseService {
       cargo: func.cargo,
       turno_padrao: func.turno_padrao,
       genero: func.genero || 'F',
-      ativo: true
+      ativo: true,
+      setores_cobertura: func.setores_cobertura || []
     };
 
     try {
@@ -266,7 +267,8 @@ export class SupabaseService {
           setor: func.setor,
           cargo: func.cargo,
           turno_padrao: func.turno_padrao,
-          ativo: func.ativo
+          ativo: func.ativo,
+          setores_cobertura: func.setores_cobertura || []
         })
         .eq('id', func.id)
         .select()

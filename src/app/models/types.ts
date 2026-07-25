@@ -34,6 +34,7 @@ export interface Funcionario {
   turno_padrao: string;
   genero: 'M' | 'F'; // Gênero obrigatório
   ativo: boolean; // Soft delete for CLT/LGPD legal compliance
+  setores_cobertura?: string[]; // Setores secundários para cobertura de folga / função multisetor
 }
 
 export type TipoDia = 'T' | 'TD' | 'TF' | 'F' | 'FD' | 'FE';
@@ -103,4 +104,36 @@ export interface RegraEscala {
   criado_por?: string;
   criado_em?: string;
 }
+
+export interface IntervaloOption {
+  label: string; // Ex: '30 min', '1h', '1h30min', '2h', '2h30min', '2h40min', '3h'
+  minutos: number;
+}
+
+export interface TurnoConfig {
+  id: string;
+  nome: string; // Ex: '08:00 às 17:00'
+  entrada: string; // '08:00'
+  saida: string; // '17:00'
+  intervaloMinutos: number; // Ex: 60 (1h)
+  cargaHorariaLiquidaMinutos: number; // Ex: 480 (8h)
+  excedeLimiteDiario?: boolean;
+}
+
+export interface ValidacaoItem {
+  dia: number;
+  setor: string;
+  mensagem: string;
+  tipo: 'ERRO_COBERTURA' | 'ERRO_CLT' | 'ALERTA_CARGA' | 'AVISO';
+}
+
+export interface ValidacaoEscalaResultado {
+  valida: boolean;
+  totalErros: number;
+  totalAlertas: number;
+  itensValidados: ValidacaoItem[];
+  coberturaPorDia: Record<number, number>; // dia -> quantidade de pessoas trabalhando
+  minimoRequerido: number;
+}
+
 

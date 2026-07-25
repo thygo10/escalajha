@@ -324,6 +324,14 @@
             </div>
 
             <div class="escala-actions-group">
+              <button (click)="abrirEscalaGuiada()" class="btn-premium btn-accent-gold" title="Assistente passo a passo com perguntas de cobertura e turnos">
+                <app-icon name="sliders" [size]="16"></app-icon>
+                <span>Escala Guiada ✨</span>
+              </button>
+              <button (click)="abrirModalTurnos()" class="btn-secondary-save" title="Gerenciar horários fixos e tempo de intervalo">
+                <app-icon name="clock" [size]="16"></app-icon>
+                <span>Horários & Intervalos</span>
+              </button>
               <button (click)="gerarNovaEscala()" class="btn-premium btn-primary-solid">
                 <span>Gerar Escala 6x1</span>
               </button>
@@ -386,6 +394,46 @@
               <span class="legend-item"><span class="badge-legend status-folga">FE</span> Folga Feriado Fechado</span>
             </div>
           </div>
+
+          <!-- PAINEL DE VALIDAÇÃO REAL E COBERTURA DIÁRIA -->
+          @if (escalaItens().length > 0) {
+            <div class="validation-audit-card mb-15" [class.valid-card]="validacaoResultado().valida" [class.invalid-card]="!validacaoResultado().valida">
+              <div class="validation-card-header">
+                <div class="validation-title-group">
+                  <app-icon [name]="validacaoResultado().valida ? 'check-circle' : 'alert-triangle'" [size]="22" [color]="validacaoResultado().valida ? '#16a34a' : '#dc2626'"></app-icon>
+                  <div>
+                    <h4 class="m-0 font-bold" [style.color]="validacaoResultado().valida ? '#15803d' : '#991b1b'">
+                      {{ validacaoResultado().valida ? 'Escala Real Válida & Coberta' : 'Atenção: Ações de Cobertura Necessárias' }}
+                    </h4>
+                    <span class="text-xs text-muted">
+                      Garantia Mínima Exigida: <strong>{{ minFuncionariosPorDiaSetor() }} colaboradores/dia</strong> no setor <strong>{{ selectedSetor }}</strong>
+                    </span>
+                  </div>
+                </div>
+                <div class="validation-badges-row">
+                  <span class="badge-status-val" [class.badge-success]="validacaoResultado().valida" [class.badge-danger]="!validacaoResultado().valida">
+                    {{ validacaoResultado().totalErros }} Erros de Regra / Cobertura
+                  </span>
+                  @if (validacaoResultado().totalAlertas > 0) {
+                    <span class="badge-status-val badge-warning">
+                      {{ validacaoResultado().totalAlertas }} Alerta(s) de Carga Horária
+                    </span>
+                  }
+                </div>
+              </div>
+
+              @if (validacaoResultado().itensValidados.length > 0) {
+                <div class="validation-messages-list mt-10">
+                  @for (item of validacaoResultado().itensValidados; track $index) {
+                    <div class="val-msg-item" [class.msg-error]="item.tipo === 'ERRO_COBERTURA' || item.tipo === 'ERRO_CLT'" [class.msg-warning]="item.tipo === 'ALERTA_CARGA'">
+                      <app-icon [name]="item.tipo === 'ALERTA_CARGA' ? 'clock' : 'alert-circle'" [size]="14"></app-icon>
+                      <span>{{ item.mensagem }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
 
           <!-- Tabela Visual de Escala Mensal -->
           @if (escalaItens().length > 0) {
@@ -557,6 +605,13 @@
                       <span [style.background-color]="getSetorColor(f.setor)" class="setor-badge-color">
                         {{ f.setor }}
                       </span>
+                      @if (f.setores_cobertura && f.setores_cobertura.length > 0) {
+                        <div class="mt-5">
+                          @for (cob of f.setores_cobertura; track cob) {
+                            <span class="badge-cobertura-tag">🔄 Cobre {{ cob }}</span>
+                          }
+                        </div>
+                      }
                     </td>
                     <td>{{ f.cargo }}</td>
                     <td class="text-sm color-slate">{{ f.turno_padrao }}</td>
@@ -1328,6 +1383,214 @@
           <button (click)="saveFeriadoModal()" class="btn-premium btn-yellow-solid">
             {{ feriadoModal().isEdit ? 'Salvar Alterações' : 'Cadastrar Feriado' }}
           </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL: ESCALA GUIADA (WIZARD 4 PASSOS) -->
+  @if (isEscalaGuiadaModalOpen()) {
+    <div class="modal-backdrop">
+      <div class="modal-card modal-lg animate-fade-in">
+        <div class="modal-header wizard-header">
+          <div>
+            <span class="wizard-badge">Escala Guiada Inteligente ✨</span>
+            <h3 class="m-0 color-navy">Assistente de Configuração de Escala 6x1</h3>
+          </div>
+          <button (click)="isEscalaGuiadaModalOpen.set(false)" class="btn-icon-ghost" aria-label="Fechar modal">
+            <app-icon name="x" [size]="20"></app-icon>
+          </button>
+        </div>
+
+        <div class="wizard-steps-bar">
+          <div class="wizard-step-item" [class.active]="guiadaStep() >= 1">
+            <span class="step-num">1</span>
+            <span class="step-lbl">Setor & Mês</span>
+          </div>
+          <div class="wizard-step-line" [class.active]="guiadaStep() >= 2"></div>
+          <div class="wizard-step-item" [class.active]="guiadaStep() >= 2">
+            <span class="step-num">2</span>
+            <span class="step-lbl">Cobertura Mínima</span>
+          </div>
+          <div class="wizard-step-line" [class.active]="guiadaStep() >= 3"></div>
+          <div class="wizard-step-item" [class.active]="guiadaStep() >= 3">
+            <span class="step-num">3</span>
+            <span class="step-lbl">Turnos & Intervalos</span>
+          </div>
+          <div class="wizard-step-line" [class.active]="guiadaStep() >= 4"></div>
+          <div class="wizard-step-item" [class.active]="guiadaStep() >= 4">
+            <span class="step-num">4</span>
+            <span class="step-lbl">Validação & Gerar</span>
+          </div>
+        </div>
+
+        <div class="modal-body wizard-body">
+          <!-- PASSO 1 -->
+          @if (guiadaStep() === 1) {
+            <div class="wizard-step-content">
+              <h4 class="color-navy font-bold mb-5">Passo 1: Qual setor e mês você deseja escalar?</h4>
+              <p class="text-sm text-muted mb-20">Selecione o setor operacional para configurar os parâmetros da rotação giratória.</p>
+
+              <div class="form-group mb-15">
+                <label for="guiadaSetorSelect" class="font-bold color-navy">Setor Operacional:</label>
+                <select id="guiadaSetorSelect" [ngModel]="guiadaSetor()" (ngModelChange)="guiadaSetor.set($event)" class="form-control">
+                  @for (s of setores(); track s.id) {
+                    <option [value]="s.nome">{{ s.nome }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="form-group mb-15">
+                <label for="guiadaMesInput" class="font-bold color-navy">Mês de Referência:</label>
+                <input id="guiadaMesInput" type="month" [(ngModel)]="selectedMonth" class="form-control" />
+              </div>
+            </div>
+          }
+
+          <!-- PASSO 2 -->
+          @if (guiadaStep() === 2) {
+            <div class="wizard-step-content">
+              <h4 class="color-navy font-bold mb-5">Passo 2: Quantos colaboradores são necessários por dia?</h4>
+              <p class="text-sm text-muted mb-20">Esta regra garante que NUNCA haverá folga geral ou equipe insuficiente no setor.</p>
+
+              <div class="form-group mb-20">
+                <label for="guiadaMinInput" class="font-bold color-navy">Mínimo de Colaboradores em Trabalho Diário (Segunda a Domingo):</label>
+                <div class="input-counter-wrapper">
+                  <button type="button" (click)="diminuirGuiadaMin()" class="btn-counter">-</button>
+                  <input id="guiadaMinInput" type="number" min="1" [ngModel]="guiadaMinFuncionarios()" (ngModelChange)="guiadaMinFuncionarios.set($event)" class="form-control text-center font-bold" />
+                  <button type="button" (click)="aumentarGuiadaMin()" class="btn-counter">+</button>
+                </div>
+                <small class="text-muted mt-5 d-block">
+                  📌 Recomendação para <strong>{{ guiadaSetor() }}</strong>: Mínimo {{ guiadaSetor() === 'Fiscal de Caixa' ? '2 fiscais' : '1 colaborador' }} trabalhando todos os dias.
+                </small>
+              </div>
+
+              <div class="chk-consecutivos-wrapper mt-15">
+                <input type="checkbox" id="guiadaConsecutivos" [ngModel]="guiadaPermitirDoisConsecutivos()" (ngModelChange)="guiadaPermitirDoisConsecutivos.set($event)" class="chk-input" />
+                <label for="guiadaConsecutivos" class="chk-lbl">Permitir 2 folgas consecutivas quando necessário para fechar a escala</label>
+              </div>
+            </div>
+          }
+
+          <!-- PASSO 3 -->
+          @if (guiadaStep() === 3) {
+            <div class="wizard-step-content">
+              <h4 class="color-navy font-bold mb-5">Passo 3: Quais são os turnos e intervalos intrajornada?</h4>
+              <p class="text-sm text-muted mb-20">Os intervalos intrajornada (30m, 1h, 1h30m, 2h, 2h30m, 2h40m, 3h) são computados e abatidos da jornada total para não exceder o limite diário da CLT.</p>
+
+              <div class="turnos-list-grid mb-15">
+                @for (tc of turnosConfigs(); track tc.id) {
+                  <div class="turno-card-item">
+                    <div class="turno-header">
+                      <strong class="color-navy">{{ tc.nome }}</strong>
+                      <span class="badge-intervalo">{{ formatarMinutosIntervalo(tc.intervaloMinutos) }} intervalo</span>
+                    </div>
+                    <div class="turno-details text-xs">
+                      <span>Entrada: {{ tc.entrada }} | Saída: {{ tc.saida }}</span>
+                      <strong [class.text-danger]="tc.excedeLimiteDiario" [class.text-success]="!tc.excedeLimiteDiario">
+                        Jornada Líquida: {{ (tc.cargaHorariaLiquidaMinutos / 60).toFixed(1) }}h
+                      </strong>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <button (click)="abrirModalTurnos()" class="btn-secondary-save w-100">
+                <app-icon name="plus" [size]="16"></app-icon>
+                <span>Cadastrar Novo Horário ou Intervalo</span>
+              </button>
+            </div>
+          }
+
+          <!-- PASSO 4 -->
+          @if (guiadaStep() === 4) {
+            <div class="wizard-step-content">
+              <h4 class="color-navy font-bold mb-5">Passo 4: Confirmar e Gerar Escala Guiada</h4>
+              <p class="text-sm text-muted mb-20">Resumo dos parâmetros configurados para o setor <strong>{{ guiadaSetor() }}</strong> ({{ selectedMonth }}):</p>
+
+              <div class="wizard-summary-box">
+                <div class="summary-row">
+                  <span>Setor Operacional:</span>
+                  <strong>{{ guiadaSetor() }}</strong>
+                </div>
+                <div class="summary-row">
+                  <span>Mínimo por dia / domingo:</span>
+                  <strong class="color-navy">{{ guiadaMinFuncionarios() }} colaboradores em trabalho</strong>
+                </div>
+                <div class="summary-row">
+                  <span>Colaboradores Ativos no Setor:</span>
+                  <strong>{{ getFuncsDoSetorCount(guiadaSetor()) }} pessoa(s)</strong>
+                </div>
+                <div class="summary-row">
+                  <span>Garantia de 2 fiscais / domingo:</span>
+                  <strong class="color-green">Ativado via Revezamento Escalonado</strong>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="modal-footer wizard-footer">
+          @if (guiadaStep() > 1) {
+            <button (click)="passoAnteriorGuiada()" class="btn-premium btn-ghost">Voltar</button>
+          }
+          <div class="flex-grow"></div>
+          @if (guiadaStep() < 4) {
+            <button (click)="proximoPassoGuiada()" class="btn-premium btn-primary-solid">Próximo Passo →</button>
+          } @else {
+            <button (click)="concluirEscalaGuiada()" class="btn-premium btn-accent-gold">✨ Gerar Escala Guiada</button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL: GERENCIAR TURNOS E INTERVALOS -->
+  @if (isTurnosModalOpen()) {
+    <div class="modal-backdrop">
+      <div class="modal-card modal-md animate-fade-in">
+        <div class="modal-header">
+          <h3 class="m-0 color-navy">Cadastrar Turno e Intervalo Intrajornada</h3>
+          <button (click)="fecharModalTurnos()" class="btn-icon-ghost" aria-label="Fechar modal">
+            <app-icon name="x" [size]="20"></app-icon>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row gap-10 mb-15">
+            <div class="form-group flex-1">
+              <label for="novoEntradaInput" class="font-bold text-xs">Entrada:</label>
+              <input id="novoEntradaInput" type="time" [ngModel]="novoTurnoEntrada()" (ngModelChange)="novoTurnoEntrada.set($event)" class="form-control" />
+            </div>
+            <div class="form-group flex-1">
+              <label for="novoSaidaInput" class="font-bold text-xs">Saída:</label>
+              <input id="novoSaidaInput" type="time" [ngModel]="novoTurnoSaida()" (ngModelChange)="novoTurnoSaida.set($event)" class="form-control" />
+            </div>
+          </div>
+
+          <div class="form-group mb-15">
+            <span class="font-bold text-xs d-block mb-5">Intervalo Intrajornada (Computado na Carga Horária):</span>
+            <div class="dias-pills-row">
+              @for (preset of intervalosPresets; track preset.minutos) {
+                <button
+                  type="button"
+                  (click)="novoTurnoIntervalo.set(preset.minutos); novoTurnoCustomIntervalo.set(null)"
+                  [class.active]="novoTurnoIntervalo() === preset.minutos && !novoTurnoCustomIntervalo()"
+                  class="pill-btn-sm"
+                >
+                  {{ preset.label }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="form-group mb-15">
+            <label for="customIntervaloInput" class="text-xs color-navy">Ou digite um intervalo personalizado (em minutos):</label>
+            <input id="customIntervaloInput" type="number" placeholder="Ex: 45 para 45 minutos" [ngModel]="novoTurnoCustomIntervalo()" (ngModelChange)="novoTurnoCustomIntervalo.set($event)" class="form-control" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button (click)="fecharModalTurnos()" class="btn-premium btn-ghost">Cancelar</button>
+          <button (click)="adicionarNovoTurno(); fecharModalTurnos()" class="btn-premium btn-primary-solid">Salvar Turno</button>
         </div>
       </div>
     </div>
