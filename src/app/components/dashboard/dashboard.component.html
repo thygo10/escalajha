@@ -165,8 +165,7 @@
 
       <div class="topbar-actions">
         <!-- Botão de Opções de Impressão A4 -->
-        <button (click)="openPrintOptionsModal()" class="btn-premium btn-yellow-gradient">
-          <app-icon name="printer" [size]="16"></app-icon>
+        <button (click)="openPrintOptionsModal()" class="btn-premium btn-yellow-solid">
           <span class="no-mobile-text">Imprimir A4</span>
         </button>
       </div>
@@ -327,12 +326,10 @@
             </div>
 
             <div class="escala-actions-group">
-              <button (click)="gerarNovaEscala()" class="btn-premium btn-primary-gradient">
-                <app-icon name="calendar" [size]="16"></app-icon>
+              <button (click)="gerarNovaEscala()" class="btn-premium btn-primary-solid">
                 <span>Gerar Escala 6x1</span>
               </button>
               <button (click)="salvarEscala()" class="btn-secondary-save" [disabled]="saving()">
-                <app-icon name="check" [size]="16"></app-icon>
                 <span>{{ saving() ? 'Salvando...' : 'Salvar' }}</span>
               </button>
             </div>
@@ -341,8 +338,10 @@
           <!-- PAINEL DE CONTROLE DA ESCALA 6X1 GIRATÓRIA -->
           <div class="rotacao-config-panel">
             <div class="rotacao-config-title">
-              <app-icon name="info" [size]="16" color="#0b2a52"></app-icon>
               <span>Configurações da Rotação 6x1 Giratória</span>
+              <span class="custom-tooltip" data-tooltip="Defina os dias da semana permitidos para folga e exceções para 2 dias consecutivos.">
+                <app-icon name="info" [size]="16" color="#0b2a52"></app-icon>
+              </span>
             </div>
 
             <div class="rotacao-options-wrapper">
@@ -368,7 +367,10 @@
                   class="chk-input"
                 />
                 <label for="chkConsecutivos" class="chk-lbl">
-                  Permitir 2 folgas consecutivas quando necessário
+                  Permitir 2 folgas consecutivas
+                  <span class="custom-tooltip" data-tooltip="Permitir 2 folgas consecutivas quando necessário para fechar a escala">
+                    <app-icon name="info" [size]="14" color="#64748b"></app-icon>
+                  </span>
                 </label>
               </div>
             </div>
@@ -509,8 +511,7 @@
               </select>
             </div>
 
-            <button type="submit" class="btn-premium btn-primary-gradient btn-add-submit">
-              <app-icon name="plus" [size]="16"></app-icon>
+            <button type="submit" class="btn-premium btn-primary-solid btn-add-submit">
               <span>Adicionar Colaborador</span>
             </button>
           </form>
@@ -582,12 +583,10 @@
             <h3>Setores e Cargos</h3>
 
             <div class="actions-flex-gap">
-              <button (click)="openAddSetorModal()" class="btn-premium btn-primary-gradient">
-                <app-icon name="plus" [size]="16"></app-icon>
+              <button (click)="openAddSetorModal()" class="btn-premium btn-primary-solid">
                 <span>Novo Setor</span>
               </button>
-              <button (click)="openAddCargoModal()" class="btn-premium btn-yellow-gradient">
-                <app-icon name="plus" [size]="16"></app-icon>
+              <button (click)="openAddCargoModal()" class="btn-premium btn-yellow-solid">
                 <span>Novo Cargo</span>
               </button>
             </div>
@@ -665,8 +664,7 @@
                 <option value="Municipal">Municipais (Poções - BA)</option>
               </select>
 
-              <button (click)="openAddFeriadoModal()" class="btn-premium btn-yellow-gradient">
-                <app-icon name="plus" [size]="16"></app-icon>
+              <button (click)="openAddFeriadoModal()" class="btn-premium btn-yellow-solid">
                 <span>Adicionar Feriado</span>
               </button>
             </div>
@@ -745,8 +743,7 @@
                 </button>
               </div>
 
-              <button (click)="openAddRegraModal()" class="btn-premium btn-danger-gradient">
-                <app-icon name="plus" [size]="16"></app-icon>
+              <button (click)="openAddRegraModal()" class="btn-premium btn-danger-solid">
                 <span>Cadastrar Regra</span>
               </button>
             </div>
@@ -1000,8 +997,7 @@
 
         <div class="modal-footer">
           <button (click)="printModalVisible.set(false)" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="executePrint()" class="btn-premium btn-yellow-gradient">
-            <app-icon name="printer" [size]="16"></app-icon>
+          <button (click)="executePrint()" class="btn-premium btn-yellow-solid">
             <span>Confirmar e Imprimir</span>
           </button>
         </div>
@@ -1042,12 +1038,17 @@
 
           <div class="form-group flex-items-center-gap">
             <input type="checkbox" [(ngModel)]="regraModalForm.obrigatoria" id="chkObrigatoria" class="chk-input" />
-            <label for="chkObrigatoria" class="chk-lbl">Regra Obrigatória / Rígida</label>
+            <label for="chkObrigatoria" class="chk-lbl">
+              Regra Obrigatória / Rígida
+              <span class="custom-tooltip" data-tooltip="O algoritmo nunca poderá quebrar esta regra">
+                <app-icon name="info" [size]="14" color="#64748b"></app-icon>
+              </span>
+            </label>
           </div>
         </div>
         <div class="modal-footer">
           <button (click)="closeRegraModal()" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="saveRegraModal()" class="btn-premium btn-danger-gradient">
+          <button (click)="saveRegraModal()" class="btn-premium btn-danger-solid">
             {{ regraModal().isEdit ? 'Salvar Alterações' : 'Cadastrar Regra' }}
           </button>
         </div>
@@ -1095,7 +1096,7 @@
 
         <div class="modal-footer">
           <button (click)="closeQuickBlurModal()" class="btn-premium btn-ghost">Fechar</button>
-          <button (click)="navigateToFuncProfile(f)" class="btn-premium btn-yellow-gradient">
+          <button (click)="navigateToFuncProfile(f)" class="btn-premium btn-yellow-solid">
             <span>Ver Perfil Detalhado</span>
           </button>
         </div>
@@ -1120,7 +1121,7 @@
           <button (click)="closeConfirmModal()" class="btn-premium btn-ghost">
             {{ confirmModal().cancelText || 'Cancelar' }}
           </button>
-          <button (click)="executeConfirmModal()" class="btn-premium btn-danger-gradient">
+          <button (click)="executeConfirmModal()" class="btn-premium btn-danger-solid">
             {{ confirmModal().confirmText || 'Confirmar' }}
           </button>
         </div>
@@ -1177,7 +1178,7 @@
         </div>
         <div class="modal-footer">
           <button (click)="editingFunc.set(null)" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="saveEditFuncionario()" class="btn-premium btn-primary-gradient">Salvar Alterações</button>
+          <button (click)="saveEditFuncionario()" class="btn-premium btn-primary-solid">Salvar Alterações</button>
         </div>
       </div>
     </div>
@@ -1205,7 +1206,7 @@
         </div>
         <div class="modal-footer">
           <button (click)="closeSectorModal()" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="saveSectorModal()" class="btn-premium btn-yellow-gradient">
+          <button (click)="saveSectorModal()" class="btn-premium btn-yellow-solid">
             {{ sectorModal().isEdit ? 'Salvar Alterações' : 'Criar Setor' }}
           </button>
         </div>
@@ -1245,7 +1246,7 @@
         </div>
         <div class="modal-footer">
           <button (click)="closeCargoModal()" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="saveCargoModal()" class="btn-premium btn-primary-gradient">
+          <button (click)="saveCargoModal()" class="btn-premium btn-primary-solid">
             {{ cargoModal().isEdit ? 'Salvar Alterações' : 'Criar Cargo' }}
           </button>
         </div>
@@ -1295,12 +1296,17 @@
 
           <div class="form-group flex-items-center-gap">
             <input type="checkbox" [(ngModel)]="feriadoModalForm.funcionamento_proibido" id="chkFeriadoProibido" class="chk-input" />
-            <label for="chkFeriadoProibido" class="chk-lbl">Funcionamento Proibido (Gera folga obrigatória)</label>
+            <label for="chkFeriadoProibido" class="chk-lbl">
+              Funcionamento Proibido
+              <span class="custom-tooltip" data-tooltip="Gera folga obrigatória para todos os colaboradores">
+                <app-icon name="info" [size]="14" color="#64748b"></app-icon>
+              </span>
+            </label>
           </div>
         </div>
         <div class="modal-footer">
           <button (click)="closeFeriadoModal()" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="saveFeriadoModal()" class="btn-premium btn-yellow-gradient">
+          <button (click)="saveFeriadoModal()" class="btn-premium btn-yellow-solid">
             {{ feriadoModal().isEdit ? 'Salvar Alterações' : 'Cadastrar Feriado' }}
           </button>
         </div>
