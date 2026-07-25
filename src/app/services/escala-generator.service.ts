@@ -184,6 +184,15 @@ export class EscalaGeneratorService {
           continue;
         }
 
+        // REGRA PREVENTIVA DE SÁBADO: Se amanhã é um domingo de folga agendado (FD), o sábado DEVE ser dia de trabalho 'T'
+        // para que a folga seja gozada no Domingo (FD) sem gerar folga dupla e sem desarmar o domingo.
+        const amanhaEhDomingoFolga = (diaSemana === 6) && domingosFolgaSet.has(dia + 1);
+        if (amanhaEhDomingoFolga) {
+          dias[dia] = feriadosAbertos.has(dia) ? 'TF' : 'T';
+          diasTrabalhadosSeguidos++;
+          continue;
+        }
+
         // REGRA 1: Trava CLT de 6 dias consecutivos máximo
         if (diasTrabalhadosSeguidos >= 6) {
           if (!diaAnteriorEhFolga) {
@@ -194,9 +203,9 @@ export class EscalaGeneratorService {
           }
         }
 
-        // REGRA 2: Trata Domingos
+        // REGRA 2: Trata Domingos (Se está no domingosFolgaSet, É FD de forma inviolável)
         if (isDomingo) {
-          if (domingosFolgaSet.has(dia) && !diaAnteriorEhFolga) {
+          if (domingosFolgaSet.has(dia)) {
             dias[dia] = 'FD';
             domingosSeguidos = 0;
             diasTrabalhadosSeguidos = 0;
