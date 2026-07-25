@@ -384,14 +384,12 @@
 
           <!-- LEGENDA DA ESCALA 6X1 GIRATÓRIA -->
           <div class="escala-legend-bar">
-            <span class="legend-title">Legenda de Cores e Turnos:</span>
+            <span class="legend-title">Legenda de Cores:</span>
             <div class="legend-items">
-              <span class="legend-item"><span class="badge-legend status-trabalho">T</span> Trabalho Normal</span>
-              <span class="legend-item"><span class="badge-legend status-domingo">TD</span> Trabalho em Domingo (Revezamento)</span>
-              <span class="legend-item"><span class="badge-legend status-feriado">TF</span> Trabalho em Feriado</span>
-              <span class="legend-item"><span class="badge-legend status-folga">F</span> Folga Semanal (6x1)</span>
-              <span class="legend-item"><span class="badge-legend status-folga">FD</span> Folga de Domingo</span>
-              <span class="legend-item"><span class="badge-legend status-folga">FE</span> Folga Feriado Fechado</span>
+              <span class="legend-item"><span class="badge-legend status-trabalho-simple">-</span> Dia de Trabalho</span>
+              <span class="legend-item"><span class="badge-legend status-folga-simple">F</span> Folga (Semanal / Domingo / Feriado)</span>
+              <span class="legend-item"><span class="badge-legend status-domingo-highlight">DOM</span> Domingo (Amarelo)</span>
+              <span class="legend-item"><span class="badge-legend status-feriado-highlight">FER</span> Feriado (Vermelho)</span>
             </div>
           </div>
 
@@ -452,7 +450,12 @@
                     <th class="sticky-col col-nome">Nome</th>
                     <th class="col-turno">Turno</th>
                     @for (d of diasDoMes(); track d) {
-                      <th class="col-dia">{{ d }}</th>
+                      <th class="col-dia" [class.col-domingo]="isDiaDomingo(d)" [class.col-feriado]="isDiaFeriado(d)">
+                        <div class="header-dia-container">
+                          <span class="header-dia-num">{{ d }}</span>
+                          <span class="header-dia-sem">{{ getDiaSemanaAbrevUpper(d) }}</span>
+                        </div>
+                      </th>
                     }
                   </tr>
                 </thead>
@@ -464,11 +467,11 @@
                       <td class="col-turno-text">{{ item.turno }}</td>
                       @for (d of diasDoMes(); track d) {
                         @if (!mostrarApenasFolgasImpressao() || item.dias[d] === 'F' || item.dias[d] === 'FD' || item.dias[d] === 'FE') {
-                          <td [class]="getDiaClassFromTipoDia(item.dias[d])">
+                          <td [class]="getDiaClassFromTipoDia(item.dias[d])" [class.col-domingo]="isDiaDomingo(d)" [class.col-feriado]="isDiaFeriado(d)">
                             {{ getDiaLabelFromTipoDia(item.dias[d]) }}
                           </td>
                         } @else {
-                          <td class="bg-gray-100 text-gray-400 text-center text-xs">-</td>
+                          <td class="bg-gray-100 text-gray-400 text-center text-xs" [class.col-domingo]="isDiaDomingo(d)" [class.col-feriado]="isDiaFeriado(d)">-</td>
                         }
                       }
                     </tr>
@@ -1485,8 +1488,15 @@
           <!-- PASSO 3 -->
           @if (guiadaStep() === 3) {
             <div class="wizard-step-content">
-              <h4 class="color-navy font-bold mb-5">Passo 3: Quais são os turnos e intervalos intrajornada?</h4>
-              <p class="text-sm text-muted mb-20">Os intervalos intrajornada (30m, 1h, 1h30m, 2h, 2h30m, 2h40m, 3h) são computados e abatidos da jornada total para não exceder o limite diário da CLT.</p>
+              <div class="flex-header-between mb-10">
+                <div>
+                  <h4 class="color-navy font-bold m-0">Passo 3: Quais são os turnos e intervalos intrajornada?</h4>
+                  <p class="text-sm text-muted m-0">Os intervalos intrajornada são computados e abatidos da jornada total para conformidade CLT.</p>
+                </div>
+                <button (click)="carregarHorariosFixosCaixa()" class="btn-action-sm btn-yellow" title="Carregar os 4 Horários Fixos do Caixa">
+                  🔄 Recarregar Horários Fixos do Caixa
+                </button>
+              </div>
 
               <div class="turnos-list-grid mb-15">
                 @for (tc of turnosConfigs(); track tc.id) {
@@ -1498,7 +1508,7 @@
                     <div class="turno-details text-xs">
                       <span>Entrada: {{ tc.entrada }} | Saída: {{ tc.saida }}</span>
                       <strong [class.text-danger]="tc.excedeLimiteDiario" [class.text-success]="!tc.excedeLimiteDiario">
-                        Jornada Líquida: {{ (tc.cargaHorariaLiquidaMinutos / 60).toFixed(1) }}h
+                        Jornada Líquida: {{ formatarCargaHoraria(tc.cargaHorariaLiquidaMinutos) }}
                       </strong>
                     </div>
                   </div>

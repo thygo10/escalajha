@@ -7,7 +7,7 @@ import { EscalaGeneratorService } from '../../services/escala-generator.service'
 import { ToastService } from '../../services/toast.service';
 import { Loja, Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho, TurnoConfig, IntervaloOption, ValidacaoEscalaResultado } from '../../models/types';
 import { IconComponent } from '../shared/icon.component';
-import { HORARIOS_FIXOS_CAIXA } from '../../models/mock-data';
+import { HORARIOS_FIXOS_CAIXA, HORARIOS_FIXOS_FISCAL } from '../../models/mock-data';
 
 interface ConfirmModalData {
   visible: boolean;
@@ -137,10 +137,10 @@ export class DashboardComponent implements OnInit {
   // Turnos & Intervalos Intrajornada
   isTurnosModalOpen = signal<boolean>(false);
   turnosConfigs = signal<TurnoConfig[]>([
-    { id: 't1', nome: '08:00 às 17:00', entrada: '08:00', saida: '17:00', intervaloMinutos: 60, cargaHorariaLiquidaMinutos: 480, excedeLimiteDiario: false },
-    { id: 't2', nome: '10:00 às 20:00', entrada: '10:00', saida: '20:00', intervaloMinutos: 120, cargaHorariaLiquidaMinutos: 480, excedeLimiteDiario: false },
-    { id: 't3', nome: '12:00 às 20:00', entrada: '12:00', saida: '20:00', intervaloMinutos: 60, cargaHorariaLiquidaMinutos: 420, excedeLimiteDiario: false },
-    { id: 't4', nome: '14:00 às 22:00', entrada: '14:00', saida: '22:00', intervaloMinutos: 60, cargaHorariaLiquidaMinutos: 420, excedeLimiteDiario: false }
+    { id: 't1', nome: '07:00 às 15:50 (Almoço 11:00 às 12:30)', entrada: '07:00', saida: '15:50', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+    { id: 't2', nome: '09:00 às 17:50 (Almoço 13:00 às 14:30)', entrada: '09:00', saida: '17:50', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+    { id: 't3', nome: '12:40 às 21:30 (Almoço 14:20 às 15:50)', entrada: '12:40', saida: '21:30', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+    { id: 't4', nome: '12:40 às 21:30 (Almoço 15:30 às 17:00)', entrada: '12:40', saida: '21:30', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false }
   ]);
 
   intervalosPresets: IntervaloOption[] = [
@@ -310,15 +310,15 @@ export class DashboardComponent implements OnInit {
     return map;
   });
 
-  /** Mapa pré-computado: dia → nome completo do dia UPPER (para impressão) */
+  /** Mapa pré-computado: dia → abreviação de 3 letras do dia da semana (UPPER) */
   readonly diasSemanaUpperMap = computed(() => {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
     const totalDias = new Date(ano, mes, 0).getDate();
     const map = new Map<number, string>();
     for (let d = 1; d <= totalDias; d++) {
       const dateObj = new Date(ano, mes - 1, d);
-      const name = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase();
-      map.set(d, name.replace('-FEIRA', ''));
+      const name = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
+      map.set(d, name.slice(0, 3));
     }
     return map;
   });
@@ -823,6 +823,8 @@ export class DashboardComponent implements OnInit {
     // Carrega escala de forma independente — não bloqueia o skeleton
     try {
       this.isEscalaLoading.set(true);
+      this.generator.clearAllCache();
+      this.draftEscalasMap.set(new Map());
       this.onMonthOrSetorChange();
     } finally {
       this.isEscalaLoading.set(false);
@@ -858,13 +860,44 @@ export class DashboardComponent implements OnInit {
     const loja = this.activeLoja();
     if (!loja) return;
 
+    const key = `${loja.id}|${this.selectedMonth}|${this.selectedSetor}`;
+
+    // Se já existe rascunho em memória para este setor e mês, preserva-o!
+    if (this.draftEscalasMap().has(key)) {
+      this.escalaItens.set(this.draftEscalasMap().get(key)!);
+      return;
+    }
+
     const mesRef = `${this.selectedMonth}-01`;
     try {
       const escala = await this.supabase.getEscala(loja.id, mesRef, this.selectedSetor);
-      if (escala?.dados?.itens) {
+      if (escala?.dados?.itens && escala.dados.itens.length > 0) {
         this.escalaItens.set(escala.dados.itens);
+        this.draftEscalasMap.update((m: Map<string, EscalaItem[]>) => {
+          const newMap = new Map(m);
+          newMap.set(key, escala.dados.itens);
+          return newMap;
+        });
       } else {
-        this.escalaItens.set([]);
+        // Se Supabase não tem escala salva, gera a escala 6x1 giratória automaticamente
+        const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => f.setor === this.selectedSetor && f.ativo);
+        if (funcsDoSetor.length > 0) {
+          const [ano, mes] = this.selectedMonth.split('-').map(Number);
+          const gerada = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes, {
+            permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
+            diasPermitidosFolga: this.diasPermitidosFolga(),
+            feriados: this.feriados(),
+            minFuncionariosPorDia: this.minFuncionariosPorDiaSetor()
+          });
+          this.escalaItens.set(gerada);
+          this.draftEscalasMap.update((m: Map<string, EscalaItem[]>) => {
+            const newMap = new Map(m);
+            newMap.set(key, gerada);
+            return newMap;
+          });
+        } else {
+          this.escalaItens.set([]);
+        }
       }
     } catch (err) {
       console.error('Erro ao carregar escala:', err);
@@ -905,27 +938,43 @@ export class DashboardComponent implements OnInit {
       this.toastService.warning('Sem Colaboradores Ativos', `Nenhum colaborador ativo cadastrado para o setor "${this.selectedSetor}".`);
       return;
     }
-
-    if (this.escalaItens().length > 0) {
-      this.confirmModal.set({
-        visible: true,
-        title: 'Recalcular Escala 6x1?',
-        message: `Já existe uma escala calculada para o setor "${this.selectedSetor}" (${this.selectedMonth}). Gerar novamente substituirá os turnos e folgas exibidos. Deseja continuar?`,
-        confirmText: 'Sim, Recalcular Escala',
-        onConfirm: () => {
-          this._executarGeracaoEscala(funcsDoSetor);
-        }
-      });
-    } else {
-      this._executarGeracaoEscala(funcsDoSetor);
-    }
+    this._executarGeracaoEscala(funcsDoSetor);
   }
 
   abrirEscalaGuiada() {
     this.guiadaSetor.set(this.selectedSetor);
-    this.guiadaMinFuncionarios.set(this.selectedSetor === 'Fiscal de Caixa' ? 2 : 1);
+    const lower = this.selectedSetor.toLowerCase();
+    const isCaixa = lower.includes('caixa') && !lower.includes('fiscal');
+    this.guiadaMinFuncionarios.set(isCaixa ? 6 : 2);
     this.guiadaStep.set(1);
+    this.carregarHorariosFixosCaixa();
     this.isEscalaGuiadaModalOpen.set(true);
+  }
+
+  readonly horariosFixosFiscal = HORARIOS_FIXOS_FISCAL;
+
+  carregarHorariosFixosCaixa() {
+    const sLower = (this.guiadaSetor() || this.selectedSetor).toLowerCase();
+    if (sLower.includes('fiscal')) {
+      this.turnosConfigs.set([
+        { id: 'tf1', nome: '07:00 às 15:50 (Almoço 11:00 às 12:30)', entrada: '07:00', saida: '15:50', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+        { id: 'tf2', nome: '12:40 às 21:00 (Almoço 14:20 às 15:40)', entrada: '12:40', saida: '21:00', intervaloMinutos: 80, cargaHorariaLiquidaMinutos: 420, excedeLimiteDiario: false }
+      ]);
+    } else {
+      this.turnosConfigs.set([
+        { id: 't1', nome: '07:00 às 15:50 (Almoço 11:00 às 12:30)', entrada: '07:00', saida: '15:50', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+        { id: 't2', nome: '09:00 às 17:50 (Almoço 13:00 às 14:30)', entrada: '09:00', saida: '17:50', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+        { id: 't3', nome: '12:40 às 21:30 (Almoço 14:20 às 15:50)', entrada: '12:40', saida: '21:30', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+        { id: 't4', nome: '12:40 às 21:30 (Almoço 15:30 às 17:00)', entrada: '12:40', saida: '21:30', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false }
+      ]);
+    }
+  }
+
+  formatarCargaHoraria(minutos: number): string {
+    const h = Math.floor(minutos / 60);
+    const m = minutos % 60;
+    if (m > 0) return `${h}h ${m}m`;
+    return `${h}.0h`;
   }
 
   proximoPassoGuiada() {
@@ -937,17 +986,22 @@ export class DashboardComponent implements OnInit {
   }
 
   concluirEscalaGuiada() {
-    this.selectedSetor = this.guiadaSetor();
+    const setorAlvo = this.guiadaSetor();
     this.minFuncionariosPorDiaSetor.set(this.guiadaMinFuncionarios());
     this.permitirDoisDiasConsecutivos.set(this.guiadaPermitirDoisConsecutivos());
     this.isEscalaGuiadaModalOpen.set(false);
 
-    const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => f.setor === this.selectedSetor && f.ativo);
+    this._selectedSetor = setorAlvo;
+    this.triggerRecalculoEscala.update((v: number) => v + 1);
+
+    const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => f.setor === setorAlvo && f.ativo);
     if (funcsDoSetor.length === 0) {
-      this.toastService.warning('Sem Colaboradores Ativos', `Nenhum colaborador ativo cadastrado para o setor "${this.selectedSetor}".`);
+      this.toastService.warning('Sem Colaboradores Ativos', `Nenhum colaborador ativo cadastrado para o setor "${setorAlvo}".`);
       return;
     }
+
     this._executarGeracaoEscala(funcsDoSetor, this.guiadaMinFuncionarios());
+    this.selectTab('escala');
   }
 
   abrirModalTurnos() {
@@ -1007,6 +1061,8 @@ export class DashboardComponent implements OnInit {
   private _executarGeracaoEscala(funcsDoSetor: Funcionario[], minPorDia?: number) {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
     const minReq = minPorDia ?? this.minFuncionariosPorDiaSetor();
+
+    this.generator.invalidateCache(ano, mes);
 
     const gerada = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes, {
       permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
@@ -1501,21 +1557,26 @@ export class DashboardComponent implements OnInit {
     return 'T';
   }
 
+  isDiaDomingo(diaNum: number): boolean {
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    return new Date(ano, mes - 1, diaNum).getDay() === 0;
+  }
+
+  isDiaFeriado(diaNum: number): boolean {
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    const dateStr = `${ano}-${String(mes).padStart(2, '0')}-${String(diaNum).padStart(2, '0')}`;
+    return this.feriados().some((f: Feriado) => f.data === dateStr);
+  }
+
   // BUG-L5 FIX: métodos separados para TipoDia na tabela de escala
   getDiaClassFromTipoDia(tipo: TipoDia): string {
-    if (tipo === 'F' || tipo === 'FD' || tipo === 'FE') return 'status-folga';
-    if (tipo === 'TD') return 'status-domingo';
-    if (tipo === 'TF') return 'status-feriado';
-    return 'status-trabalho';
+    if (tipo === 'F' || tipo === 'FD' || tipo === 'FE') return 'status-folga-simple';
+    return 'status-trabalho-simple';
   }
 
   getDiaLabelFromTipoDia(tipo: TipoDia): string {
-    if (tipo === 'F') return 'F';
-    if (tipo === 'FD') return 'FD';
-    if (tipo === 'FE') return 'FE';
-    if (tipo === 'TD') return 'TD';
-    if (tipo === 'TF') return 'TF';
-    return 'T';
+    if (tipo === 'F' || tipo === 'FD' || tipo === 'FE') return 'F';
+    return '-';
   }
 
   async handleLogout() {

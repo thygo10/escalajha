@@ -363,21 +363,24 @@
 
 /* Table Column Utilities */
 .col-mat {
-  width: 85px;
+  width: 75px;
   left: 0;
 }
 
 .col-nome {
-  width: 140px;
-  left: 85px;
+  width: 110px;
+  left: 75px;
 }
 
 .col-turno {
-  width: 120px;
+  width: 90px;
 }
 
 .col-dia {
-  width: 32px;
+  width: 26px;
+  min-width: 24px;
+  padding: 2px 1px !important;
+  font-size: 0.68rem;
 }
 
 .col-turno-text {
@@ -1308,3 +1311,68 @@
 }
 
 .summary-row:last-child { border-bottom: none; }
+
+/* Estilos de Cabeçalho dos Dias (Dia + Dia da Semana empilhados) */
+.header-dia-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+  padding: 2px 0;
+}
+
+.header-dia-num {
+  font-weight: 800;
+  font-size: 0.75rem;
+}
+
+.header-dia-sem {
+  font-size: 0.65rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* Destaque Visual de Colunas de Domingo e Feriado */
+th.col-domingo, td.col-domingo {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+th.col-feriado, td.col-feriado {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+/* Células de Status Simplificadas (F e -) */
+.status-folga-simple {
+  background-color: #dcfce7 !important;
+  color: #166534 !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  border-radius: 4px;
+}
+
+.status-trabalho-simple {
+  text-align: center !important;
+  color: #94a3b8 !important;
+  font-weight: 500;
+}
+
+.status-domingo-highlight {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde047;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.status-feriado-highlight {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}

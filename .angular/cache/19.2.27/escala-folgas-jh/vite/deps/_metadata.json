@@ -1,52 +1,76 @@
 {
-  "hash": "0364df50",
-  "configHash": "a704ba51",
-  "lockfileHash": "6927dcd9",
-  "browserHash": "e999f380",
+  "hash": "2a0810ef",
+  "configHash": "86a5e5cf",
+  "lockfileHash": "fbd69b63",
+  "browserHash": "225559d3",
   "optimized": {
     "@angular/common": {
       "src": "../../../../../../node_modules/@angular/common/fesm2022/common.mjs",
       "file": "@angular_common.js",
-      "fileHash": "04cd8046",
+      "fileHash": "109ac4b6",
+      "needsInterop": false
+    },
+    "@angular/common/http": {
+      "src": "../../../../../../node_modules/@angular/common/fesm2022/http.mjs",
+      "file": "@angular_common_http.js",
+      "fileHash": "2cb35eb0",
       "needsInterop": false
     },
     "@angular/core": {
       "src": "../../../../../../node_modules/@angular/core/fesm2022/core.mjs",
       "file": "@angular_core.js",
-      "fileHash": "8d93ac11",
+      "fileHash": "74dbc8b7",
       "needsInterop": false
     },
     "@angular/forms": {
       "src": "../../../../../../node_modules/@angular/forms/fesm2022/forms.mjs",
       "file": "@angular_forms.js",
-      "fileHash": "76d377f9",
+      "fileHash": "dfe4ac13",
       "needsInterop": false
     },
     "@angular/platform-browser": {
       "src": "../../../../../../node_modules/@angular/platform-browser/fesm2022/platform-browser.mjs",
       "file": "@angular_platform-browser.js",
-      "fileHash": "284273d0",
+      "fileHash": "453af665",
+      "needsInterop": false
+    },
+    "@angular/platform-browser/animations/async": {
+      "src": "../../../../../../node_modules/@angular/platform-browser/fesm2022/animations/async.mjs",
+      "file": "@angular_platform-browser_animations_async.js",
+      "fileHash": "24aa8989",
       "needsInterop": false
     },
     "@angular/router": {
       "src": "../../../../../../node_modules/@angular/router/fesm2022/router.mjs",
       "file": "@angular_router.js",
-      "fileHash": "5b3aa968",
+      "fileHash": "80cb1da4",
       "needsInterop": false
     },
     "@supabase/supabase-js": {
       "src": "../../../../../../node_modules/@supabase/supabase-js/dist/index.mjs",
       "file": "@supabase_supabase-js.js",
-      "fileHash": "4eae932b",
+      "fileHash": "9c4b42e5",
       "needsInterop": false
     }
   },
   "chunks": {
-    "chunk-KPGGHCCC": {
-      "file": "chunk-KPGGHCCC.js"
+    "browser-GTZE4X4A": {
+      "file": "browser-GTZE4X4A.js"
     },
-    "chunk-CWEADZEV": {
-      "file": "chunk-CWEADZEV.js"
+    "chunk-TZPGKN34": {
+      "file": "chunk-TZPGKN34.js"
+    },
+    "chunk-IC42FVO4": {
+      "file": "chunk-IC42FVO4.js"
+    },
+    "chunk-S7YUI2SU": {
+      "file": "chunk-S7YUI2SU.js"
+    },
+    "chunk-KXEN7PPK": {
+      "file": "chunk-KXEN7PPK.js"
+    },
+    "chunk-TT4AYIAU": {
+      "file": "chunk-TT4AYIAU.js"
     },
     "chunk-ZTSDAE26": {
       "file": "chunk-ZTSDAE26.js"
