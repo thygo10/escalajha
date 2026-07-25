@@ -124,7 +124,7 @@ export interface ValidacaoItem {
   dia: number;
   setor: string;
   mensagem: string;
-  tipo: 'ERRO_COBERTURA' | 'ERRO_CLT' | 'ALERTA_CARGA' | 'AVISO';
+  tipo: 'ERRO_COBERTURA' | 'ERRO_COBERTURA_CAIXA' | 'ERRO_PADARIA_PRODUCAO' | 'ERRO_FOLGAS_MES' | 'ERRO_CLT' | 'ALERTA_CARGA' | 'AVISO';
 }
 
 export interface ValidacaoEscalaResultado {

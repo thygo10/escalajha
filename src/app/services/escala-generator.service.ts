@@ -14,6 +14,11 @@ export interface OpcionesGeracaoEscala {
 export class EscalaGeneratorService {
   private readonly _cache = new Map<string, EscalaItem[]>();
 
+  /** Invalida todo o cache de escalas em memória */
+  clearAllCache(): void {
+    this._cache.clear();
+  }
+
   /** Invalida entradas de cache para um mês/ano específico */
   invalidateCache(ano: number, mes: number): void {
     const prefix = `${ano}-${mes}-`;
@@ -36,7 +41,7 @@ export class EscalaGeneratorService {
       opcoes?.minFuncionariosPorDia ?? 2,
       (opcoes?.diasPermitidosFolga ?? []).slice().sort((a, b) => a - b).join(','),
       (opcoes?.feriados ?? []).map(f => `${f.data}:${f.funcionamento_proibido}`).sort((a, b) => a.localeCompare(b)).join('|'),
-      funcionarios.map(f => `${f.matricula_aleatoria}:${f.genero}:${f.ativo}:${f.setor}`).join(',')
+      funcionarios.map(f => `${f.matricula_aleatoria}:${f.primeiro_nome}:${f.cargo}:${f.turno_padrao}:${f.genero}:${f.ativo}:${f.setor}`).join(',')
     ].join(';');
 
     const cacheKey = `${ano}-${mes}-${this._simpleHash(configStr)}`;
@@ -116,6 +121,14 @@ export class EscalaGeneratorService {
         domingos.push(d);
       }
     }
+
+    // Identificar setor para aplicar regras dinâmicas
+    const setorNome = (funcionarios[0]?.setor || '').toLowerCase();
+    const eFrenteDeCaixa = setorNome.includes('caixa') && !setorNome.includes('fiscal');
+    const ePadaria = setorNome.includes('padaria');
+
+    // Mínimo automático de 6 para Frente de Caixa
+    const minEfetivo = eFrenteDeCaixa ? Math.max(config.minFuncionariosPorDia ?? 2, 6) : (config.minFuncionariosPorDia ?? 2);
 
     // Dividir os funcionários em turmas escalonadas (Cohortes)
     // Isso evita que todos entrem em folga no mesmo domingo ou dia útil.
@@ -215,11 +228,72 @@ export class EscalaGeneratorService {
       });
     });
 
-    // PÓS-PROCESSAMENTO: Ajuste Fino de Cobertura Diária Mínima
-    // Garante que nenhum dia fique abaixo de minFuncionariosPorDia
-    this._ajustarCoberturaMinima(itens, totalDias, config.minFuncionariosPorDia ?? 2);
+    // PÓS-PROCESSAMENTO 1: Cobertura Mínima Diária (Garante mínimo de 6 caixas se Frente de Caixa)
+    this._ajustarCoberturaMinima(itens, totalDias, minEfetivo);
+
+    // PÓS-PROCESSAMENTO 2: Padaria (Garante no máximo 1 folga por dia na produção)
+    if (ePadaria) {
+      this._ajustarCoberturaPadaria(itens, totalDias);
+    }
+
+    // PÓS-PROCESSAMENTO 3: Limite mensal de folgas (4 a 5 folgas)
+    this._ajustarLimiteFolgasMensais(itens, totalDias);
 
     return itens;
+  }
+
+  /**
+   * Garante que na Padaria haja no máximo 1 colaborador de folga por dia na produção.
+   */
+  private _ajustarCoberturaPadaria(itens: EscalaItem[], totalDias: number): void {
+    if (itens.length <= 1) return;
+
+    for (let dia = 1; dia <= totalDias; dia++) {
+      const folgando = itens.filter(i => i.dias[dia] === 'F' || i.dias[dia] === 'FD' || i.dias[dia] === 'FE');
+      
+      if (folgando.length > 1) {
+        // Mover folgas excedentes para dias vizinhos onde ninguém está folgando
+        for (let k = 1; k < folgando.length; k++) {
+          const item = folgando[k];
+          const isDomingo = item.dias[dia] === 'FD';
+          
+          let diaSemFolga = -1;
+          for (let dAlt = 1; dAlt <= totalDias; dAlt++) {
+            if (dAlt !== dia && (item.dias[dAlt] === 'T' || item.dias[dAlt] === 'TD' || item.dias[dAlt] === 'TF')) {
+              const folgandoNoDiaAlt = itens.filter(i => i.dias[dAlt] === 'F' || i.dias[dAlt] === 'FD' || i.dias[dAlt] === 'FE').length;
+              if (folgandoNoDiaAlt === 0) {
+                diaSemFolga = dAlt;
+                break;
+              }
+            }
+          }
+
+          if (diaSemFolga !== -1) {
+            item.dias[dia] = isDomingo ? 'TD' : 'T';
+            const altIsDomingo = (new Date().getDay() === 0);
+            item.dias[diaSemFolga] = altIsDomingo ? 'FD' : 'F';
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Garante que nenhum colaborador ultrapasse o limite de 5 folgas por mês.
+   */
+  private _ajustarLimiteFolgasMensais(itens: EscalaItem[], totalDias: number): void {
+    itens.forEach(item => {
+      const folgas = Object.entries(item.dias).filter(([_, st]) => st === 'F' || st === 'FD' || st === 'FE');
+      
+      if (folgas.length > 5) {
+        const excesso = folgas.length - 5;
+        for (let i = 0; i < excesso; i++) {
+          const [diaStr, st] = folgas[folgas.length - 1 - i];
+          const dia = Number(diaStr);
+          item.dias[dia] = (st === 'FD') ? 'TD' : 'T';
+        }
+      }
+    });
   }
 
   /**
@@ -280,37 +354,65 @@ export class EscalaGeneratorService {
     const erros: ValidacaoItem[] = [];
     const coberturaPorDia: Record<number, number> = {};
 
+    const setorNomeOriginal = itens[0]?.setor || 'Setor';
+    const setorNomeClean = setorNomeOriginal.toLowerCase();
+    const eFrenteDeCaixa = setorNomeClean.includes('caixa') && !setorNomeClean.includes('fiscal');
+    const ePadaria = setorNomeClean.includes('padaria');
+
+    const minEfetivoValida = eFrenteDeCaixa ? Math.max(minRequerido, 6) : minRequerido;
+
     for (let dia = 1; dia <= totalDias; dia++) {
       const emTrabalho = itens.filter(i => i.dias[dia] === 'T' || i.dias[dia] === 'TD' || i.dias[dia] === 'TF').length;
+      const emFolga = itens.filter(i => i.dias[dia] === 'F' || i.dias[dia] === 'FD' || i.dias[dia] === 'FE').length;
       coberturaPorDia[dia] = emTrabalho;
-
-      const setorNome = itens[0]?.setor || 'Setor';
 
       if (emTrabalho === 0 && itens.length > 0) {
         erros.push({
           dia,
-          setor: setorNome,
+          setor: setorNomeOriginal,
           mensagem: `Dia ${dia}: COBERTURA ZERO! Todos os colaboradores estão de folga.`,
           tipo: 'ERRO_COBERTURA'
         });
-      } else if (emTrabalho < minRequerido && itens.length >= minRequerido) {
+      } else if (eFrenteDeCaixa && emTrabalho < 6 && itens.length >= 6) {
         erros.push({
           dia,
-          setor: setorNome,
-          mensagem: `Dia ${dia}: Apenas ${emTrabalho} colaborador(es) trabalhando. Mínimo exigido: ${minRequerido}.`,
+          setor: setorNomeOriginal,
+          mensagem: `Dia ${dia}: Frente de Caixa possui apenas ${emTrabalho} operador(es) trabalhando. Mínimo OBRIGATÓRIO: 6.`,
+          tipo: 'ERRO_COBERTURA_CAIXA'
+        });
+      } else if (emTrabalho < minEfetivoValida && itens.length >= minEfetivoValida) {
+        erros.push({
+          dia,
+          setor: setorNomeOriginal,
+          mensagem: `Dia ${dia}: Apenas ${emTrabalho} colaborador(es) trabalhando. Mínimo exigido: ${minEfetivoValida}.`,
           tipo: 'ERRO_COBERTURA'
+        });
+      }
+
+      // Regra Padaria: No máximo 1 folga por dia na Produção
+      if (ePadaria && emFolga > 1 && itens.length > 1) {
+        erros.push({
+          dia,
+          setor: setorNomeOriginal,
+          mensagem: `Dia ${dia}: Padaria possui ${emFolga} colaboradores de folga. Permitido SOMENTE 1 pessoa de folga por dia na produção.`,
+          tipo: 'ERRO_PADARIA_PRODUCAO'
         });
       }
     }
 
-    // Validação de regras CLT por funcionário
+    // Validação de regras CLT e limite de folgas por funcionário
     itens.forEach(item => {
       let consecutivos = 0;
       let domingosSeguidosFeminino = 0;
+      let totalFolgasNoMes = 0;
 
       for (let dia = 1; dia <= totalDias; dia++) {
         const st = item.dias[dia];
         const isDom = new Date(ano, mes - 1, dia).getDay() === 0;
+
+        if (st === 'F' || st === 'FD' || st === 'FE') {
+          totalFolgasNoMes++;
+        }
 
         if (st === 'T' || st === 'TD' || st === 'TF') {
           consecutivos++;
@@ -342,6 +444,23 @@ export class EscalaGeneratorService {
         }
       }
 
+      // Checagem de limite mensal de folgas (4 a 5 folgas)
+      if (totalFolgasNoMes > 5) {
+        erros.push({
+          dia: 1,
+          setor: item.setor,
+          mensagem: `${item.nome}: Excede o limite de folgas no mês (${totalFolgasNoMes} folgas). Máximo permitido: 5 folgas.`,
+          tipo: 'ERRO_FOLGAS_MES'
+        });
+      } else if (totalFolgasNoMes < 4 && totalDias >= 28) {
+        erros.push({
+          dia: 1,
+          setor: item.setor,
+          mensagem: `${item.nome}: Possui apenas ${totalFolgasNoMes} folga(s) no mês. Priorizar meta de 4 a 5 folgas.`,
+          tipo: 'ERRO_FOLGAS_MES'
+        });
+      }
+
       // Checar carga horária do turno cadastrado
       if (turnosConfigs.length > 0) {
         const tConf = turnosConfigs.find(tc => tc.nome === item.turno);
@@ -356,7 +475,13 @@ export class EscalaGeneratorService {
       }
     });
 
-    const totalErros = erros.filter(e => e.tipo === 'ERRO_COBERTURA' || e.tipo === 'ERRO_CLT').length;
+    const totalErros = erros.filter(e => 
+      e.tipo === 'ERRO_COBERTURA' || 
+      e.tipo === 'ERRO_COBERTURA_CAIXA' || 
+      e.tipo === 'ERRO_PADARIA_PRODUCAO' || 
+      e.tipo === 'ERRO_FOLGAS_MES' || 
+      e.tipo === 'ERRO_CLT'
+    ).length;
     const totalAlertas = erros.filter(e => e.tipo === 'ALERTA_CARGA' || e.tipo === 'AVISO').length;
 
     return {
@@ -365,7 +490,7 @@ export class EscalaGeneratorService {
       totalAlertas,
       itensValidados: erros,
       coberturaPorDia,
-      minimoRequerido: minRequerido
+      minimoRequerido: minEfetivoValida
     };
   }
 

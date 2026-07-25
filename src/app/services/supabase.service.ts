@@ -384,8 +384,10 @@ export class SupabaseService {
     this.localCargos.update(list => list.filter(c => c.id !== id));
   }
 
-  // Escalas CRUD 100% via Supabase
+  // Escalas CRUD com Supabase + Persistence Fallback em localStorage
   async getEscala(lojaId: string, mesRef: string, setor: string): Promise<Escala | null> {
+    const storageKey = `jh_escala_${lojaId}_${mesRef}_${setor}`;
+
     try {
       const { data, error } = await this.client
         .from('escalas')
@@ -395,14 +397,39 @@ export class SupabaseService {
         .eq('setor', setor)
         .maybeSingle();
 
-      if (!error && data) return data as Escala;
+      if (!error && data) {
+        const dbEscala = data as Escala;
+        try { localStorage.setItem(storageKey, JSON.stringify(dbEscala)); } catch {}
+        return dbEscala;
+      }
     } catch (err) {
       console.error('Erro ao consultar escala no Supabase:', err);
     }
+
+    // Fallback: busca do localStorage se Supabase falhou ou não encontrou
+    try {
+      const local = localStorage.getItem(storageKey);
+      if (local) {
+        return JSON.parse(local) as Escala;
+      }
+    } catch (e) {
+      console.error('Erro ao carregar escala do localStorage:', e);
+    }
+
     return null;
   }
 
   async saveEscala(escala: Escala): Promise<Escala> {
+    const storageKey = `jh_escala_${escala.loja_id}_${escala.mes_referencia}_${escala.setor}`;
+
+    // 1. Sempre persiste no localStorage imediatamente para garantir que o usuário NUNCA perca os dados
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(escala));
+    } catch (e) {
+      console.error('Erro ao salvar no localStorage:', e);
+    }
+
+    // 2. Tenta persistir no Supabase se disponível
     try {
       const { data, error } = await this.client
         .from('escalas')
@@ -416,10 +443,15 @@ export class SupabaseService {
         .select()
         .single();
 
-      if (!error && data) return data as Escala;
-    } catch (err) {
-      console.error('Erro ao salvar escala no Supabase:', err);
+      if (error) {
+        console.warn('Aviso do Supabase ao salvar escala (armazenado localmente):', error.message);
+      } else if (data) {
+        return data as Escala;
+      }
+    } catch (err: any) {
+      console.warn('Erro ao salvar escala no Supabase (armazenado localmente):', err);
     }
+
     return escala;
   }
 

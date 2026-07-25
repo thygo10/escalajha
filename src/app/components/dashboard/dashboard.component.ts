@@ -63,6 +63,12 @@ export class DashboardComponent implements OnInit {
   get selectedSetor() { return this._selectedSetor; }
   set selectedSetor(val: string) {
     this._selectedSetor = val;
+    const lower = val.toLowerCase();
+    if (lower.includes('caixa') && !lower.includes('fiscal')) {
+      this.minFuncionariosPorDiaSetor.set(6);
+    } else {
+      this.minFuncionariosPorDiaSetor.set(2);
+    }
     this.triggerRecalculoEscala.update((v: number) => v + 1);
     this.onMonthOrSetorChange();
   }
@@ -1028,6 +1034,21 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
+    // Validação estrita antes de salvar
+    const validacao = this.validacaoResultado();
+    if (!validacao.valida || validacao.totalErros > 0) {
+      const primeiroErro = validacao.itensValidados.find(i => 
+        i.tipo === 'ERRO_COBERTURA' || 
+        i.tipo === 'ERRO_COBERTURA_CAIXA' || 
+        i.tipo === 'ERRO_PADARIA_PRODUCAO' || 
+        i.tipo === 'ERRO_FOLGAS_MES' || 
+        i.tipo === 'ERRO_CLT'
+      );
+      const mensagem = primeiroErro ? primeiroErro.mensagem : 'Existem inconsistências ou violações de regras na escala.';
+      this.toastService.error('Erro de Validação - Bloqueado', `${mensagem} Corrija a escala antes de salvar.`);
+      return;
+    }
+
     this.saving.set(true);
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
 
@@ -1061,6 +1082,44 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  async refreshAllDataAndCaches() {
+    this.generator.clearAllCache();
+    this.draftEscalasMap.set(new Map());
+    await this.loadData();
+    this.triggerRecalculoEscala.update((v: number) => v + 1);
+
+    // 1. Se houver colaborador selecionado na página de detalhes, atualiza com os dados novos
+    const selFunc = this.selectedFuncionarioForPage();
+    if (selFunc) {
+      const updated = this.funcionarios().find((f: Funcionario) => f.id === selFunc.id || f.matricula_aleatoria === selFunc.matricula_aleatoria);
+      if (updated) {
+        this.selectedFuncionarioForPage.set(updated);
+      }
+    }
+
+    // 2. Se houver escala aberta no setor ativo, atualiza o nome/cargo dos itens na escala exibida em tempo real
+    const itens = this.escalaItens();
+    if (itens.length > 0) {
+      const funcsMap = new Map(this.funcionarios().map((f: Funcionario) => [f.matricula_aleatoria, f]));
+      const updatedItens = itens
+        .filter((item: EscalaItem) => {
+          const f = funcsMap.get(item.matricula);
+          return f && f.ativo && f.setor === this.selectedSetor;
+        })
+        .map((item: EscalaItem) => {
+          const f = funcsMap.get(item.matricula)!;
+          return {
+            ...item,
+            nome: f.primeiro_nome,
+            cargo: f.cargo,
+            turno: f.turno_padrao,
+            genero: f.genero
+          };
+        });
+      this.escalaItens.set(updatedItens);
+    }
+  }
+
   async cadastrarFuncionario() {
     const loja = this.activeLoja();
     if (!loja) return;
@@ -1088,7 +1147,7 @@ export class DashboardComponent implements OnInit {
 
       this.toastService.success('Colaborador Cadastrado!', `${added.primeiro_nome} (Matrícula: ${added.matricula_aleatoria}) adicionado com sucesso.`);
       this.novoNome = '';
-      await this.loadData();
+      await this.refreshAllDataAndCaches();
     } catch (err: any) {
       this.toastService.error('Erro ao Cadastrar', err.message);
     }
@@ -1119,7 +1178,7 @@ export class DashboardComponent implements OnInit {
       await this.supabase.updateFuncionario(ef);
       this.toastService.success('Cadastro Atualizado!', `Dados de ${ef.primeiro_nome} atualizados com sucesso.`);
       this.editingFunc.set(null);
-      await this.loadData();
+      await this.refreshAllDataAndCaches();
     } catch (err: any) {
       this.toastService.error('Erro ao Atualizar', err.message);
     }
@@ -1135,7 +1194,7 @@ export class DashboardComponent implements OnInit {
         if (func.id) {
           await this.supabase.softDeleteFuncionario(func.id);
           this.toastService.warning('Colaborador Desativado', `${func.primeiro_nome} foi desativado (soft-delete CLT).`);
-          await this.loadData();
+          await this.refreshAllDataAndCaches();
         }
       }
     });
@@ -1189,7 +1248,7 @@ export class DashboardComponent implements OnInit {
         this.toastService.success('Novo Setor Criado', `Setor "${this.sectorModalForm.nome}" adicionado com sucesso.`);
       }
       this.closeSectorModal();
-      await this.loadData();
+      await this.refreshAllDataAndCaches();
     } catch (err: any) {
       this.toastService.error('Erro ao Salvar Setor', err.message);
     }
@@ -1204,7 +1263,7 @@ export class DashboardComponent implements OnInit {
       onConfirm: async () => {
         await this.supabase.deleteSetor(setor.id);
         this.toastService.warning('Setor Removido', `Setor "${setor.nome}" removido do sistema.`);
-        await this.loadData();
+        await this.refreshAllDataAndCaches();
       }
     });
   }
@@ -1239,7 +1298,7 @@ export class DashboardComponent implements OnInit {
         this.toastService.success('Novo Cargo Criado', `Cargo "${this.cargoModalForm.nome}" adicionado ao setor ${this.cargoModalForm.setor_nome}.`);
       }
       this.closeCargoModal();
-      await this.loadData();
+      await this.refreshAllDataAndCaches();
     } catch (err: any) {
       this.toastService.error('Erro ao Salvar Cargo', err.message);
     }
@@ -1254,7 +1313,7 @@ export class DashboardComponent implements OnInit {
       onConfirm: async () => {
         await this.supabase.deleteCargo(cargo.id);
         this.toastService.warning('Cargo Removido', `Cargo "${cargo.nome}" removido do sistema.`);
-        await this.loadData();
+        await this.refreshAllDataAndCaches();
       }
     });
   }
@@ -1334,7 +1393,7 @@ export class DashboardComponent implements OnInit {
         this.toastService.success('Feriado Cadastrado', `Feriado "${this.feriadoModalForm.nome}" cadastrado com sucesso.`);
       }
       this.closeFeriadoModal();
-      await this.loadData();
+      await this.refreshAllDataAndCaches();
     } catch (err: any) {
       this.toastService.error('Erro ao Salvar Feriado', err.message);
     }
@@ -1349,7 +1408,7 @@ export class DashboardComponent implements OnInit {
       onConfirm: async () => {
         await this.supabase.deleteFeriado(feriado.id);
         this.toastService.warning('Feriado Removido', `Feriado "${feriado.nome}" excluído com sucesso.`);
-        await this.loadData();
+        await this.refreshAllDataAndCaches();
       }
     });
   }
@@ -1386,7 +1445,7 @@ export class DashboardComponent implements OnInit {
     const rm = this.regraModal();
     try {
       if (rm.isEdit && rm.regraId) {
-        const existing = this.regras().find(r => r.id === rm.regraId);
+        const existing = this.regras().find((r: RegraEscala) => r.id === rm.regraId);
         await this.supabase.updateRegra({
           id: rm.regraId,
           titulo: this.regraModalForm.titulo.trim(),
@@ -1407,7 +1466,7 @@ export class DashboardComponent implements OnInit {
         this.toastService.success('Solicitação RH Registrada!', `Nova regra "${this.regraModalForm.titulo}" cadastrada para o programador codificar.`);
       }
       this.closeRegraModal();
-      await this.loadData();
+      await this.refreshAllDataAndCaches();
     } catch (err: any) {
       this.toastService.error('Erro ao Salvar Regra', err.message);
     }
@@ -1422,7 +1481,7 @@ export class DashboardComponent implements OnInit {
       onConfirm: async () => {
         await this.supabase.deleteRegra(regra.id);
         this.toastService.warning('Regra Removida', `Regra "${regra.titulo}" excluída com sucesso.`);
-        await this.loadData();
+        await this.refreshAllDataAndCaches();
       }
     });
   }
