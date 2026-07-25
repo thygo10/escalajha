@@ -46,6 +46,9 @@ export class DashboardComponent implements OnInit {
   readonly hojeStr = this._hoje.toISOString().split('T')[0];
   readonly currentYearMonth = `${this._hoje.getFullYear()}-${String(this._hoje.getMonth() + 1).padStart(2, '0')}`;
 
+  // Mapa de rascunhos em memória para persistência entre trocas de abas/setores
+  draftEscalasMap = signal<Map<string, EscalaItem[]>>(new Map());
+
   private _selectedMonth = this.currentYearMonth;
   get selectedMonth() { return this._selectedMonth; }
   set selectedMonth(val: string) {
@@ -53,6 +56,7 @@ export class DashboardComponent implements OnInit {
     this.triggerRecalculoEscala.update(v => v + 1);
     const [ano, mes] = val.split('-').map(Number);
     this.generator.invalidateCache(ano, mes);
+    this.onMonthOrSetorChange();
   }
 
   private _selectedSetor = 'Frente de Caixa';
@@ -60,6 +64,17 @@ export class DashboardComponent implements OnInit {
   set selectedSetor(val: string) {
     this._selectedSetor = val;
     this.triggerRecalculoEscala.update(v => v + 1);
+    this.onMonthOrSetorChange();
+  }
+
+  onMonthOrSetorChange() {
+    const key = `${this.activeLoja()?.id || 'loja-02-demo'}|${this.selectedMonth}|${this.selectedSetor}`;
+    const draft = this.draftEscalasMap().get(key);
+    if (draft) {
+      this.escalaItens.set(draft);
+    } else {
+      this.loadEscala();
+    }
   }
 
   // Gatilho manual para forçar re-cálculo da escala completa quando mês/setor mudam
@@ -748,7 +763,7 @@ export class DashboardComponent implements OnInit {
     // Carrega escala de forma independente — não bloqueia o skeleton
     try {
       this.isEscalaLoading.set(true);
-      await this.loadEscala();
+      await this.onMonthOrSetorChange();
     } finally {
       this.isEscalaLoading.set(false);
     }
@@ -831,6 +846,22 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
+    if (this.escalaItens().length > 0) {
+      this.confirmModal.set({
+        visible: true,
+        title: 'Recalcular Escala 6x1?',
+        message: `Já existe uma escala calculada para o setor "${this.selectedSetor}" (${this.selectedMonth}). Gerar novamente substituirá os turnos e folgas exibidos. Deseja continuar?`,
+        confirmText: 'Sim, Recalcular Escala',
+        onConfirm: () => {
+          this._executarGeracaoEscala(funcsDoSetor);
+        }
+      });
+    } else {
+      this._executarGeracaoEscala(funcsDoSetor);
+    }
+  }
+
+  private _executarGeracaoEscala(funcsDoSetor: Funcionario[]) {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
     const gerada = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes, {
       permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
@@ -838,6 +869,15 @@ export class DashboardComponent implements OnInit {
       feriados: this.feriados()
     });
     this.escalaItens.set(gerada);
+
+    // Salva rascunho em memória para não perder ao trocar de abas
+    const key = `${this.activeLoja()?.id || 'loja-02-demo'}|${this.selectedMonth}|${this.selectedSetor}`;
+    this.draftEscalasMap.update(map => {
+      const newMap = new Map(map);
+      newMap.set(key, gerada);
+      return newMap;
+    });
+
     this.triggerRecalculoEscala.update(v => v + 1); // Atualiza os computeds de cache
     this.toastService.success('Escala Gerada!', `Escala 6x1 Giratória calculada com sucesso para ${funcsDoSetor.length} colaboradores.`);
   }
@@ -867,6 +907,15 @@ export class DashboardComponent implements OnInit {
 
     try {
       await this.supabase.saveEscala(escalaObj);
+
+      // Limpa rascunho em memória pois agora está gravado no banco
+      const key = `${loja.id}|${this.selectedMonth}|${this.selectedSetor}`;
+      this.draftEscalasMap.update(map => {
+        const newMap = new Map(map);
+        newMap.delete(key);
+        return newMap;
+      });
+
       this.toastService.success('Salvo no Supabase!', `Escala de ${this.selectedSetor} salva com sucesso.`);
     } catch (err: any) {
       this.toastService.error('Erro ao Salvar', err.message);

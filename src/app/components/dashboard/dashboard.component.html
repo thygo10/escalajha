@@ -70,7 +70,7 @@
 
         <button
           (click)="selectTab('funcionarios')"
-          [class.active]="activeTab() === 'funcionarios'"
+          [class.active]="activeTab() === 'funcionarios' || activeTab() === 'detalhes-funcionario'"
           class="nav-link-btn"
         >
           <div class="nav-btn-content">
@@ -111,19 +111,6 @@
             <span>Regras de Escala</span>
           </div>
         </button>
-
-        @if (selectedFuncionarioForPage()) {
-          <button
-            (click)="selectTab('detalhes-funcionario')"
-            [class.active]="activeTab() === 'detalhes-funcionario'"
-            class="nav-link-btn"
-          >
-            <div class="nav-btn-content">
-              <app-icon name="user" [size]="18"></app-icon>
-              <span>Perfil de {{ selectedFuncionarioForPage()?.primeiro_nome }}</span>
-            </div>
-          </button>
-        }
       </nav>
     </div>
 
@@ -384,6 +371,19 @@
                   </span>
                 </label>
               </div>
+            </div>
+          </div>
+
+          <!-- LEGENDA DA ESCALA 6X1 GIRATÓRIA -->
+          <div class="escala-legend-bar">
+            <span class="legend-title">Legenda de Cores e Turnos:</span>
+            <div class="legend-items">
+              <span class="legend-item"><span class="badge-legend status-trabalho">T</span> Trabalho Normal</span>
+              <span class="legend-item"><span class="badge-legend status-domingo">TD</span> Trabalho em Domingo (Revezamento)</span>
+              <span class="legend-item"><span class="badge-legend status-feriado">TF</span> Trabalho em Feriado</span>
+              <span class="legend-item"><span class="badge-legend status-folga">F</span> Folga Semanal (6x1)</span>
+              <span class="legend-item"><span class="badge-legend status-folga">FD</span> Folga de Domingo</span>
+              <span class="legend-item"><span class="badge-legend status-folga">FE</span> Folga Feriado Fechado</span>
             </div>
           </div>
 
@@ -834,7 +834,7 @@
             </div>
 
             <button (click)="selectTab('funcionarios')" class="btn-premium btn-ghost">
-              Voltar para a Lista
+              ← Voltar para Colaboradores
             </button>
           </div>
 
