@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -47,6 +47,8 @@ export class DashboardComponent implements OnInit {
   set selectedMonth(val: string) {
     this._selectedMonth = val;
     this.triggerRecalculoEscala.update(v => v + 1);
+    const [ano, mes] = val.split('-').map(Number);
+    this.generator.invalidateCache(ano, mes);
   }
 
   private _selectedSetor = 'Frente de Caixa';
@@ -61,17 +63,35 @@ export class DashboardComponent implements OnInit {
 
   // Cache central da escala gerada para a loja inteira (todas as pessoas ativas no mês atual)
   escalaCompletaDaLojaCache = computed(() => {
-    // Registra dependência dos signals
     this.triggerRecalculoEscala();
     const funcs = this.funcionarios().filter(f => f.ativo);
     const feriados = this.feriados();
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
-    
-    return this.generator.gerarEscalaMensal(funcs, ano, mes, {
+
+    return this.generator.gerarEscalaMensalCached(funcs, ano, mes, {
       permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
       diasPermitidosFolga: this.diasPermitidosFolga(),
-      feriados: feriados
+      feriados
     });
+  });
+
+  folgasPorSetorMap = computed(() => {
+    const hojeDia = new Date().getDate();
+    const itens = this.escalaCompletaDaLojaCache();
+    const funcs = this.funcionarios();
+    const map = new Map<string, Funcionario[]>();
+    
+    for (const setor of this.setores()) {
+      const matriculasFolga = new Set(
+        itens.filter(i => {
+          if (i.setor !== setor.nome) return false;
+          const s = i.dias[hojeDia];
+          return s === 'F' || s === 'FD' || s === 'FE';
+        }).map(i => i.matricula)
+      );
+      map.set(setor.nome, funcs.filter(f => matriculasFolga.has(f.matricula_aleatoria)));
+    }
+    return map;
   });
 
   // Configurações 6x1 Giratória (Convenção Coletiva)
@@ -79,7 +99,7 @@ export class DashboardComponent implements OnInit {
   diasPermitidosFolga = signal<number[]>([0, 1, 2, 3, 4, 5, 6]); // 0=Dom, 1=Seg, 2=Ter...
 
   userInitials = computed(() => {
-    const email = this.currentUser()?.email || 'rhjoaohenriqueatacadista@gmail.com';
+    const email = this.currentUser()?.email || 'gestor@empresa.com';
     const clean = email.split('@')[0].toUpperCase();
     if (clean.includes('.')) {
       const parts = clean.split('.');
@@ -99,10 +119,26 @@ export class DashboardComponent implements OnInit {
   regras = signal<RegraEscala[]>([]);
   escalaItens = signal<EscalaItem[]>([]);
   saving = signal(false);
+  isLoading = signal(true);
+
+  // Breadcrumb label como computed — substitui 7 @if no template
+  breadcrumbLabel = computed(() => {
+    const tab = this.activeTab();
+    const labels: Record<string, string> = {
+      'dashboard': 'Visão Geral',
+      'escala': 'Escala Mensal de Folgas',
+      'funcionarios': 'Colaboradores',
+      'setores': 'Setores & Cargos',
+      'feriados': 'Feriados Registrados',
+      'regras': 'Regras de Escala',
+      'detalhes-funcionario': `Perfil de ${this.selectedFuncionarioForPage()?.primeiro_nome ?? '...'}`
+    };
+    return labels[tab] ?? tab;
+  });
 
   // Perfil Detalhado do Colaborador
   selectedFuncionarioForPage = signal<Funcionario | null>(null);
-  selectedMonthHistorico = this.currentYearMonth;
+  selectedMonthHistorico = signal(this.currentYearMonth);
   filterTipoHistorico = 'TODOS';
 
   // Modal de Impressão A4 (Modos + Estilos)
@@ -260,11 +296,11 @@ export class DashboardComponent implements OnInit {
     const func = this.selectedFuncionarioForPage();
     if (!func) return [];
 
-    const [ano, mes] = this.selectedMonthHistorico.split('-').map(Number);
+    const [ano, mes] = this.selectedMonthHistorico().split('-').map(Number);
     const totalDias = new Date(ano, mes, 0).getDate();
     const funcsDoSetor = this.funcionarios().filter(f => f.setor === func.setor);
 
-    const escalaItem = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes)
+    const escalaItem = this.generator.gerarEscalaMensalCached(funcsDoSetor, ano, mes)
       .find(i => i.matricula === func.matricula_aleatoria);
 
     const result: DiaHistoricoTrabalho[] = [];
@@ -311,7 +347,7 @@ export class DashboardComponent implements OnInit {
     const historico = this.diasHistoricoCompleto();
     const totalFolgas = historico.filter(h => h.tipo === 'FOLGA').length;
     const domingosTrabalhados = historico.filter(h => {
-      const [ano, mes] = this.selectedMonthHistorico.split('-').map(Number);
+      const [ano, mes] = this.selectedMonthHistorico().split('-').map(Number);
       const dataObj = new Date(ano, mes - 1, h.dia);
       return dataObj.getDay() === 0 && h.tipo === 'TRABALHO';
     }).length;
@@ -389,7 +425,7 @@ export class DashboardComponent implements OnInit {
   openQuickBlurModal(func: Funcionario) {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
     const funcsDoSetor = this.funcionarios().filter(f => f.setor === func.setor);
-    const escalaItem = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes, {
+    const escalaItem = this.generator.gerarEscalaMensalCached(funcsDoSetor, ano, mes, {
       permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
       diasPermitidosFolga: this.diasPermitidosFolga()
     }).find(i => i.matricula === func.matricula_aleatoria);
@@ -402,7 +438,7 @@ export class DashboardComponent implements OnInit {
         if (dateObj.getDay() === 0) {
           const status = escalaItem.dias[d];
           const dataStr = dateObj.toLocaleDateString('pt-BR');
-          if (status === 'TRABALHO') {
+          if (status === 'TD') {
             domingosReais.push({ dataStr, descricao: 'Trabalho em escala 6x1 (Revezamento)' });
           }
         }
@@ -462,7 +498,7 @@ export class DashboardComponent implements OnInit {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
     return Object.entries(item.dias).filter(([dia, status]) => {
       const dateObj = new Date(ano, mes - 1, Number(dia));
-      return dateObj.getDay() === 0 && status === 'TRABALHO';
+      return dateObj.getDay() === 0 && (status === 'T' || status === 'TD' || status === 'TF');
     }).length;
   }
 
@@ -471,23 +507,8 @@ export class DashboardComponent implements OnInit {
     return func ? func.cargo : '-';
   }
 
-  getFolgasPorSetor(setorNome: string): Funcionario[] {
-    const funcs = this.funcionarios().filter(f => f.setor === setorNome);
-    const hojeDia = new Date().getDate();
-    
-    const itens = this.escalaCompletaDaLojaCache().filter(item => item.setor === setorNome);
-    const matriculasFolga = new Set(
-      itens.filter(item => {
-        const status = item.dias[hojeDia];
-        return status === 'F' || status === 'FD' || status === 'FE';
-      }).map(i => i.matricula)
-    );
-
-    return funcs.filter(f => matriculasFolga.has(f.matricula_aleatoria));
-  }
-
   getFolgasPorSetorFiltradas(setorNome: string): Funcionario[] {
-    let list = this.getFolgasPorSetor(setorNome);
+    let list = this.folgasPorSetorMap().get(setorNome) ?? [];
     const query = this.searchQueryDashboard().toLowerCase().trim();
     if (query) {
       list = list.filter(f =>
@@ -502,16 +523,44 @@ export class DashboardComponent implements OnInit {
     return this.funcionarios().filter(f => f.setor === setorNome);
   }
 
+  getCoberturaPercent(setorNome: string): number {
+    const total = this.getFuncionariosPorSetor(setorNome).length;
+    if (total === 0) return 100;
+    const hojeDia = new Date().getDate();
+    const emFolga = this.escalaCompletaDaLojaCache()
+      .filter(i => {
+        if (i.setor !== setorNome) return false;
+        const s = i.dias[hojeDia];
+        return s === 'F' || s === 'FD' || s === 'FE';
+      }).length;
+    return Math.round(((total - emFolga) / total) * 100);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    if (this.quickBlurModal().visible) { this.closeQuickBlurModal(); return; }
+    if (this.confirmModal().visible)   { this.closeConfirmModal(); return; }
+    if (this.editingFunc())            { this.editingFunc.set(null); return; }
+    if (this.sectorModal().visible)    { this.closeSectorModal(); return; }
+    if (this.cargoModal().visible)     { this.closeCargoModal(); return; }
+    if (this.feriadoModal().visible)   { this.closeFeriadoModal(); return; }
+    if (this.regraModal().visible)     { this.closeRegraModal(); return; }
+    if (this.printModalVisible())      { this.printModalVisible.set(false); return; }
+  }
+
   getRegrasPorCategoria(cat: string): RegraEscala[] {
     return this.regras().filter(r => r.categoria === cat);
   }
 
   getSetorColor(setorNome: string): string {
-    const name = setorNome.toLowerCase();
+    const name = setorNome
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
     if (name.includes('caixa') && !name.includes('fiscal')) return '#0b2a52';
     if (name.includes('reposi')) return '#16a34a';
     if (name.includes('lanchonete')) return '#d97706';
-    if (name.includes('açougue') || name.includes('acougue')) return '#dc2626';
+    if (name.includes('acougue')) return '#dc2626';
     if (name.includes('padaria')) return '#ea580c';
     if (name.includes('fiscal')) return '#7c3aed';
     if (name.includes('empilhadeira')) return '#0d9488';
@@ -544,6 +593,7 @@ export class DashboardComponent implements OnInit {
   async loadData() {
     const loja = this.activeLoja();
     if (!loja) return;
+    this.isLoading.set(true);
 
     try {
       const [funcs, sets, crgs, fers, rgrs] = await Promise.all([
@@ -569,6 +619,8 @@ export class DashboardComponent implements OnInit {
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       this.toastService.error('Erro ao Carregar Dados', 'Não foi possível buscar as informações no Supabase.');
+    } finally {
+      this.isLoading.set(false);
     }
   }
 

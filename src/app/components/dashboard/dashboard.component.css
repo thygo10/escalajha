@@ -962,3 +962,70 @@
   color: #94a3b8;
   font-weight: 700;
 }
+
+/* Skeleton Loaders (Fase 3.4c) */
+.skeleton-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  min-height: 160px;
+}
+
+.skeleton-header {
+  height: 72px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite linear;
+}
+
+.skeleton-body { padding: 16px; }
+
+.skeleton-line {
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  animation: skeleton-shimmer 1.5s infinite linear;
+}
+
+.skeleton-line.short { width: 55%; }
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Barra de Cobertura de Equipe (Fase 4.5) */
+.cobertura-bar-wrapper {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 2px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.cobertura-bar-fill {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 2px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 4px;
+}
+
+/* Sticky thead e Escala Table Wrapper (Fase 3.4b) */
+.escala-table-wrapper {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 72vh;
+  margin-top: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid #cbd5e1;
+  -webkit-overflow-scrolling: touch;
+}
+
+.escala-table thead tr {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}

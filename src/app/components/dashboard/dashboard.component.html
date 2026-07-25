@@ -165,9 +165,11 @@
 
       <div class="topbar-actions">
         <!-- Botão de Opções de Impressão A4 -->
-        <button (click)="openPrintOptionsModal()" class="btn-premium btn-yellow-solid">
-          <span class="no-mobile-text">Imprimir A4</span>
-        </button>
+        @if (activeTab() === 'escala' || activeTab() === 'dashboard') {
+          <button (click)="openPrintOptionsModal()" class="btn-premium btn-yellow-solid">
+            <span class="no-mobile-text">Imprimir A4</span>
+          </button>
+        }
       </div>
     </header>
 
@@ -179,15 +181,7 @@
         <div class="breadcrumb-container">
           <span class="breadcrumb-root">Home</span>
           <span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-active">
-            @if (activeTab() === 'dashboard') { Visão Geral }
-            @if (activeTab() === 'escala') { Escala Mensal de Folgas }
-            @if (activeTab() === 'funcionarios') { Colaboradores }
-            @if (activeTab() === 'setores') { Setores & Cargos }
-            @if (activeTab() === 'feriados') { Feriados Registrados }
-            @if (activeTab() === 'regras') { Regras de Escala }
-            @if (activeTab() === 'detalhes-funcionario') { Perfil de {{ selectedFuncionarioForPage()?.primeiro_nome }} }
-          </span>
+          <span class="breadcrumb-active">{{ breadcrumbLabel() }}</span>
         </div>
 
         <!-- Indicadores Resumidos (KPIs limpos) -->
@@ -253,7 +247,7 @@
 
             @for (s of setores(); track s.id) {
               <button (click)="filterSetorDashboard.set(s.nome)" [class.active]="filterSetorDashboard() === s.nome" class="pill-btn">
-                {{ s.nome }} <span class="pill-badge">{{ getFolgasPorSetor(s.nome).length }}</span>
+                {{ s.nome }} <span class="pill-badge">{{ (folgasPorSetorMap().get(s.nome) ?? []).length }}</span>
               </button>
             }
           </div>
@@ -265,19 +259,35 @@
             <h3>Folgas Hoje Por Setor ({{ dataAtualFormatted }})</h3>
           </div>
 
-          <div class="setores-grid">
-            @for (setor of setoresFiltradosDashboard(); track setor.id) {
-              <div class="setor-card">
-                <div class="setor-card-header" [style.background-color]="getSetorColor(setor.nome)">
-                  <div>
-                    <h4 class="setor-title">{{ setor.nome }}</h4>
-                    <p class="setor-subtitle">
-                      {{ getFolgasPorSetorFiltradas(setor.nome).length }} em folga de {{ getFuncionariosPorSetor(setor.nome).length }} colaboradores
-                    </p>
+          @if (isLoading()) {
+            <div class="setores-grid">
+              @for (i of [1,2,3,4,5,6,7,8,9]; track i) {
+                <div class="setor-card skeleton-card">
+                  <div class="skeleton-header"></div>
+                  <div class="skeleton-body">
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line short"></div>
                   </div>
                 </div>
+              }
+            </div>
+          } @else {
+            <div class="setores-grid">
+              @for (setor of setoresFiltradosDashboard(); track setor.id) {
+                <div class="setor-card">
+                  <div class="setor-card-header" [style.background-color]="getSetorColor(setor.nome)">
+                    <div>
+                      <h4 class="setor-title">{{ setor.nome }}</h4>
+                      <p class="setor-subtitle">
+                        {{ getFolgasPorSetorFiltradas(setor.nome).length }} em folga de {{ getFuncionariosPorSetor(setor.nome).length }} colaboradores
+                      </p>
+                      <div class="cobertura-bar-wrapper" [title]="getCoberturaPercent(setor.nome) + '% da equipe presente'">
+                        <div class="cobertura-bar-fill" [style.width.%]="getCoberturaPercent(setor.nome)"></div>
+                      </div>
+                    </div>
+                  </div>
 
-                <div class="setor-card-body">
+                  <div class="setor-card-body">
                   @if (getFolgasPorSetorFiltradas(setor.nome).length > 0) {
                     <div class="folgas-list">
                       @for (f of getFolgasPorSetorFiltradas(setor.nome); track f.id) {
@@ -303,6 +313,7 @@
               </div>
             }
           </div>
+        }
         </div>
       }
 
@@ -832,7 +843,10 @@
             <div class="actions-flex-gap">
               <div class="w-160">
                 <label for="selectedMonthHistoricoInput" class="filter-lbl">Mês de Referência:</label>
-                <input id="selectedMonthHistoricoInput" type="month" [(ngModel)]="selectedMonthHistorico" class="form-control" />
+                <input id="selectedMonthHistoricoInput" type="month"
+                  [ngModel]="selectedMonthHistorico()"
+                  (ngModelChange)="selectedMonthHistorico.set($event)"
+                  class="form-control" />
               </div>
 
               <div class="w-180">
@@ -856,7 +870,7 @@
 
           <!-- Grade de Histórico Mensal -->
           <h4 class="timeline-section-title">
-            Histórico Diário de Presença ({{ selectedMonthHistorico }})
+          Histórico Diário de Presença ({{ selectedMonthHistorico() }})
           </h4>
 
           <div class="timeline-grid">
@@ -990,7 +1004,10 @@
           </div>
           
           <div class="form-group flex-items-center-gap mt-16">
-            <input type="checkbox" [(ngModel)]="mostrarApenasFolgasImpressao" id="chkFolgasPrint" class="chk-input" />
+            <input type="checkbox"
+              [ngModel]="mostrarApenasFolgasImpressao()"
+              (ngModelChange)="mostrarApenasFolgasImpressao.set($event)"
+              id="chkFolgasPrint" class="chk-input" />
             <label for="chkFolgasPrint" class="chk-lbl">Imprimir apenas dias de folga (facilita leitura)</label>
           </div>
         </div>
@@ -1281,6 +1298,7 @@
               <option value="Nacional">Nacional (Brasil)</option>
               <option value="Estadual">Estadual (Bahia)</option>
               <option value="Municipal">Municipal (Poções - BA)</option>
+              <option value="Ponto Facultativo">Ponto Facultativo</option>
             </select>
           </div>
 

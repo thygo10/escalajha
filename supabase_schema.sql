@@ -96,12 +96,20 @@ create table if not exists public.feriados (
   id uuid primary key default gen_random_uuid(),
   nome text not null,
   data date not null,
-  tipo text not null check (tipo in ('Nacional', 'Estadual', 'Municipal')),
+  tipo text not null check (tipo in ('Nacional', 'Estadual', 'Municipal', 'Ponto Facultativo')),
   abrangencia text default 'Brasil',
   descricao text,
+  funcionamento_proibido boolean default false not null,
   created_at timestamptz default now(),
   constraint unique_feriado_nome_data unique (nome, data)
 );
+
+-- MIGRATION: garantir coluna mesmo em banco existente
+ALTER TABLE public.feriados ADD COLUMN IF NOT EXISTS funcionamento_proibido boolean DEFAULT false NOT NULL;
+
+ALTER TABLE public.feriados DROP CONSTRAINT IF EXISTS feriados_tipo_check;
+ALTER TABLE public.feriados ADD CONSTRAINT feriados_tipo_check
+  CHECK (tipo IN ('Nacional', 'Estadual', 'Municipal', 'Ponto Facultativo'));
 
 -- Tabela de Regras de Escala (CLT & Solicitações RH)
 create table if not exists public.regras_escala (
@@ -170,12 +178,26 @@ drop policy if exists "usuario_lojas_select_policy" on public.usuario_lojas;
 create policy "usuario_lojas_select_policy" on public.usuario_lojas
   for select using (user_id = auth.uid());
 
--- RLS: Setores & Cargos (Lookup global com leitura total e escrita para usuários autenticados)
+-- RLS: Setores & Cargos — leitura e escrita apenas para usuários autenticados
 drop policy if exists "setores_all_policy" on public.setores;
-create policy "setores_all_policy" on public.setores for all using (true) with check (true);
+drop policy if exists "setores_select_policy" on public.setores;
+drop policy if exists "setores_write_policy" on public.setores;
+
+create policy "setores_select_policy" on public.setores
+  for select using (auth.uid() is not null);
+
+create policy "setores_write_policy" on public.setores
+  for all using (auth.uid() is not null) with check (auth.uid() is not null);
 
 drop policy if exists "cargos_all_policy" on public.cargos;
-create policy "cargos_all_policy" on public.cargos for all using (true) with check (true);
+drop policy if exists "cargos_select_policy" on public.cargos;
+drop policy if exists "cargos_write_policy" on public.cargos;
+
+create policy "cargos_select_policy" on public.cargos
+  for select using (auth.uid() is not null);
+
+create policy "cargos_write_policy" on public.cargos
+  for all using (auth.uid() is not null) with check (auth.uid() is not null);
 
 -- RLS: Funcionários
 drop policy if exists "funcionarios_select_policy" on public.funcionarios;
@@ -213,12 +235,26 @@ drop policy if exists "escalas_delete_policy" on public.escalas;
 create policy "escalas_delete_policy" on public.escalas
   for delete using (public.user_has_loja_access(loja_id));
 
--- RLS: Feriados & Regras (Acesso para leitura e gestão por autenticados)
+-- RLS: Feriados & Regras — apenas usuários autenticados
 drop policy if exists "feriados_all_policy" on public.feriados;
-create policy "feriados_all_policy" on public.feriados for all using (true) with check (true);
+drop policy if exists "feriados_select_policy" on public.feriados;
+drop policy if exists "feriados_write_policy" on public.feriados;
+
+create policy "feriados_select_policy" on public.feriados
+  for select using (auth.uid() is not null);
+
+create policy "feriados_write_policy" on public.feriados
+  for all using (auth.uid() is not null) with check (auth.uid() is not null);
 
 drop policy if exists "regras_all_policy" on public.regras_escala;
-create policy "regras_all_policy" on public.regras_escala for all using (true) with check (true);
+drop policy if exists "regras_select_policy" on public.regras_escala;
+drop policy if exists "regras_write_policy" on public.regras_escala;
+
+create policy "regras_select_policy" on public.regras_escala
+  for select using (auth.uid() is not null);
+
+create policy "regras_write_policy" on public.regras_escala
+  for all using (auth.uid() is not null) with check (auth.uid() is not null);
 
 
 -- ==============================================================================

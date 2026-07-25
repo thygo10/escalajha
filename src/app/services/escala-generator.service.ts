@@ -11,8 +11,55 @@ export interface OpcionesGeracaoEscala {
   providedIn: 'root'
 })
 export class EscalaGeneratorService {
+  private readonly _cache = new Map<string, EscalaItem[]>();
+
+  /** Invalida entradas de cache para um mês/ano específico */
+  invalidateCache(ano: number, mes: number): void {
+    const prefix = `${ano}-${mes}-`;
+    for (const key of this._cache.keys()) {
+      if (key.startsWith(prefix)) this._cache.delete(key);
+    }
+  }
 
   /**
+   * Versão cacheada de gerarEscalaMensal.
+   * Usa um hash composto das entradas para garantir cache-hit preciso.
+   */
+  gerarEscalaMensalCached(
+    funcionarios: Funcionario[],
+    ano: number,
+    mes: number,
+    opcoes?: Partial<OpcionesGeracaoEscala>
+  ): EscalaItem[] {
+    const configStr = [
+      opcoes?.permitirDoisDiasConsecutivos ?? false,
+      (opcoes?.diasPermitidosFolga ?? []).slice().sort().join(','),
+      (opcoes?.feriados ?? []).map(f => `${f.data}:${f.funcionamento_proibido}`).sort().join('|'),
+      funcionarios.map(f => `${f.matricula_aleatoria}:${f.genero}:${f.ativo}`).join(',')
+    ].join(';');
+
+    const cacheKey = `${ano}-${mes}-${this._simpleHash(configStr)}`;
+
+    if (this._cache.has(cacheKey)) {
+      return this._cache.get(cacheKey)!;
+    }
+
+    const resultado = this.gerarEscalaMensal(funcionarios, ano, mes, opcoes);
+    this._cache.set(cacheKey, resultado);
+    return resultado;
+  }
+
+  private _simpleHash(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(36);
+  }
+
+
    * Gera a escala 6x1 Giratória respeitando:
    * 1. 6 dias de trabalho máximo consecutivos (INVIOLÁVEL).
    * 2. Revezamento feminino: quinzenal (1 trab -> 1 folga).

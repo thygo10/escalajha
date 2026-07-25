@@ -44,10 +44,16 @@ export class SupabaseService {
 
   public async waitForAuthReady(): Promise<void> {
     if (this.authReady()) return;
-    return new Promise(resolve => {
-      const check = setInterval(() => {
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        clearInterval(checkId);
+        reject(new Error('Auth timeout: sessão Supabase não inicializou em 10s. Verifique a conexão.'));
+      }, 10_000);
+
+      const checkId = setInterval(() => {
         if (this.authReady()) {
-          clearInterval(check);
+          clearInterval(checkId);
+          clearTimeout(timeoutId);
           resolve();
         }
       }, 50);
@@ -105,12 +111,19 @@ export class SupabaseService {
       }
     }
 
-    // 2. Fallback seguro para modo demonstração (sem expor senhas hardcoded em texto plano)
+    // 2. Modo demonstração — valida contra credenciais fixas (não aceita entrada livre)
     if (environment.demoMode || isPlaceholderUrl) {
-      const mockUser: any = {
-        id: 'user-demo-' + btoa(email).substring(0, 8),
-        email: email
-      };
+      const demoEmail = (environment as any).demoEmail ?? 'demo@joaohenrique.com';
+      const demoPass  = (environment as any).demoPassword ?? 'DEMO_2026_JH';
+
+      if (email !== demoEmail || pass !== demoPass) {
+        throw new Error('Credenciais inválidas. Use as credenciais de demonstração fornecidas.');
+      }
+
+      const mockUser = {
+        id: 'user-demo-jh-001',
+        email: demoEmail
+      } as unknown as User;
       const mockLoja: Loja = {
         id: 'loja-02-demo',
         empresa_id: 'empresa-demo',
