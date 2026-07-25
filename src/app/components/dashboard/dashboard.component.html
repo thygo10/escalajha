@@ -558,8 +558,13 @@
             </div>
 
             <div class="form-group mb-0">
-              <label for="novoTurnoInput">Turno Padrão</label>
-              <input id="novoTurnoInput" type="text" [(ngModel)]="novoTurno" name="novoTurno" class="form-control" placeholder="08:00 às 16:20" required />
+              <label for="novoTurnoSelect">Turno Padrão</label>
+              <select id="novoTurnoSelect" [ngModel]="novoTurno" (ngModelChange)="novoTurno = $event" name="novoTurnoSelect" class="form-control mb-4">
+                @for (h of horariosFixosCaixa; track h.id) {
+                  <option [value]="h.nome">{{ h.nome }}</option>
+                }
+              </select>
+              <input id="novoTurnoInput" type="text" [(ngModel)]="novoTurno" name="novoTurno" class="form-control" placeholder="07:00 às 15:50 (Almoço 11:00 às 12:30)" required />
             </div>
 
             <div class="form-group mb-0">
@@ -1237,8 +1242,13 @@
           </div>
 
           <div class="form-group">
-            <label for="editTurnoInput">Turno Padrão</label>
-            <input id="editTurnoInput" type="text" [(ngModel)]="ef.turno_padrao" class="form-control" required />
+            <label for="editTurnoSelect">Horário Padrão / Turno Fixo</label>
+            <select id="editTurnoSelect" [ngModel]="ef.turno_padrao" (ngModelChange)="ef.turno_padrao = $event" class="form-control mb-8">
+              @for (h of horariosFixosCaixa; track h.id) {
+                <option [value]="h.nome">{{ h.nome }}</option>
+              }
+            </select>
+            <input id="editTurnoInput" type="text" [(ngModel)]="ef.turno_padrao" class="form-control" placeholder="Ou digite um horário personalizado" required />
           </div>
 
           <div class="form-group">

@@ -7,6 +7,7 @@ import { EscalaGeneratorService } from '../../services/escala-generator.service'
 import { ToastService } from '../../services/toast.service';
 import { Loja, Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho, TurnoConfig, IntervaloOption, ValidacaoEscalaResultado } from '../../models/types';
 import { IconComponent } from '../shared/icon.component';
+import { HORARIOS_FIXOS_CAIXA } from '../../models/mock-data';
 
 interface ConfirmModalData {
   visible: boolean;
@@ -236,11 +237,13 @@ export class DashboardComponent implements OnInit {
   searchQueryDashboard = signal<string>('');
   filterSetorDashboard = signal<string>('');
 
+  readonly horariosFixosCaixa = HORARIOS_FIXOS_CAIXA;
+
   // Form de novo funcionário
   novoNome = '';
   novoSetor = signal<string>('Frente de Caixa');
   novoCargo = signal<string>('Operadora de Caixa');
-  novoTurno = '08:00 às 16:20';
+  novoTurno = '07:00 às 15:50 (Almoço 11:00 às 12:30)';
   novoGenero: 'M' | 'F' = 'F';
 
   dataAtualFormatted = this._hoje.toLocaleDateString('pt-BR');
