@@ -248,6 +248,118 @@ export class DashboardComponent implements OnInit {
 
   dataAtualFormatted = this._hoje.toLocaleDateString('pt-BR');
 
+  // Modal de Detalhamento e Inspeção da Equipe por Setor
+  setorDetalhamentoModal = signal<{
+    visible: boolean;
+    setorNome: string;
+    filterStatus: 'TODOS' | 'TRABALHANDO' | 'FOLGA';
+    searchQuery: string;
+  }>({
+    visible: false,
+    setorNome: '',
+    filterStatus: 'TODOS',
+    searchQuery: ''
+  });
+
+  openSetorDetalhamentoModal(setorNome: string = '', filterStatus: 'TODOS' | 'TRABALHANDO' | 'FOLGA' = 'TODOS') {
+    this.setorDetalhamentoModal.set({
+      visible: true,
+      setorNome,
+      filterStatus,
+      searchQuery: ''
+    });
+  }
+
+  closeSetorDetalhamentoModal() {
+    this.setorDetalhamentoModal.update(s => ({ ...s, visible: false }));
+  }
+
+  setSetorDetalhamentoFilter(filterStatus: 'TODOS' | 'TRABALHANDO' | 'FOLGA') {
+    this.setorDetalhamentoModal.update(s => ({ ...s, filterStatus }));
+  }
+
+  setSetorDetalhamentoSearch(query: string) {
+    this.setorDetalhamentoModal.update(s => ({ ...s, searchQuery: query }));
+  }
+
+  setorDetalhamentoData = computed(() => {
+    const modal = this.setorDetalhamentoModal();
+    if (!modal.visible) {
+      return { setorNome: '', total: 0, trabalhandoCount: 0, folgandoCount: 0, coberturaPct: 100, colaboradores: [] };
+    }
+
+    const setorNome = modal.setorNome;
+    const funcs = setorNome
+      ? (this.funcionariosPorSetorMap().get(setorNome) ?? [])
+      : this.funcionarios().filter(f => f.ativo);
+
+    const escala = this.escalaCompletaDaLojaCache();
+    const hojeDia = this.hojeDia;
+    const query = modal.searchQuery.toLowerCase().trim();
+
+    const resultList = funcs.map(f => {
+      const escalaItem = escala.find(i => i.matricula === f.matricula_aleatoria);
+      const statusHoje: TipoDia = (escalaItem?.dias[hojeDia] as TipoDia) ?? 'T';
+      const isFolga = statusHoje === 'F' || statusHoje === 'FD' || statusHoje === 'FE';
+
+      let statusLabel = 'Em Trabalho';
+      let statusClass = 'badge-trabalho';
+      if (statusHoje === 'FD') {
+        statusLabel = 'Folga Domingo';
+        statusClass = 'badge-folga-domingo';
+      } else if (statusHoje === 'FE') {
+        statusLabel = 'Feriado Fechado';
+        statusClass = 'badge-feriado';
+      } else if (statusHoje === 'F') {
+        statusLabel = 'Folga Semanal';
+        statusClass = 'badge-folga-semanal';
+      } else if (statusHoje === 'TF') {
+        statusLabel = 'Trabalho em Feriado';
+        statusClass = 'badge-trabalho-feriado';
+      } else if (statusHoje === 'TD') {
+        statusLabel = 'Trabalho em Domingo';
+        statusClass = 'badge-trabalho-domingo';
+      }
+
+      return {
+        funcionario: f,
+        statusHoje,
+        isFolga,
+        statusLabel,
+        statusClass
+      };
+    });
+
+    const total = resultList.length;
+    const folgandoCount = resultList.filter(item => item.isFolga).length;
+    const trabalhandoCount = total - folgandoCount;
+    const coberturaPct = total > 0 ? Math.round((trabalhandoCount / total) * 100) : 100;
+
+    let filtered = resultList;
+    if (modal.filterStatus === 'TRABALHANDO') {
+      filtered = filtered.filter(item => !item.isFolga);
+    } else if (modal.filterStatus === 'FOLGA') {
+      filtered = filtered.filter(item => item.isFolga);
+    }
+
+    if (query) {
+      filtered = filtered.filter(item =>
+        item.funcionario.primeiro_nome.toLowerCase().includes(query) ||
+        item.funcionario.cargo.toLowerCase().includes(query) ||
+        item.funcionario.matricula_aleatoria.includes(query)
+      );
+    }
+
+    return {
+      setorNome: setorNome || 'Todos os Setores',
+      total,
+      trabalhandoCount,
+      folgandoCount,
+      coberturaPct,
+      colaboradores: filtered
+    };
+  });
+
   // ============================================================
   // COMPUTED SIGNALS PRÉ-COMPUTADOS (substituem métodos no template — BUG-P1)
   // ============================================================

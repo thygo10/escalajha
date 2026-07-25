@@ -174,11 +174,11 @@
         <!-- Indicadores Resumidos (KPIs limpos) -->
         @if (activeTab() === 'dashboard') {
           <div class="header-kpi-bar">
-            <div class="kpi-chip">
+            <div class="kpi-chip clickable" (click)="openSetorDetalhamentoModal('', 'FOLGA')" title="Clique para ver quem está de folga hoje">
               <span class="kpi-val">{{ folgasHojeInfo().total }}</span>
               <span class="kpi-lbl">Folgas Hoje</span>
             </div>
-            <div class="kpi-chip">
+            <div class="kpi-chip clickable" (click)="openSetorDetalhamentoModal('', 'TODOS')" title="Clique para ver toda a equipe por setor">
               <span class="kpi-val">{{ funcionarios().length }}</span>
               <span class="kpi-lbl">Colaboradores</span>
             </div>
@@ -261,13 +261,28 @@
           } @else {
             <div class="setores-grid">
               @for (setor of setoresFiltradosDashboard(); track setor.id) {
-                <div class="setor-card">
+                <div class="setor-card interactive-card">
                   <div class="setor-card-header" [style.background-color]="getSetorColor(setor.nome)">
-                    <div>
-                      <h4 class="setor-title">{{ setor.nome }}</h4>
-                      <p class="setor-subtitle">
-                        {{ getFolgasPorSetorFiltradas(setor.nome).length }} em folga de {{ getFuncionariosPorSetor(setor.nome).length }} colaboradores
-                      </p>
+                    <div class="flex-1">
+                      <div class="flex-between align-center mb-5">
+                        <h4 class="setor-title">{{ setor.nome }}</h4>
+                        <span class="setor-badge-total" (click)="openSetorDetalhamentoModal(setor.nome, 'TODOS')" title="Ver equipe inteira">
+                          {{ getFuncionariosPorSetor(setor.nome).length }} Colaboradores
+                        </span>
+                      </div>
+
+                      <!-- Sub-métricas do setor -->
+                      <div class="setor-metrics-row mb-10">
+                        <span class="metric-chip green" (click)="openSetorDetalhamentoModal(setor.nome, 'TRABALHANDO')" title="Ver quem está trabalhando hoje">
+                          <span class="dot green"></span>
+                          {{ getFuncionariosPorSetor(setor.nome).length - getFolgasPorSetorFiltradas(setor.nome).length }} Trabalhando
+                        </span>
+                        <span class="metric-chip blue" (click)="openSetorDetalhamentoModal(setor.nome, 'FOLGA')" title="Ver quem está de folga hoje">
+                          <span class="dot blue"></span>
+                          {{ getFolgasPorSetorFiltradas(setor.nome).length }} Folgando
+                        </span>
+                      </div>
+
                       <div class="cobertura-bar-wrapper" [title]="getCoberturaPercent(setor.nome) + '% da equipe presente'">
                         <div class="cobertura-bar-fill" [style.width.%]="getCoberturaPercent(setor.nome)"></div>
                       </div>
@@ -275,31 +290,38 @@
                   </div>
 
                   <div class="setor-card-body">
-                  @if (getFolgasPorSetorFiltradas(setor.nome).length > 0) {
-                    <div class="folgas-list">
-                      @for (f of getFolgasPorSetorFiltradas(setor.nome); track f.id) {
-                        <button
-                          type="button"
-                          (click)="openQuickBlurModal(f)"
-                          class="clickable-row folga-item-row"
-                        >
-                          <div>
-                            <span class="folga-name">{{ f.primeiro_nome }}</span>
-                            <span class="folga-mat">Matrícula: {{ f.matricula_aleatoria }}</span>
-                          </div>
-                          <span class="btn-ver-detalhes">Detalhes</span>
-                        </button>
-                      }
+                    @if (getFolgasPorSetorFiltradas(setor.nome).length > 0) {
+                      <div class="folgas-list">
+                        @for (f of getFolgasPorSetorFiltradas(setor.nome); track f.id) {
+                          <button
+                            type="button"
+                            (click)="openQuickBlurModal(f)"
+                            class="clickable-row folga-item-row"
+                          >
+                            <div>
+                              <span class="folga-name">{{ f.primeiro_nome }}</span>
+                              <span class="folga-mat">Matrícula: {{ f.matricula_aleatoria }}</span>
+                            </div>
+                            <span class="btn-ver-detalhes">Detalhes</span>
+                          </button>
+                        }
+                      </div>
+                    } @else {
+                      <div class="empty-folga-state">
+                        100% da equipe em trabalho hoje
+                      </div>
+                    }
+
+                    <div class="setor-card-footer mt-15 pt-10 border-top">
+                      <button type="button" (click)="openSetorDetalhamentoModal(setor.nome, 'TODOS')" class="btn-inspect-setor">
+                        <span>Ver Equipe & Status Completo</span>
+                        <app-icon name="arrow-right" [size]="14"></app-icon>
+                      </button>
                     </div>
-                  } @else {
-                    <div class="empty-folga-state">
-                      100% da equipe em trabalho hoje
-                    </div>
-                  }
+                  </div>
                 </div>
-              </div>
-            }
-          </div>
+              }
+            </div>
         }
         </div>
       }
@@ -688,6 +710,15 @@
                 </div>
 
                 <div class="setor-card-body">
+                  <div class="flex-between align-center mb-10 pb-10 border-bottom">
+                    <span class="text-xs font-bold color-navy">
+                      Equipe: {{ (funcionariosPorSetorMap().get(setor.nome) ?? []).length }} colaborador(es)
+                    </span>
+                    <button (click)="openSetorDetalhamentoModal(setor.nome)" class="btn-link-sm">
+                      Ver Equipe Completa
+                    </button>
+                  </div>
+
                   <div class="cargos-section-header">
                     <span class="cargos-count-label">
                       Cargos ({{ getCargosDoSetor(setor.nome).length }})
@@ -1611,6 +1642,140 @@
         <div class="modal-footer">
           <button (click)="fecharModalTurnos()" class="btn-premium btn-ghost">Cancelar</button>
           <button (click)="adicionarNovoTurno(); fecharModalTurnos()" class="btn-premium btn-primary-solid">Salvar Turno</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL DE DETALHAMENTO E INSPEÇÃO DA EQUIPE POR SETOR -->
+  @if (setorDetalhamentoModal().visible) {
+    <div class="modal-backdrop no-print" (click)="closeSetorDetalhamentoModal()">
+      <div class="modal-card modal-lg animate-fade-in" (click)="$event.stopPropagation()">
+        <div class="modal-header flex-between" [style.background-color]="getSetorColor(setorDetalhamentoData().setorNome)">
+          <div>
+            <h3 class="modal-title-white">{{ setorDetalhamentoData().setorNome }}</h3>
+            <p class="modal-subtitle-white">Detalhamento de Colaboradores e Cobertura (Hoje: {{ dataAtualFormatted }})</p>
+          </div>
+          <button (click)="closeSetorDetalhamentoModal()" class="icon-btn-white" aria-label="Fechar modal">
+            <app-icon name="x" [size]="20" color="#ffffff"></app-icon>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <!-- KPI METRICS DO SETOR -->
+          <div class="setor-modal-kpi-grid mb-20">
+            <div class="kpi-card-mini green clickable" (click)="setSetorDetalhamentoFilter('TRABALHANDO')" title="Ver quem está trabalhando hoje">
+              <span class="kpi-mini-val">{{ setorDetalhamentoData().trabalhandoCount }}</span>
+              <span class="kpi-mini-lbl">Trabalhando Hoje</span>
+            </div>
+
+            <div class="kpi-card-mini blue clickable" (click)="setSetorDetalhamentoFilter('FOLGA')" title="Ver quem está de folga hoje">
+              <span class="kpi-mini-val">{{ setorDetalhamentoData().folgandoCount }}</span>
+              <span class="kpi-mini-lbl">Folgando Hoje</span>
+            </div>
+
+            <div class="kpi-card-mini dark clickable" (click)="setSetorDetalhamentoFilter('TODOS')" title="Ver equipe completa">
+              <span class="kpi-mini-val">{{ setorDetalhamentoData().total }}</span>
+              <span class="kpi-mini-lbl">Total no Setor</span>
+            </div>
+
+            <div class="kpi-card-mini yellow">
+              <span class="kpi-mini-val">{{ setorDetalhamentoData().coberturaPct }}%</span>
+              <span class="kpi-mini-lbl">Taxa de Presença</span>
+            </div>
+          </div>
+
+          <!-- FILTROS & BUSCA DENTRO DO MODAL -->
+          <div class="modal-filter-toolbar mb-15 flex-between gap-15 wrap">
+            <div class="pill-group">
+              <button (click)="setSetorDetalhamentoFilter('TODOS')" [class.active]="setorDetalhamentoModal().filterStatus === 'TODOS'" class="pill-btn">
+                Todos ({{ setorDetalhamentoData().total }})
+              </button>
+              <button (click)="setSetorDetalhamentoFilter('TRABALHANDO')" [class.active]="setorDetalhamentoModal().filterStatus === 'TRABALHANDO'" class="pill-btn green">
+                Trabalhando ({{ setorDetalhamentoData().trabalhandoCount }})
+              </button>
+              <button (click)="setSetorDetalhamentoFilter('FOLGA')" [class.active]="setorDetalhamentoModal().filterStatus === 'FOLGA'" class="pill-btn blue">
+                Folgando ({{ setorDetalhamentoData().folgandoCount }})
+              </button>
+            </div>
+
+            <div class="search-input-wrapper flex-1 max-w-320">
+              <span class="search-icon-left">
+                <app-icon name="search" [size]="16" color="#94a3b8"></app-icon>
+              </span>
+              <input
+                type="text"
+                [ngModel]="setorDetalhamentoModal().searchQuery"
+                (ngModelChange)="setSetorDetalhamentoSearch($event)"
+                placeholder="Pesquisar nome ou cargo..."
+              />
+            </div>
+          </div>
+
+          <!-- LISTA DE COLABORADORES DO SETOR -->
+          <div class="table-responsive setor-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Colaborador</th>
+                  <th>Cargo / Função</th>
+                  <th>Turno Padrão</th>
+                  <th>Gênero</th>
+                  <th>Status Hoje</th>
+                  <th class="text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of setorDetalhamentoData().colaboradores; track item.funcionario.id) {
+                  <tr>
+                    <td>
+                      <div class="func-name-mat">
+                        <span class="func-nome font-bold color-navy">{{ item.funcionario.primeiro_nome }}</span>
+                        <span class="func-mat text-xs color-slate">Matrícula: {{ item.funcionario.matricula_aleatoria }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="text-xs font-semibold color-navy">{{ item.funcionario.cargo }}</span>
+                    </td>
+                    <td>
+                      <span class="turno-badge-pill">{{ item.funcionario.turno_padrao }}</span>
+                    </td>
+                    <td>
+                      <span class="genero-chip" [class.m]="item.funcionario.genero === 'M'" [class.f]="item.funcionario.genero === 'F'">
+                        {{ item.funcionario.genero === 'F' ? 'Feminino' : 'Masculino' }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="status-chip" [ngClass]="item.statusClass">
+                        <span class="status-dot"></span>
+                        {{ item.statusLabel }}
+                      </span>
+                    </td>
+                    <td class="text-right">
+                      <button (click)="closeSetorDetalhamentoModal(); openQuickBlurModal(item.funcionario)" class="btn-link-sm">
+                        Ver Perfil
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6" class="text-center py-25 text-muted font-medium">
+                      Nenhum colaborador encontrado para o filtro selecionado.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="modal-footer flex-between">
+          <span class="text-xs color-slate">
+            Exibindo {{ setorDetalhamentoData().colaboradores.length }} colaborador(es) de {{ setorDetalhamentoData().total }}
+          </span>
+          <button (click)="closeSetorDetalhamentoModal()" class="btn-premium btn-secondary-solid">
+            Fechar
+          </button>
         </div>
       </div>
     </div>
