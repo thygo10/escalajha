@@ -126,6 +126,8 @@ export class EscalaGeneratorService {
     const setorNome = (funcionarios[0]?.setor || '').toLowerCase();
     const eFrenteDeCaixa = setorNome.includes('caixa') && !setorNome.includes('fiscal');
     const ePadaria = setorNome.includes('padaria');
+    const eAcougue = setorNome.includes('acougue') || setorNome.includes('açougue');
+    const eExcecaoDomingo = ePadaria || eAcougue;
 
     // Mínimo automático de 6 para Frente de Caixa
     const minEfetivo = eFrenteDeCaixa ? Math.max(config.minFuncionariosPorDia ?? 2, 6) : (config.minFuncionariosPorDia ?? 2);
@@ -175,13 +177,21 @@ export class EscalaGeneratorService {
 
           let deveFolgarNoDomingo = false;
 
-          if (souFeminino) {
-            // CLT Art 386: Quinzenal -> alterna domingos sim / domingos não
-            deveFolgarNoDomingo = folgaDomingoImpar ? eDomingoImpar : !eDomingoImpar;
-          } else if (domingosSeguidos >= 2) {
-            deveFolgarNoDomingo = true;
+          if (!eExcecaoDomingo) {
+            // REGRA GERAL (Demais Setores): 1 Domingo Trabalhado para 2 Domingos de Folga (1T : 2F)
+            const turmaDom = idx % 3;
+            const deveTrabalharEsteDomingo = (domingoIndex % 3 === turmaDom);
+            deveFolgarNoDomingo = !deveTrabalharEsteDomingo;
           } else {
-            deveFolgarNoDomingo = folgaDomingoImpar ? eDomingoImpar : (!eDomingoImpar && domingoIndex % 3 === 2);
+            // EXCEÇÃO (Açougue e Padaria): 2 Domingos Trabalhados para 1 Domingo de Folga (2T : 1F) ou CLT 386
+            if (souFeminino) {
+              // CLT Art 386: Quinzenal -> alterna domingos sim / domingos não
+              deveFolgarNoDomingo = folgaDomingoImpar ? eDomingoImpar : !eDomingoImpar;
+            } else if (domingosSeguidos >= 2) {
+              deveFolgarNoDomingo = true;
+            } else {
+              deveFolgarNoDomingo = folgaDomingoImpar ? eDomingoImpar : (!eDomingoImpar && domingoIndex % 3 === 2);
+            }
           }
 
           if (deveFolgarNoDomingo && config.diasPermitidosFolga.includes(0)) {
@@ -358,6 +368,8 @@ export class EscalaGeneratorService {
     const setorNomeClean = setorNomeOriginal.toLowerCase();
     const eFrenteDeCaixa = setorNomeClean.includes('caixa') && !setorNomeClean.includes('fiscal');
     const ePadaria = setorNomeClean.includes('padaria');
+    const eAcougue = setorNomeClean.includes('acougue') || setorNomeClean.includes('açougue');
+    const eExcecaoDomingo = ePadaria || eAcougue;
 
     const minEfetivoValida = eFrenteDeCaixa ? Math.max(minRequerido, 6) : minRequerido;
 
@@ -404,6 +416,7 @@ export class EscalaGeneratorService {
     itens.forEach(item => {
       let consecutivos = 0;
       let domingosSeguidosFeminino = 0;
+      let domingosSeguidosGeral = 0;
       let totalFolgasNoMes = 0;
 
       for (let dia = 1; dia <= totalDias; dia++) {
@@ -425,7 +438,19 @@ export class EscalaGeneratorService {
             });
           }
 
-          if (isDom && item.genero === 'F') {
+          if (isDom && !eExcecaoDomingo) {
+            domingosSeguidosGeral++;
+            if (domingosSeguidosGeral >= 2) {
+              erros.push({
+                dia,
+                setor: item.setor,
+                mensagem: `${item.nome}: Trabalhou 2 domingos seguidos (Dia ${dia}). A Regra Geral do setor exige 1 domingo trabalhado para 2 folgas.`,
+                tipo: 'ERRO_CLT'
+              });
+            }
+          }
+
+          if (isDom && item.genero === 'F' && eExcecaoDomingo) {
             domingosSeguidosFeminino++;
             if (domingosSeguidosFeminino >= 2) {
               erros.push({
@@ -438,8 +463,9 @@ export class EscalaGeneratorService {
           }
         } else {
           consecutivos = 0;
-          if (isDom && item.genero === 'F') {
+          if (isDom) {
             domingosSeguidosFeminino = 0;
+            domingosSeguidosGeral = 0;
           }
         }
       }
