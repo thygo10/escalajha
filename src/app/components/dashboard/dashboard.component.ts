@@ -794,9 +794,16 @@ export class DashboardComponent implements OnInit {
   async executeConfirmModal() {
     const modal = this.confirmModal();
     if (modal.onConfirm) {
-      await modal.onConfirm();
+      try {
+        await modal.onConfirm();
+      } catch (err: any) {
+        this.toastService.error('Erro na Operação', 'Falha ao processar requisição: ' + (err.message || 'Erro de rede.'));
+      } finally {
+        this.closeConfirmModal();
+      }
+    } else {
+      this.closeConfirmModal();
     }
-    this.closeConfirmModal();
   }
 
   openAddSetorModal() {
