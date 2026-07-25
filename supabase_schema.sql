@@ -50,6 +50,7 @@ create table if not exists public.cargos (
 );
 
 -- Tabela de Funcionários (Minimização LGPD & Retenção Legal CLT)
+-- Tabela de Funcionários (Minimização LGPD & Retenção Legal CLT)
 create table if not exists public.funcionarios (
   id uuid primary key default gen_random_uuid(),
   loja_id uuid references public.lojas(id) on delete restrict not null,
@@ -58,10 +59,25 @@ create table if not exists public.funcionarios (
   setor text not null, -- 'Açougue', 'Hortifruti', 'Caixa', 'Reposição', etc.
   cargo text not null,
   turno_padrao text default '08:00 às 16:20',
+  genero text default 'F' check (genero in ('M', 'F', 'OUTRO')),
   ativo boolean default true not null, -- Exclusão Lógica para conformidade CLT/LGPD
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- Trigger de Atualização Automática do campo updated_at
+create or replace function public.update_updated_at_column()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists update_funcionarios_updated_at on public.funcionarios;
+create trigger update_funcionarios_updated_at
+  before update on public.funcionarios
+  for each row execute function public.update_updated_at_column();
 
 -- Tabela de Escalas Mensais
 create table if not exists public.escalas (
@@ -83,14 +99,15 @@ create table if not exists public.feriados (
   tipo text not null check (tipo in ('Nacional', 'Estadual', 'Municipal')),
   abrangencia text default 'Brasil',
   descricao text,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  constraint unique_feriado_nome_data unique (nome, data)
 );
 
 -- Tabela de Regras de Escala (CLT & Solicitações RH)
 create table if not exists public.regras_escala (
   id uuid primary key default gen_random_uuid(),
   loja_id uuid references public.lojas(id) on delete cascade,
-  titulo text not null,
+  titulo text unique not null,
   descricao text not null,
   categoria text not null check (categoria in ('CLT', 'Acordo Coletivo', 'Interna RH', 'Solicitação RH')),
   status text not null default 'PENDENTE_PROGRAMADOR' check (status in ('IMPLEMENTADA', 'EM_DESENVOLVIMENTO', 'PENDENTE_PROGRAMADOR')),
@@ -113,6 +130,7 @@ alter table public.cargos enable row level security;
 alter table public.funcionarios enable row level security;
 alter table public.escalas enable row level security;
 alter table public.feriados enable row level security;
+alter table public.regras_escala enable row level security;
 
 -- Função utilitária para checar se o usuário autenticado tem acesso à loja
 create or replace function public.user_has_loja_access(target_loja_id uuid)
@@ -152,6 +170,13 @@ drop policy if exists "usuario_lojas_select_policy" on public.usuario_lojas;
 create policy "usuario_lojas_select_policy" on public.usuario_lojas
   for select using (user_id = auth.uid());
 
+-- RLS: Setores & Cargos (Lookup global com leitura total e escrita para usuários autenticados)
+drop policy if exists "setores_all_policy" on public.setores;
+create policy "setores_all_policy" on public.setores for all using (true) with check (true);
+
+drop policy if exists "cargos_all_policy" on public.cargos;
+create policy "cargos_all_policy" on public.cargos for all using (true) with check (true);
+
 -- RLS: Funcionários
 drop policy if exists "funcionarios_select_policy" on public.funcionarios;
 create policy "funcionarios_select_policy" on public.funcionarios
@@ -188,12 +213,12 @@ drop policy if exists "escalas_delete_policy" on public.escalas;
 create policy "escalas_delete_policy" on public.escalas
   for delete using (public.user_has_loja_access(loja_id));
 
--- RLS: Feriados & Regras
-drop policy if exists "feriados_select_policy" on public.feriados;
-create policy "feriados_select_policy" on public.feriados for select using (true);
+-- RLS: Feriados & Regras (Acesso para leitura e gestão por autenticados)
+drop policy if exists "feriados_all_policy" on public.feriados;
+create policy "feriados_all_policy" on public.feriados for all using (true) with check (true);
 
-drop policy if exists "regras_select_policy" on public.regras_escala;
-create policy "regras_select_policy" on public.regras_escala for select using (true);
+drop policy if exists "regras_all_policy" on public.regras_escala;
+create policy "regras_all_policy" on public.regras_escala for all using (true) with check (true);
 
 
 -- ==============================================================================
@@ -340,7 +365,11 @@ begin
     ('Independência da Bahia', '2026-07-02', 'Estadual', 'Bahia', '2 de Julho - Data Magna da Bahia'),
     ('Festa do Divino Espírito Santo', '2026-05-24', 'Municipal', 'Poções - BA', 'Festa do Padroeiro da Cidade de Poções'),
     ('Emancipação Política de Poções', '2026-06-26', 'Municipal', 'Poções - BA', 'Aniversário da Cidade de Poções - BA'),
-    ('Dia da Consciência Evangélica', '2026-10-31', 'Municipal', 'Poções - BA', 'Dia da Cultura Evangélica de Poções');
+    ('Dia da Consciência Evangélica', '2026-10-31', 'Municipal', 'Poções - BA', 'Dia da Cultura Evangélica de Poções')
+  on conflict (nome, data) do update set
+    tipo = excluded.tipo,
+    abrangencia = excluded.abrangencia,
+    descricao = excluded.descricao;
 
   -- Inserir Regras de Escala (CLT, Acordo Coletivo e Solicitações RH)
   insert into public.regras_escala (loja_id, titulo, descricao, categoria, status, obrigatoria) values
@@ -350,6 +379,9 @@ begin
     (v_loja_id, 'Intervalo Interjornada de 11 Horas', 'Entre duas jornadas de trabalho é obrigatório o intervalo mínimo de 11 horas consecutivas para descanso (Art. 66 da CLT).', 'CLT', 'IMPLEMENTADA', true),
     (v_loja_id, 'Intervalo Intrajornada Flexível (Refeição)', 'Concessão de intervalo de refeição ajustável em 30 min, 1h, 1h30min, 2h, 2h30min, 2h40min ou 3h para jornadas acima de 6 horas (Salvo Convenção Coletiva).', 'Acordo Coletivo', 'IMPLEMENTADA', true),
     (v_loja_id, 'Feriados Municipais de Poções-BA', 'Garantir folga ou compensação em dobro para feriados municipais de Poções (Festa do Divino Espírito Santo e Emancipação).', 'Interna RH', 'IMPLEMENTADA', true),
-    (v_loja_id, 'Prioridade de Folga Véspera de Feriado (Reposição)', 'Solicitação do RH: O pessoal da reposição que folgar no sábado véspera de feriado estadual não deve dobrar o turno na segunda-feira.', 'Solicitação RH', 'PENDENTE_PROGRAMADOR', false);
+    (v_loja_id, 'Prioridade de Folga Véspera de Feriado (Reposição)', 'Solicitação do RH: O pessoal da reposição que folgar no sábado véspera de feriado estadual não deve dobrar o turno na segunda-feira.', 'Solicitação RH', 'PENDENTE_PROGRAMADOR', false)
+  on conflict (titulo) do update set
+    descricao = excluded.descricao,
+    categoria = excluded.categoria;
 
 end $$;

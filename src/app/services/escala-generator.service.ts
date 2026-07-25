@@ -12,21 +12,23 @@ export interface OpcionesGeracaoEscala {
 export class EscalaGeneratorService {
 
   /**
-   * Identifica heuristicamente o gênero feminino para aplicar regras da CCT
+   * Identifica se a colaboradora é do sexo feminino para regras da CLT / CCT
    */
-  private isFeminino(nome: string): boolean {
-    const n = nome.trim().toLowerCase();
-    const nomesFemininos = [
+  private isFeminino(func: Funcionario): boolean {
+    if (func.genero === 'F') return true;
+    if (func.genero === 'M') return false;
+
+    const n = func.primeiro_nome.trim().toLowerCase();
+    const nomesFemininosExatos = new Set([
       'nayle', 'alane', 'ana', 'jaqueline', 'jaine', 'kamilly', 'sabrina', 'viviane',
       'laísa', 'claudia', 'joesiane', 'sueli', 'luciene', 'luciana', 'natália', 'edma',
       'analandia', 'roseli', 'edinalia', 'suzaine', 'eduarda', 'valdenice', 'nicole',
       'normelia', 'marielle', 'angela', 'ivonete', 'maisa', 'jeane', 'raquel', 'thais',
-      'walta', 'lane', 'acleia'
-    ];
-    return (
-      nomesFemininos.some(f => n.includes(f)) ||
-      n.endsWith('a') || n.endsWith('e') || n.endsWith('y') || n.endsWith('is')
-    );
+      'walta', 'lane', 'acleia', 'ana paula', 'ana luísa', 'ana beatriz', 'ana félix', 'ana cláudia'
+    ]);
+
+    const primeiroNome = n.split(' ')[0];
+    return nomesFemininosExatos.has(n) || nomesFemininosExatos.has(primeiroNome);
   }
 
   /**
@@ -63,7 +65,7 @@ export class EscalaGeneratorService {
 
     funcionarios.forEach((func, idx) => {
       const dias: Record<number, string> = {};
-      const souFeminino = this.isFeminino(func.primeiro_nome);
+      const souFeminino = this.isFeminino(func);
 
       let diasTrabalhadosSeguidos = 0;
       let domingoAnteriorTrabalhado = false;

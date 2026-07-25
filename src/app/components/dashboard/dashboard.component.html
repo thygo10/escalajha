@@ -1,0 +1,1274 @@
+<div class="system-layout">
+
+  <!-- Overlay para Mobile -->
+  <button
+    type="button"
+    class="sidebar-overlay"
+    [class.active]="isMobileMenuOpen()"
+    (click)="isMobileMenuOpen.set(false)"
+    aria-label="Fechar menu lateral"
+  ></button>
+
+  <!-- ============================================================================== -->
+  <!-- BARRA LATERAL (SIDEBAR ENTERPRISE) -->
+  <!-- ============================================================================== -->
+  <aside class="sidebar no-print" [class.mobile-open]="isMobileMenuOpen()">
+    <div>
+      <!-- Marca / Logo Oficial -->
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <div class="brand-badge">JH</div>
+          <div class="brand-text">
+            <h2>João Henrique</h2>
+            <span>Atacadista 2.0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seletor de Loja (Multi-Tenant) -->
+      @if (userLojas().length > 0) {
+        <div class="loja-selector-wrapper">
+          <label for="selectLoja" class="loja-selector-label">Unidade / Loja</label>
+          <select
+            id="selectLoja"
+            [ngModel]="activeLoja()?.id"
+            (ngModelChange)="onLojaChange($event)"
+            class="form-control select-loja"
+          >
+            @for (l of userLojas(); track l.id) {
+              <option [value]="l.id">{{ l.nome }} ({{ l.codigo }})</option>
+            }
+          </select>
+        </div>
+      }
+
+      <!-- Menu de Navegação Enterprise -->
+      <nav class="sidebar-menu">
+        <div class="sidebar-label">Módulos</div>
+
+        <button
+          (click)="selectTab('dashboard')"
+          [class.active]="activeTab() === 'dashboard'"
+          class="nav-link-btn"
+        >
+          <div class="nav-btn-content">
+            <app-icon name="bar-chart" [size]="18"></app-icon>
+            <span>Visão Geral</span>
+          </div>
+        </button>
+
+        <button
+          (click)="selectTab('escala')"
+          [class.active]="activeTab() === 'escala'"
+          class="nav-link-btn"
+        >
+          <div class="nav-btn-content">
+            <app-icon name="calendar" [size]="18"></app-icon>
+            <span>Escala do Mês</span>
+          </div>
+        </button>
+
+        <button
+          (click)="selectTab('funcionarios')"
+          [class.active]="activeTab() === 'funcionarios'"
+          class="nav-link-btn"
+        >
+          <div class="nav-btn-content">
+            <app-icon name="users" [size]="18"></app-icon>
+            <span>Colaboradores</span>
+          </div>
+        </button>
+
+        <button
+          (click)="selectTab('setores')"
+          [class.active]="activeTab() === 'setores'"
+          class="nav-link-btn"
+        >
+          <div class="nav-btn-content">
+            <app-icon name="folder" [size]="18"></app-icon>
+            <span>Setores & Cargos</span>
+          </div>
+        </button>
+
+        <button
+          (click)="selectTab('feriados')"
+          [class.active]="activeTab() === 'feriados'"
+          class="nav-link-btn"
+        >
+          <div class="nav-btn-content">
+            <app-icon name="calendar-check" [size]="18"></app-icon>
+            <span>Gestão de Feriados</span>
+          </div>
+        </button>
+
+        <button
+          (click)="selectTab('regras')"
+          [class.active]="activeTab() === 'regras'"
+          class="nav-link-btn"
+        >
+          <div class="nav-btn-content">
+            <app-icon name="book-open" [size]="18"></app-icon>
+            <span>Regras de Escala</span>
+          </div>
+        </button>
+
+        @if (selectedFuncionarioForPage()) {
+          <button
+            (click)="selectTab('detalhes-funcionario')"
+            [class.active]="activeTab() === 'detalhes-funcionario'"
+            class="nav-link-btn"
+          >
+            <div class="nav-btn-content">
+              <app-icon name="user" [size]="18"></app-icon>
+              <span>Perfil de {{ selectedFuncionarioForPage()?.primeiro_nome }}</span>
+            </div>
+          </button>
+        }
+      </nav>
+    </div>
+
+    <!-- Rodapé do Usuário Logado -->
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar">{{ userInitials() }}</div>
+        <div class="user-info">
+          <div class="user-name" [title]="currentUser()?.email || 'rhjoaohenriqueatacadista@gmail.com'">
+            {{ currentUser()?.email || 'rhjoaohenriqueatacadista@gmail.com' }}
+          </div>
+          <div class="user-role">Gestão de RH</div>
+        </div>
+        <button (click)="handleLogout()" title="Encerrar Sessão" class="icon-btn-sm danger">
+          <app-icon name="log-out" [size]="16" color="#ef4444"></app-icon>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============================================================================== -->
+  <!-- CONTEÚDO PRINCIPAL (MAIN WRAPPER & TOPBAR) -->
+  <!-- ============================================================================== -->
+  <div class="main-wrapper">
+
+    <!-- Topbar Superior de Utilidades -->
+    <header class="topbar no-print">
+      <div class="topbar-left">
+        <button (click)="toggleMobileMenu()" class="mobile-menu-btn" title="Abrir Menu">
+          ☰
+        </button>
+
+        <!-- Loja Ativa Tag -->
+        <div class="active-loja-tag">
+          <app-icon name="building" [size]="18" color="#0b2a52"></app-icon>
+          <span>{{ activeLoja()?.nome || 'Filial - Loja 002' }}</span>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <!-- Botão de Opções de Impressão A4 -->
+        <button (click)="openPrintOptionsModal()" class="btn-premium btn-yellow-gradient">
+          <app-icon name="printer" [size]="16"></app-icon>
+          <span class="no-mobile-text">Imprimir A4</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Conteúdo Interno da Página -->
+    <main class="page-container">
+
+      <!-- BREADCRUMB & HEADER PROFISSIONAL E SECO (SEM POLUIÇÃO DE HERO BANNER) -->
+      <div class="module-header no-print">
+        <div class="breadcrumb-container">
+          <span class="breadcrumb-root">Home</span>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-active">
+            @if (activeTab() === 'dashboard') { Visão Geral }
+            @if (activeTab() === 'escala') { Escala Mensal de Folgas }
+            @if (activeTab() === 'funcionarios') { Colaboradores }
+            @if (activeTab() === 'setores') { Setores & Cargos }
+            @if (activeTab() === 'feriados') { Feriados Registrados }
+            @if (activeTab() === 'regras') { Regras de Escala }
+            @if (activeTab() === 'detalhes-funcionario') { Perfil de {{ selectedFuncionarioForPage()?.primeiro_nome }} }
+          </span>
+        </div>
+
+        <!-- Indicadores Resumidos (KPIs limpos) -->
+        @if (activeTab() === 'dashboard') {
+          <div class="header-kpi-bar">
+            <div class="kpi-chip">
+              <span class="kpi-val">{{ folgasHojeInfo().total }}</span>
+              <span class="kpi-lbl">Folgas Hoje</span>
+            </div>
+            <div class="kpi-chip">
+              <span class="kpi-val">{{ funcionarios().length }}</span>
+              <span class="kpi-lbl">Colaboradores</span>
+            </div>
+          </div>
+        }
+
+        @if (activeTab() === 'regras') {
+          <div class="header-kpi-bar">
+            <div class="kpi-chip">
+              <span class="kpi-val">{{ statsRegras().implementadas }}</span>
+              <span class="kpi-lbl">No Algoritmo</span>
+            </div>
+            <div class="kpi-chip">
+              <span class="kpi-val">{{ statsRegras().pendentes }}</span>
+              <span class="kpi-lbl">Pendentes</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- ABA 0: DASHBOARD VISÃO GERAL -->
+      @if (activeTab() === 'dashboard') {
+
+        <!-- BARRA DE PESQUISA & FILTROS EM PÍLULA -->
+        <div class="filter-pill-bar no-print">
+          <div class="search-input-wrapper">
+            <span class="search-icon-left">
+              <app-icon name="search" [size]="18" color="#94a3b8"></app-icon>
+            </span>
+            <label for="searchQueryDashInput" class="sr-only">Pesquisar colaboradores ou setores</label>
+            <input
+              id="searchQueryDashInput"
+              type="text"
+              [ngModel]="searchQueryDashboard()"
+              (ngModelChange)="searchQueryDashboard.set($event)"
+              placeholder="Pesquisar colaboradores ou setores..."
+            />
+            @if (searchQueryDashboard() || filterSetorDashboard()) {
+              <div class="search-actions-right">
+                <button (click)="searchQueryDashboard.set(''); filterSetorDashboard.set('')" title="Limpar Filtros" class="icon-btn-sm">
+                  <app-icon name="x" [size]="16"></app-icon>
+                </button>
+              </div>
+            }
+          </div>
+
+          <div class="pill-group">
+            <span class="pill-group-title">Filtrar Setor:</span>
+
+            <button (click)="filterSetorDashboard.set('')" [class.active]="filterSetorDashboard() === ''" class="pill-btn">
+              Todos os Setores <span class="pill-badge">{{ setores().length }}</span>
+            </button>
+
+            @for (s of setores(); track s.id) {
+              <button (click)="filterSetorDashboard.set(s.nome)" [class.active]="filterSetorDashboard() === s.nome" class="pill-btn">
+                {{ s.nome }} <span class="pill-badge">{{ getFolgasPorSetor(s.nome).length }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Detalhamento por Setores: Quem Está de Folga Hoje -->
+        <div class="clean-card">
+          <div class="card-section-header">
+            <h3>Folgas Hoje Por Setor ({{ dataAtualFormatted }})</h3>
+          </div>
+
+          <div class="setores-grid">
+            @for (setor of setoresFiltradosDashboard(); track setor.id) {
+              <div class="setor-card">
+                <div class="setor-card-header" [style.background-color]="getSetorColor(setor.nome)">
+                  <div>
+                    <h4 class="setor-title">{{ setor.nome }}</h4>
+                    <p class="setor-subtitle">
+                      {{ getFolgasPorSetorFiltradas(setor.nome).length }} em folga de {{ getFuncionariosPorSetor(setor.nome).length }} colaboradores
+                    </p>
+                  </div>
+                </div>
+
+                <div class="setor-card-body">
+                  @if (getFolgasPorSetorFiltradas(setor.nome).length > 0) {
+                    <div class="folgas-list">
+                      @for (f of getFolgasPorSetorFiltradas(setor.nome); track f.id) {
+                        <button
+                          type="button"
+                          (click)="openQuickBlurModal(f)"
+                          class="clickable-row folga-item-row"
+                        >
+                          <div>
+                            <span class="folga-name">{{ f.primeiro_nome }}</span>
+                            <span class="folga-mat">Matrícula: {{ f.matricula_aleatoria }}</span>
+                          </div>
+                          <span class="btn-ver-detalhes">Detalhes</span>
+                        </button>
+                      }
+                    </div>
+                  } @else {
+                    <div class="empty-folga-state">
+                      100% da equipe em trabalho hoje
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ABA 1: ESCALA DO MÊS -->
+      @if (activeTab() === 'escala') {
+        <div class="clean-card no-print">
+          <div class="escala-controls-header">
+            <div class="escala-inputs-group">
+              <div class="input-col">
+                <label for="selectedMonthInput">Mês / Ano Ref:</label>
+                <input id="selectedMonthInput" type="month" [(ngModel)]="selectedMonth" (change)="loadEscala()" class="form-control" />
+              </div>
+              <div class="input-col-lg">
+                <label for="selectedSetorSelect">Setor Operacional:</label>
+                <select id="selectedSetorSelect" [(ngModel)]="selectedSetor" (change)="loadEscala()" class="form-control">
+                  @for (s of setores(); track s.id) {
+                    <option [value]="s.nome">{{ s.nome }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="escala-actions-group">
+              <button (click)="gerarNovaEscala()" class="btn-premium btn-primary-gradient">
+                <app-icon name="calendar" [size]="16"></app-icon>
+                <span>Gerar Escala 6x1</span>
+              </button>
+              <button (click)="salvarEscala()" class="btn-secondary-save" [disabled]="saving()">
+                <app-icon name="check" [size]="16"></app-icon>
+                <span>{{ saving() ? 'Salvando...' : 'Salvar' }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- PAINEL DE CONTROLE DA ESCALA 6X1 GIRATÓRIA -->
+          <div class="rotacao-config-panel">
+            <div class="rotacao-config-title">
+              <app-icon name="info" [size]="16" color="#0b2a52"></app-icon>
+              <span>Configurações da Rotação 6x1 Giratória</span>
+            </div>
+
+            <div class="rotacao-options-wrapper">
+              <div>
+                <span class="rotacao-lbl">Dias permitidos para folga:</span>
+                <div class="dias-pills-row">
+                  <button type="button" (click)="toggleDiaFolgaPermitido(1)" [class.active]="isDiaFolgaPermitido(1)" class="pill-btn-sm">Seg</button>
+                  <button type="button" (click)="toggleDiaFolgaPermitido(2)" [class.active]="isDiaFolgaPermitido(2)" class="pill-btn-sm">Ter</button>
+                  <button type="button" (click)="toggleDiaFolgaPermitido(3)" [class.active]="isDiaFolgaPermitido(3)" class="pill-btn-sm">Qua</button>
+                  <button type="button" (click)="toggleDiaFolgaPermitido(4)" [class.active]="isDiaFolgaPermitido(4)" class="pill-btn-sm">Qui</button>
+                  <button type="button" (click)="toggleDiaFolgaPermitido(5)" [class.active]="isDiaFolgaPermitido(5)" class="pill-btn-sm">Sex</button>
+                  <button type="button" (click)="toggleDiaFolgaPermitido(6)" [class.active]="isDiaFolgaPermitido(6)" class="pill-btn-sm">Sáb</button>
+                  <button type="button" (click)="toggleDiaFolgaPermitido(0)" [class.active]="isDiaFolgaPermitido(0)" class="pill-btn-sm">Dom</button>
+                </div>
+              </div>
+
+              <div class="chk-consecutivos-wrapper">
+                <input
+                  type="checkbox"
+                  id="chkConsecutivos"
+                  [ngModel]="permitirDoisDiasConsecutivos()"
+                  (ngModelChange)="permitirDoisDiasConsecutivos.set($event)"
+                  class="chk-input"
+                />
+                <label for="chkConsecutivos" class="chk-lbl">
+                  Permitir 2 folgas consecutivas quando necessário
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabela Visual de Escala Mensal -->
+          @if (escalaItens().length > 0) {
+            <div class="escala-table-wrapper">
+              <table class="escala-table">
+                <thead>
+                  <tr>
+                    <th class="sticky-col col-mat">Matrícula</th>
+                    <th class="sticky-col col-nome">Nome</th>
+                    <th class="col-turno">Turno</th>
+                    @for (d of diasDoMes(); track d) {
+                      <th class="col-dia">{{ d }}</th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of escalaItens(); track item.matricula) {
+                    <tr>
+                      <td class="sticky-col col-mat font-mono">{{ item.matricula }}</td>
+                      <td class="sticky-col col-nome font-bold">{{ item.nome }}</td>
+                      <td class="col-turno-text">{{ item.turno }}</td>
+                      @for (d of diasDoMes(); track d) {
+                        <td [class]="getDiaClass(item.dias[d])">
+                          {{ getDiaLabel(item.dias[d]) }}
+                        </td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="empty-table-state">
+              <app-icon name="calendar" [size]="40" color="#94a3b8"></app-icon>
+              <h4>Nenhuma escala salva neste setor/mês</h4>
+              <p>Clique em <strong>"Gerar Escala 6x1"</strong> para calcular os turnos automaticamente.</p>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- ABA 2: COLABORADORES -->
+      @if (activeTab() === 'funcionarios') {
+
+        <!-- BARRA DE PESQUISA & FILTROS -->
+        <div class="filter-pill-bar no-print">
+          <div class="search-input-wrapper">
+            <span class="search-icon-left">
+              <app-icon name="search" [size]="18" color="#94a3b8"></app-icon>
+            </span>
+            <label for="searchQueryInput" class="sr-only">Pesquisar por nome ou matrícula</label>
+            <input
+              id="searchQueryInput"
+              type="text"
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)"
+              placeholder="Pesquisar por nome ou matrícula..."
+            />
+            @if (searchQuery() || filterSetor()) {
+              <div class="search-actions-right">
+                <button (click)="searchQuery.set(''); filterSetor.set('')" title="Limpar Filtros" class="icon-btn-sm">
+                  <app-icon name="x" [size]="16"></app-icon>
+                </button>
+              </div>
+            }
+          </div>
+
+          <div class="pill-group">
+            <span class="pill-group-title">Filtros:</span>
+
+            <button (click)="filterSetor.set('')" [class.active]="filterSetor() === ''" class="pill-btn">
+              Todos os Setores <span class="pill-badge">{{ funcionarios().length }}</span>
+            </button>
+
+            @for (s of setores(); track s.id) {
+              <button (click)="filterSetor.set(s.nome)" [class.active]="filterSetor() === s.nome" class="pill-btn">
+                {{ s.nome }} <span class="pill-badge">{{ getFuncionariosPorSetor(s.nome).length }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Form de Inclusão de Novo Colaborador -->
+        <div class="clean-card no-print">
+          <div class="card-section-header">
+            <h3>Cadastrar Novo Colaborador</h3>
+          </div>
+
+          <form (ngSubmit)="cadastrarFuncionario()" class="cadastro-form-grid">
+            <div class="form-group mb-0">
+              <label for="novoNomeInput">Primeiro Nome (LGPD)</label>
+              <input id="novoNomeInput" type="text" [(ngModel)]="novoNome" name="novoNome" class="form-control" placeholder="Ex: Carlos" required />
+            </div>
+
+            <div class="form-group mb-0">
+              <label for="novoSetorSelect">Setor Operacional</label>
+              <select id="novoSetorSelect" [ngModel]="novoSetor()" (ngModelChange)="onNovoSetorChange($event)" name="novoSetor" class="form-control" required>
+                @for (s of setores(); track s.id) {
+                  <option [value]="s.nome">{{ s.nome }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-group mb-0">
+              <label for="novoCargoSelect">Função / Cargo</label>
+              <select id="novoCargoSelect" [ngModel]="novoCargo()" (ngModelChange)="novoCargo.set($event)" name="novoCargo" class="form-control" required [disabled]="cargosDoNovoSetor().length === 0">
+                @for (c of cargosDoNovoSetor(); track c.id) {
+                  <option [value]="c.nome">{{ c.nome }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-group mb-0">
+              <label for="novoTurnoInput">Turno Padrão</label>
+              <input id="novoTurnoInput" type="text" [(ngModel)]="novoTurno" name="novoTurno" class="form-control" placeholder="08:00 às 16:20" required />
+            </div>
+
+            <button type="submit" class="btn-premium btn-primary-gradient btn-add-submit">
+              <app-icon name="plus" [size]="16"></app-icon>
+              <span>Adicionar Colaborador</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Quadro da Equipe Ativa -->
+        <div class="clean-card no-print">
+          <div class="card-section-header">
+            <h3>Quadro da Equipe Ativa ({{ funcionariosFiltrados().length }})</h3>
+          </div>
+
+          <div class="escala-table-wrapper">
+            <table class="escala-table full-width">
+              <thead>
+                <tr>
+                  <th class="w-130">Matrícula</th>
+                  <th>Primeiro Nome</th>
+                  <th>Setor</th>
+                  <th>Cargo / Função</th>
+                  <th>Turno Padrão</th>
+                  <th class="w-180 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (f of funcionariosFiltrados(); track f.id) {
+                  <tr>
+                    <td class="font-mono font-bold color-navy">
+                      {{ f.matricula_aleatoria }}
+                    </td>
+                    <td class="font-bold">{{ f.primeiro_nome }}</td>
+                    <td>
+                      <span [style.background-color]="getSetorColor(f.setor)" class="setor-badge-color">
+                        {{ f.setor }}
+                      </span>
+                    </td>
+                    <td>{{ f.cargo }}</td>
+                    <td class="text-sm color-slate">{{ f.turno_padrao }}</td>
+                    <td class="text-center">
+                      <div class="actions-flex-center">
+                        <button (click)="navigateToFuncProfile(f)" class="btn-action-sm btn-yellow" title="Ver Perfil">
+                          Perfil
+                        </button>
+                        <button (click)="openEditFuncModal(f)" class="btn-action-sm btn-primary" title="Editar">
+                          <app-icon name="pencil" [size]="14"></app-icon>
+                        </button>
+                        <button (click)="confirmSoftDeleteFuncionario(f)" class="btn-action-sm btn-danger" title="Desativar">
+                          <app-icon name="trash" [size]="14"></app-icon>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6" class="empty-cell">
+                      Nenhum colaborador encontrado para o filtro selecionado.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- ABA 3: SETORES E CARGOS -->
+      @if (activeTab() === 'setores') {
+        <div class="clean-card no-print">
+          <div class="flex-header-between">
+            <h3>Setores e Cargos</h3>
+
+            <div class="actions-flex-gap">
+              <button (click)="openAddSetorModal()" class="btn-premium btn-primary-gradient">
+                <app-icon name="plus" [size]="16"></app-icon>
+                <span>Novo Setor</span>
+              </button>
+              <button (click)="openAddCargoModal()" class="btn-premium btn-yellow-gradient">
+                <app-icon name="plus" [size]="16"></app-icon>
+                <span>Novo Cargo</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="setores-grid mt-20">
+            @for (setor of setores(); track setor.id) {
+              <div class="setor-card">
+                <div class="setor-card-header" [style.background-color]="getSetorColor(setor.nome)">
+                  <div>
+                    <h4 class="setor-title">{{ setor.nome }}</h4>
+                    @if (setor.descricao) {
+                      <p class="setor-desc">{{ setor.descricao }}</p>
+                    }
+                  </div>
+
+                  <div class="actions-flex-gap">
+                    <button (click)="openEditSetorModal(setor)" title="Editar Setor" class="icon-btn-white">
+                      <app-icon name="pencil" [size]="14" color="#ffffff"></app-icon>
+                    </button>
+                    <button (click)="confirmDeleteSetor(setor)" title="Excluir Setor" class="icon-btn-white danger">
+                      <app-icon name="trash" [size]="14" color="#ffffff"></app-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="setor-card-body">
+                  <div class="cargos-section-header">
+                    <span class="cargos-count-label">
+                      Cargos ({{ getCargosDoSetor(setor.nome).length }})
+                    </span>
+                    <button (click)="openAddCargoModal(setor.nome)" class="btn-link-sm">
+                      + Função
+                    </button>
+                  </div>
+
+                  <div class="cargos-list">
+                    @for (cargo of getCargosDoSetor(setor.nome); track cargo.id) {
+                      <div class="cargo-item">
+                        <span class="cargo-name">• {{ cargo.nome }}</span>
+                        <div class="actions-flex-gap">
+                          <button (click)="openEditCargoModal(cargo)" title="Editar Cargo" class="icon-btn-sm">
+                            <app-icon name="pencil" [size]="14"></app-icon>
+                          </button>
+                          <button (click)="confirmDeleteCargo(cargo)" title="Excluir Cargo" class="icon-btn-sm danger">
+                            <app-icon name="trash" [size]="14" color="#ef4444"></app-icon>
+                          </button>
+                        </div>
+                      </div>
+                    } @empty {
+                      <div class="empty-cargo-state">
+                        Nenhum cargo cadastrado neste setor.
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ABA 4: GESTÃO DE FERIADOS -->
+      @if (activeTab() === 'feriados') {
+        <div class="clean-card no-print">
+          <div class="flex-header-between">
+            <h3>Gestão de Feriados</h3>
+
+            <div class="actions-flex-gap">
+              <label for="filterTipoFeriadoSelect" class="sr-only">Âmbito</label>
+              <select id="filterTipoFeriadoSelect" [ngModel]="filterTipoFeriado()" (ngModelChange)="filterTipoFeriado.set($event)" class="form-control w-200">
+                <option value="">Todos os Âmbitos</option>
+                <option value="Nacional">Nacionais (Brasil)</option>
+                <option value="Estadual">Estaduais (Bahia)</option>
+                <option value="Municipal">Municipais (Poções - BA)</option>
+              </select>
+
+              <button (click)="openAddFeriadoModal()" class="btn-premium btn-yellow-gradient">
+                <app-icon name="plus" [size]="16"></app-icon>
+                <span>Adicionar Feriado</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabela de Feriados -->
+          <div class="escala-table-wrapper mt-16">
+            <table class="escala-table full-width">
+              <thead>
+                <tr>
+                  <th class="w-120">Data</th>
+                  <th>Nome do Feriado</th>
+                  <th class="w-140">Âmbito</th>
+                  <th class="w-160">Abrangência</th>
+                  <th>Observação</th>
+                  <th class="w-160 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (f of feriadosFiltrados(); track f.id) {
+                  <tr>
+                    <td class="font-mono font-bold color-navy">{{ formatFeriadoData(f.data) }}</td>
+                    <td class="font-bold text-left">{{ f.nome }}</td>
+                    <td>
+                      <span [style.background-color]="getFeriadoBadgeColor(f.tipo)" class="badge-tipo">
+                        {{ f.tipo }}
+                      </span>
+                    </td>
+                    <td class="font-bold color-slate">{{ f.abrangencia || 'Brasil' }}</td>
+                    <td class="text-sm color-slate text-left">{{ f.descricao || '-' }}</td>
+                    <td class="text-center">
+                      <div class="actions-flex-center">
+                        <button (click)="openEditFeriadoModal(f)" class="btn-action-sm btn-primary">
+                          <app-icon name="pencil" [size]="14"></app-icon>
+                          <span>Editar</span>
+                        </button>
+                        <button (click)="confirmDeleteFeriado(f)" class="btn-action-sm btn-danger">
+                          <app-icon name="trash" [size]="14"></app-icon>
+                          <span>Excluir</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6" class="empty-cell">
+                      Nenhum feriado encontrado para o filtro selecionado.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- ABA 5: REGRAS DE ESCALA -->
+      @if (activeTab() === 'regras') {
+        <div class="clean-card no-print">
+
+          <div class="filter-pill-bar mb-20">
+            <div class="flex-header-between">
+              <div class="pill-group">
+                <span class="pill-group-title">Filtrar:</span>
+
+                <button (click)="filterTipoRegra.set('')" [class.active]="filterTipoRegra() === ''" class="pill-btn">
+                  Todas as Regras <span class="pill-badge">{{ regras().length }}</span>
+                </button>
+
+                <button (click)="filterTipoRegra.set('IMPLEMENTADA')" [class.active]="filterTipoRegra() === 'IMPLEMENTADA'" class="pill-btn">
+                  Implementadas <span class="pill-badge">{{ statsRegras().implementadas }}</span>
+                </button>
+
+                <button (click)="filterTipoRegra.set('PENDENTE_PROGRAMADOR')" [class.active]="filterTipoRegra() === 'PENDENTE_PROGRAMADOR'" class="pill-btn">
+                  Pendente Dev <span class="pill-badge">{{ statsRegras().pendentes }}</span>
+                </button>
+              </div>
+
+              <button (click)="openAddRegraModal()" class="btn-premium btn-danger-gradient">
+                <app-icon name="plus" [size]="16"></app-icon>
+                <span>Cadastrar Regra</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Grade de Cards de Regras -->
+          <div class="regras-grid">
+            @for (regra of regrasFiltradas(); track regra.id) {
+              <div class="regra-card">
+                <div>
+                  <div class="regra-card-top">
+                    <span [class]="regra.status === 'IMPLEMENTADA' ? 'badge-status-implementada' : 'badge-status-pendente'">
+                      {{ regra.status === 'IMPLEMENTADA' ? 'No Algoritmo' : 'Pendente Programação' }}
+                    </span>
+
+                    <span class="regra-categoria-tag">
+                      {{ regra.categoria }}
+                    </span>
+                  </div>
+
+                  <h4 class="regra-title">{{ regra.titulo }}</h4>
+                  <p class="regra-desc">{{ regra.descricao }}</p>
+                </div>
+
+                <div class="regra-card-bottom">
+                  <span class="regra-obrigatoria-lbl">
+                    Obrigatoriedade: <strong [style.color]="regra.obrigatoria ? '#dc2626' : '#64748b'">{{ regra.obrigatoria ? 'Rígida' : 'Desejável' }}</strong>
+                  </span>
+
+                  <div class="actions-flex-gap">
+                    <button (click)="openEditRegraModal(regra)" class="icon-btn-sm" title="Editar Regra">
+                      <app-icon name="pencil" [size]="14"></app-icon>
+                    </button>
+                    <button (click)="confirmDeleteRegra(regra)" class="icon-btn-sm danger" title="Excluir Regra">
+                      <app-icon name="trash" [size]="14" color="#ef4444"></app-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            } @empty {
+              <div class="empty-regras-state">
+                Nenhuma regra encontrada para o filtro selecionado.
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ABA 6: PÁGINA DETALHADA DO COLABORADOR -->
+      @if (activeTab() === 'detalhes-funcionario' && selectedFuncionarioForPage()) {
+        @let func = selectedFuncionarioForPage()!;
+
+        <div class="clean-card no-print">
+          <!-- Cabeçalho do Perfil -->
+          <div class="profile-header-wrapper">
+            <div class="profile-avatar-group">
+              <div class="profile-avatar-circle">
+                {{ func.primeiro_nome.substring(0, 2).toUpperCase() }}
+              </div>
+
+              <div>
+                <div class="profile-name-row">
+                  <h2 class="profile-name">{{ func.primeiro_nome }}</h2>
+                  <span class="profile-mat-badge">
+                    Matrícula: {{ func.matricula_aleatoria }}
+                  </span>
+                </div>
+
+                <div class="profile-tags-row">
+                  <span [style.background-color]="getSetorColor(func.setor)" class="setor-badge-color">
+                    {{ func.setor }}
+                  </span>
+                  <span class="profile-info-item">Função: <strong>{{ func.cargo }}</strong></span>
+                  <span class="profile-info-item">Turno: <strong>{{ func.turno_padrao }}</strong></span>
+                </div>
+              </div>
+            </div>
+
+            <button (click)="selectTab('funcionarios')" class="btn-premium btn-ghost">
+              Voltar para a Lista
+            </button>
+          </div>
+
+          <!-- Filtros da Página Detalhada -->
+          <div class="profile-filter-bar">
+            <div class="actions-flex-gap">
+              <div class="w-160">
+                <label for="selectedMonthHistoricoInput" class="filter-lbl">Mês de Referência:</label>
+                <input id="selectedMonthHistoricoInput" type="month" [(ngModel)]="selectedMonthHistorico" class="form-control" />
+              </div>
+
+              <div class="w-180">
+                <label for="filterTipoHistoricoSelect" class="filter-lbl">Filtrar Tipo de Dia:</label>
+                <select id="filterTipoHistoricoSelect" [(ngModel)]="filterTipoHistorico" class="form-control">
+                  <option value="TODOS">Todos os Dias</option>
+                  <option value="FOLGA">Apenas Folgas (F)</option>
+                  <option value="DOMINGO">Apenas Domingos (D)</option>
+                  <option value="TRABALHO">Apenas Dias de Trabalho (T)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="profile-summary-stat">
+              <span class="stat-title">Resumo CLT no Mês</span>
+              <strong class="stat-value">
+                {{ statsColaboradorMes().totalFolgas }} Folgas | {{ statsColaboradorMes().domingosTrabalhados }} Domingos Trabalhados
+              </strong>
+            </div>
+          </div>
+
+          <!-- Grade de Histórico Mensal -->
+          <h4 class="timeline-section-title">
+            Histórico Diário de Presença ({{ selectedMonthHistorico }})
+          </h4>
+
+          <div class="timeline-grid">
+            @for (d of diasHistoricoFiltrados(); track d.dia) {
+              <div class="timeline-day-card" [style.border-top]="d.tipo === 'FOLGA' ? '3px solid #3b82f6' : d.tipo === 'DOMINGO' ? '3px solid #f59e0b' : '3px solid #cbd5e1'">
+                <span class="day-weekday">{{ d.diaSemana }}</span>
+                <strong class="day-num">Dia {{ d.dia }}</strong>
+                <span [class]="getDiaClass(d.tipo)" class="day-type-badge">
+                  {{ d.tipo === 'FOLGA' ? 'Folga' : d.tipo === 'DOMINGO' ? 'Domingo' : 'Trabalho' }}
+                </span>
+              </div>
+            } @empty {
+              <div class="empty-timeline-state">
+                Nenhum dia corresponde ao filtro selecionado.
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- AREA DE IMPRESSAO A4 -->
+      <div class="print-area" style="display: none;">
+        @if (printEstilo() === 'mural-folgas') {
+          <div style="padding: 10px;">
+            <div class="print-official-banner">
+              <div class="banner-left">
+                <h2>JOÃO HENRIQUE ATACADISTA</h2>
+                <p>ESCALA DE FOLGA</p>
+              </div>
+              <div class="banner-right">
+                <span>{{ activeLoja()?.nome || 'Filial - Loja 002' }} | Mês Ref: {{ selectedMonth }}</span>
+              </div>
+            </div>
+
+            <table class="print-mural-table">
+              <caption class="sr-only">Relatório de Escala de Folga por Setor</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Setor</th>
+                  <th scope="col" colspan="31">Dias de Folga</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (setor of setores(); track setor.id) {
+                  <tr>
+                    <td class="print-setor-name" [style.background-color]="getSetorColor(setor.nome)">
+                      {{ $index + 1 }}. {{ setor.nome }}
+                    </td>
+                    @for (d of diasDaSemanaImpressao(); track d) {
+                      <td class="print-day-col">
+                        <div class="print-day-hdr" [style.background-color]="getSetorColor(setor.nome)">
+                          {{ getDiaSemanaAbrevUpper(d) }} (Dia {{ d }})
+                        </div>
+                        <div class="print-folgas-names">
+                          @if (getFolgasPorSetorEDia(setor.nome, d).length > 0) {
+                            @for (nome of getFolgasPorSetorEDia(setor.nome, d); track $index) {
+                              <span class="folga-person-name">{{ nome }}</span>
+                            }
+                          } @else {
+                            <span class="no-folga-dash">-</span>
+                          }
+                        </div>
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+
+    </main>
+  </div>
+
+  <!-- TOAST SYSTEM -->
+  <div class="toast-container">
+    @for (t of toastService.toasts(); track t.id) {
+      <div class="toast-item" [class.toast-success]="t.type === 'success'" [class.toast-error]="t.type === 'error'" [class.toast-warning]="t.type === 'warning'">
+        <div class="toast-icon">
+          @if (t.type === 'success') { <app-icon name="check" [size]="18" color="#16a34a"></app-icon> }
+          @if (t.type === 'error') { <app-icon name="x" [size]="18" color="#dc2626"></app-icon> }
+          @if (t.type === 'warning') { <app-icon name="alert-triangle" [size]="18" color="#d97706"></app-icon> }
+          @if (t.type === 'info') { <app-icon name="info" [size]="18" color="#0284c7"></app-icon> }
+        </div>
+        <div class="toast-content">
+          <div class="toast-title">{{ t.title }}</div>
+          @if (t.message) {
+            <div class="toast-message">{{ t.message }}</div>
+          }
+        </div>
+        <button (click)="toastService.remove(t.id)" class="icon-btn-sm text-slate">
+          <app-icon name="x" [size]="14"></app-icon>
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- MODAIS -->
+  <!-- MODAL DE IMPRESSÃO A4 -->
+  @if (printModalVisible()) {
+    <div class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h4>Opções de Impressão A4</h4>
+          <button (click)="printModalVisible.set(false)" class="icon-btn-sm">
+            <app-icon name="x" [size]="16"></app-icon>
+          </button>
+        </div>
+
+        <div class="modal-body space-y-16">
+          <div class="print-style-box">
+            <span class="modal-lbl">Estilo Visual do Relatório A4:</span>
+            <div class="flex-gap-12">
+              <button
+                (click)="printEstilo.set('mural-folgas')"
+                [class.active]="printEstilo() === 'mural-folgas'"
+                class="btn-style-select"
+              >
+                Mural de Folgas por Setor
+              </button>
+
+              <button
+                (click)="printEstilo.set('formal')"
+                [class.active]="printEstilo() === 'formal'"
+                class="btn-style-select"
+              >
+                Relatório Oficial RH
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button (click)="printModalVisible.set(false)" class="btn-premium btn-ghost">Cancelar</button>
+          <button (click)="executePrint()" class="btn-premium btn-yellow-gradient">
+            <app-icon name="printer" [size]="16"></app-icon>
+            <span>Confirmar e Imprimir</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL DE REGRA -->
+  @if (regraModal().visible) {
+    <div class="modal-backdrop">
+      <div class="modal-card border-top-danger">
+        <div class="modal-header">
+          <h4>{{ regraModal().isEdit ? 'Editar Regra de Escala' : 'Cadastrar Nova Regra' }}</h4>
+          <button (click)="closeRegraModal()" class="icon-btn-sm">
+            <app-icon name="x" [size]="16"></app-icon>
+          </button>
+        </div>
+        <div class="modal-body space-y-14">
+          <div class="form-group">
+            <label for="regraTituloInput">Título da Regra</label>
+            <input id="regraTituloInput" type="text" [(ngModel)]="regraModalForm.titulo" class="form-control" placeholder="Ex: Preferência de folga aos sábados" required />
+          </div>
+
+          <div class="form-group">
+            <label for="regraDescricaoInput">Descrição Detalhada</label>
+            <textarea id="regraDescricaoInput" [(ngModel)]="regraModalForm.descricao" class="form-control" rows="3" placeholder="Explique como o algoritmo deve se comportar..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="regraCategoriaSelect">Categoria</label>
+            <select id="regraCategoriaSelect" [(ngModel)]="regraModalForm.categoria" class="form-control">
+              <option value="CLT">CLT</option>
+              <option value="Acordo Coletivo">Acordo Coletivo</option>
+              <option value="Interna RH">Interna RH</option>
+              <option value="Solicitação RH">Solicitação RH</option>
+            </select>
+          </div>
+
+          <div class="form-group flex-items-center-gap">
+            <input type="checkbox" [(ngModel)]="regraModalForm.obrigatoria" id="chkObrigatoria" class="chk-input" />
+            <label for="chkObrigatoria" class="chk-lbl">Regra Obrigatória / Rígida</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button (click)="closeRegraModal()" class="btn-premium btn-ghost">Cancelar</button>
+          <button (click)="saveRegraModal()" class="btn-premium btn-danger-gradient">
+            {{ regraModal().isEdit ? 'Salvar Alterações' : 'Cadastrar Regra' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL QUICK BLUR -->
+  @if (quickBlurModal().visible && quickBlurModal().func) {
+    @let f = quickBlurModal().func!;
+
+    <div class="blur-backdrop">
+      <div class="modal-card max-w-520">
+        <div class="modal-header bg-white">
+          <div class="profile-avatar-group">
+            <div class="profile-avatar-circle sm">
+              {{ f.primeiro_nome.substring(0, 2).toUpperCase() }}
+            </div>
+            <div>
+              <h4 class="modal-title-bold">{{ f.primeiro_nome }}</h4>
+              <span class="modal-sub-text">Matrícula: {{ f.matricula_aleatoria }} | {{ f.setor }}</span>
+            </div>
+          </div>
+          <button (click)="closeQuickBlurModal()" class="icon-btn-sm">
+            <app-icon name="x" [size]="16"></app-icon>
+          </button>
+        </div>
+
+        <div class="modal-body space-y-16">
+          <div class="quick-blur-info-box">
+            <h5 class="quick-blur-title">Resumo de Atividade</h5>
+            @if (quickBlurModal().ultimosDomingos.length > 0) {
+              <div class="quick-blur-list">
+                @for (d of quickBlurModal().ultimosDomingos; track $index) {
+                  <div class="quick-blur-item">
+                    <span>{{ d.dataStr }} - {{ d.descricao }}</span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="text-sm color-slate">Nenhum domingo em escala no mês selecionado.</div>
+            }
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button (click)="closeQuickBlurModal()" class="btn-premium btn-ghost">Fechar</button>
+          <button (click)="navigateToFuncProfile(f)" class="btn-premium btn-yellow-gradient">
+            <span>Ver Perfil Detalhado</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL DE CONFIRMAÇÃO -->
+  @if (confirmModal().visible) {
+    <div class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h4 class="text-red-600 flex-items-center-gap">
+            <app-icon name="alert-triangle" [size]="18" color="#dc2626"></app-icon>
+            <span>{{ confirmModal().title }}</span>
+          </h4>
+        </div>
+        <div class="modal-body">
+          <p class="confirm-modal-msg">{{ confirmModal().message }}</p>
+        </div>
+        <div class="modal-footer">
+          <button (click)="closeConfirmModal()" class="btn-premium btn-ghost">
+            {{ confirmModal().cancelText || 'Cancelar' }}
+          </button>
+          <button (click)="executeConfirmModal()" class="btn-premium btn-danger-gradient">
+            {{ confirmModal().confirmText || 'Confirmar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL DE EDITAR FUNCIONÁRIO -->
+  @if (editingFunc()) {
+    <div class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h4>Editar Colaborador</h4>
+          <button (click)="editingFunc.set(null)" class="icon-btn-sm">
+            <app-icon name="x" [size]="16"></app-icon>
+          </button>
+        </div>
+        <div class="modal-body space-y-14">
+          <div class="form-group">
+            <label for="editPrimeiroNomeInput">Primeiro Nome</label>
+            <input id="editPrimeiroNomeInput" type="text" [(ngModel)]="editingFunc()!.primeiro_nome" class="form-control" required />
+          </div>
+
+          <div class="form-group">
+            <label for="editSetorSelect">Setor Operacional</label>
+            <select id="editSetorSelect" [ngModel]="editingFunc()!.setor" (ngModelChange)="onEditFuncSetorChange($event)" class="form-control">
+              @for (s of setores(); track s.id) {
+                <option [value]="s.nome">{{ s.nome }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="editCargoSelect">Função / Cargo</label>
+            <select id="editCargoSelect" [(ngModel)]="editingFunc()!.cargo" class="form-control">
+              @for (c of cargosDoEditSetor(); track c.id) {
+                <option [value]="c.nome">{{ c.nome }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="editTurnoInput">Turno Padrão</label>
+            <input id="editTurnoInput" type="text" [(ngModel)]="editingFunc()!.turno_padrao" class="form-control" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button (click)="editingFunc.set(null)" class="btn-premium btn-ghost">Cancelar</button>
+          <button (click)="saveEditFuncionario()" class="btn-premium btn-primary-gradient">Salvar Alterações</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL DE SETOR -->
+  @if (sectorModal().visible) {
+    <div class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h4>{{ sectorModal().isEdit ? 'Editar Setor' : 'Adicionar Setor' }}</h4>
+          <button (click)="closeSectorModal()" class="icon-btn-sm">
+            <app-icon name="x" [size]="16"></app-icon>
+          </button>
+        </div>
+        <div class="modal-body space-y-14">
+          <div class="form-group">
+            <label for="setorNomeInput">Nome do Setor</label>
+            <input id="setorNomeInput" type="text" [(ngModel)]="sectorModalForm.nome" class="form-control" placeholder="Ex: Recebimento" required />
+          </div>
+          <div class="form-group">
+            <label for="setorDescricaoInput">Descrição (Opcional)</label>
+            <input id="setorDescricaoInput" type="text" [(ngModel)]="sectorModalForm.descricao" class="form-control" placeholder="Ex: Recebimento de mercadorias" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button (click)="closeSectorModal()" class="btn-premium btn-ghost">Cancelar</button>
+          <button (click)="saveSectorModal()" class="btn-premium btn-yellow-gradient">
+            {{ sectorModal().isEdit ? 'Salvar Alterações' : 'Criar Setor' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL DE CARGO -->
+  @if (cargoModal().visible) {
+    <div class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h4>{{ cargoModal().isEdit ? 'Editar Cargo' : 'Adicionar Cargo' }}</h4>
+          <button (click)="closeCargoModal()" class="icon-btn-sm">
+            <app-icon name="x" [size]="16"></app-icon>
+          </button>
+        </div>
+        <div class="modal-body space-y-14">
+          <div class="form-group">
+            <label for="cargoSetorSelect">Setor Vinculado</label>
+            <select id="cargoSetorSelect" [(ngModel)]="cargoModalForm.setor_nome" class="form-control" [disabled]="cargoModal().isEdit">
+              @for (s of setores(); track s.id) {
+                <option [value]="s.nome">{{ s.nome }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="cargoNomeInput">Nome da Função / Cargo</label>
+            <input id="cargoNomeInput" type="text" [(ngModel)]="cargoModalForm.nome" class="form-control" placeholder="Ex: Operador de Caixa Senior" required />
+          </div>
+
+          <div class="form-group">
+            <label for="cargoDescricaoInput">Descrição (Opcional)</label>
+            <input id="cargoDescricaoInput" type="text" [(ngModel)]="cargoModalForm.descricao" class="form-control" placeholder="Ex: Operação nos caixas rápidos" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button (click)="closeCargoModal()" class="btn-premium btn-ghost">Cancelar</button>
+          <button (click)="saveCargoModal()" class="btn-premium btn-primary-gradient">
+            {{ cargoModal().isEdit ? 'Salvar Alterações' : 'Criar Cargo' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL DE FERIADO -->
+  @if (feriadoModal().visible) {
+    <div class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h4>{{ feriadoModal().isEdit ? 'Editar Feriado' : 'Cadastrar Feriado' }}</h4>
+          <button (click)="closeFeriadoModal()" class="icon-btn-sm">
+            <app-icon name="x" [size]="16"></app-icon>
+          </button>
+        </div>
+        <div class="modal-body space-y-14">
+          <div class="form-group">
+            <label for="feriadoNomeInput">Nome do Feriado</label>
+            <input id="feriadoNomeInput" type="text" [(ngModel)]="feriadoModalForm.nome" class="form-control" placeholder="Ex: Emancipação de Poções" required />
+          </div>
+
+          <div class="form-group">
+            <label for="feriadoDataInput">Data</label>
+            <input id="feriadoDataInput" type="date" [(ngModel)]="feriadoModalForm.data" class="form-control" required />
+          </div>
+
+          <div class="form-group">
+            <label for="feriadoTipoSelect">Âmbito / Tipo</label>
+            <select id="feriadoTipoSelect" [(ngModel)]="feriadoModalForm.tipo" (ngModelChange)="onFeriadoTipoChange($event)" class="form-control">
+              <option value="Nacional">Nacional (Brasil)</option>
+              <option value="Estadual">Estadual (Bahia)</option>
+              <option value="Municipal">Municipal (Poções - BA)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="feriadoAbrangenciaInput">Abrangência</label>
+            <input id="feriadoAbrangenciaInput" type="text" [(ngModel)]="feriadoModalForm.abrangencia" class="form-control" placeholder="Ex: Poções - BA" required />
+          </div>
+
+          <div class="form-group">
+            <label for="feriadoDescricaoInput">Descrição / Observação</label>
+            <input id="feriadoDescricaoInput" type="text" [(ngModel)]="feriadoModalForm.descricao" class="form-control" placeholder="Ex: Feriado municipal comemorativo" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button (click)="closeFeriadoModal()" class="btn-premium btn-ghost">Cancelar</button>
+          <button (click)="saveFeriadoModal()" class="btn-premium btn-yellow-gradient">
+            {{ feriadoModal().isEdit ? 'Salvar Alterações' : 'Cadastrar Feriado' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

@@ -6,7 +6,9 @@ export const authGuard: CanActivateFn = async () => {
   const supabase = inject(SupabaseService);
   const router = inject(Router);
 
-  // Aguarda verificação de sessão se necessário
+  // Aguarda inicialização assíncrona da sessão Supabase
+  await supabase.waitForAuthReady();
+
   if (supabase.currentUser()) {
     return true;
   }

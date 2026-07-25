@@ -32,6 +32,7 @@ export interface Funcionario {
   setor: string;
   cargo: string;
   turno_padrao: string;
+  genero?: 'M' | 'F' | 'OUTRO'; // Gênero para conformidade CLT (ex: Art 386)
   ativo: boolean; // Soft delete for CLT/LGPD legal compliance
 }
 

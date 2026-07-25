@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SupabaseService } from '../../services/supabase.service';
+import { IconComponent } from '../shared/icon.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div class="login-wrapper">
       <div class="login-card">
@@ -60,8 +61,9 @@ import { SupabaseService } from '../../services/supabase.service';
         </form>
 
         <div class="login-footer">
-          <span class="badge-lgpd">
-            🔒 LGPD Compliance Active
+          <span class="badge-lgpd" style="display: inline-flex; align-items: center; gap: 6px;">
+            <app-icon name="info" [size]="14" color="#0369a1"></app-icon>
+            <span>LGPD Compliance Active</span>
           </span>
           <p class="terms-note">
             Acesso restrito a gestores autorizados. Conforme a LGPD (Lei 13.709/2018), os dados pessoais exibidos possuem minimização prévia e controle estrito de auditoria por perfil.
@@ -146,8 +148,8 @@ import { SupabaseService } from '../../services/supabase.service';
   `]
 })
 export class LoginComponent {
-  private supabase = inject(SupabaseService);
-  private router = inject(Router);
+  private readonly supabase = inject(SupabaseService);
+  private readonly router = inject(Router);
 
   email = '';
   password = '';
