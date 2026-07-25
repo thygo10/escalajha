@@ -144,34 +144,46 @@ export class EscalaGeneratorService {
     let feriadoIndexCount = 0;
 
     feriadosAbertos.forEach((fDia) => {
+      const isDomFeriado = (new Date(ano, mes - 1, fDia).getDay() === 0);
+      const dIdx = domingos.indexOf(fDia);
       const minReqFeriado = config.minFuncionariosFeriado ?? (eFrenteDeCaixa ? 6 : (funcionarios.length >= 4 ? 2 : 1));
       const escaladosFeriado = new Set<string>();
 
-      // Agrupa funcionários por categoria de turno (Abertura, Intermediário, Fechamento)
-      const porTurno = this._agruparPorCategoriaTurno(funcionarios);
-      const categorias = Array.from(porTurno.keys()).filter(cat => (porTurno.get(cat)?.length ?? 0) > 0);
-      const cotaPorTurno = Math.max(1, Math.floor(minReqFeriado / Math.max(1, categorias.length)));
-
-      // Para cada categoria de turno, seleciona proporcionalmente em rodízio
-      categorias.forEach(cat => {
-        const funcsTurno = porTurno.get(cat) || [];
-        const offsetTurno = feriadoIndexCount % Math.max(1, funcsTurno.length);
-        let selecionadosNoTurno = 0;
-
-        for (let i = 0; i < funcsTurno.length && selecionadosNoTurno < cotaPorTurno && escaladosFeriado.size < minReqFeriado; i++) {
-          const targetFunc = funcsTurno[(offsetTurno + i) % funcsTurno.length];
-          if (!escaladosFeriado.has(targetFunc.matricula_aleatoria)) {
-            escaladosFeriado.add(targetFunc.matricula_aleatoria);
-            selecionadosNoTurno++;
+      // Se o feriado cai no domingo, escala os colaboradores que já trabalham naquele domingo
+      if (isDomFeriado && dIdx !== -1) {
+        funcionarios.forEach((func, idx) => {
+          const turmaDom = idx % 3;
+          if (dIdx % 3 === turmaDom) {
+            escaladosFeriado.add(func.matricula_aleatoria);
           }
-        }
-      });
+        });
+      } else {
+        // Agrupa funcionários por categoria de turno (Abertura, Intermediário, Fechamento)
+        const porTurno = this._agruparPorCategoriaTurno(funcionarios);
+        const categorias = Array.from(porTurno.keys()).filter(cat => (porTurno.get(cat)?.length ?? 0) > 0);
+        const cotaPorTurno = Math.max(1, Math.floor(minReqFeriado / Math.max(1, categorias.length)));
 
-      // Se ainda não preencheu o mínimo total exigido no feriado, completa com os demais turnos
-      if (escaladosFeriado.size < minReqFeriado) {
-        for (const func of funcionarios) {
-          if (escaladosFeriado.size >= minReqFeriado) break;
-          escaladosFeriado.add(func.matricula_aleatoria);
+        // Para cada categoria de turno, seleciona proporcionalmente em rodízio
+        categorias.forEach(cat => {
+          const funcsTurno = porTurno.get(cat) || [];
+          const offsetTurno = feriadoIndexCount % Math.max(1, funcsTurno.length);
+          let selecionadosNoTurno = 0;
+
+          for (let i = 0; i < funcsTurno.length && selecionadosNoTurno < cotaPorTurno && escaladosFeriado.size < minReqFeriado; i++) {
+            const targetFunc = funcsTurno[(offsetTurno + i) % funcsTurno.length];
+            if (!escaladosFeriado.has(targetFunc.matricula_aleatoria)) {
+              escaladosFeriado.add(targetFunc.matricula_aleatoria);
+              selecionadosNoTurno++;
+            }
+          }
+        });
+
+        // Se ainda não preencheu o mínimo total exigido no feriado, completa com os demais turnos
+        if (escaladosFeriado.size < minReqFeriado) {
+          for (const func of funcionarios) {
+            if (escaladosFeriado.size >= minReqFeriado) break;
+            escaladosFeriado.add(func.matricula_aleatoria);
+          }
         }
       }
 
@@ -186,7 +198,8 @@ export class EscalaGeneratorService {
       // Offset da turma para rotação semanal (0 a 5)
       const turmaOffset = idx % 6;
       const diff = (turmaOffset - turmaDia1 + 6) % 6;
-      let diasTrabalhadosSeguidos = (5 - diff + 6) % 6;
+      // Inicialização limpa da contagem de dias trabalhados
+      let diasTrabalhadosSeguidos = 0;
 
       // Determina qual par de domingos esta pessoa folga (ex: Domingos ímpares 1 e 3 vs pares 2 e 4)
       const folgaDomingoImpar = (idx % 2 === 0);
@@ -240,22 +253,23 @@ export class EscalaGeneratorService {
         }
       });
 
-      // Quantidade máxima de folgas em dias úteis para respeitar a meta mensal de 5 folgas
-      // Se o colaborador ganha folga no feriado aberto, essa folga consome 1 vaga do teto mensal de 5 folgas
-      const ganhaFolgaFeriado = Array.from(feriadosAbertos).some(fDia => !feriadoTrabalhadoresMap.get(fDia)?.has(func.matricula_aleatoria));
-      const totalFeriadosFolga = feriadosFechados.size + (ganhaFolgaFeriado ? feriadosAbertos.size : 0);
-      const maxFolgasSemanaisPermitidas = Math.max(0, 5 - domingosFolgaSet.size - totalFeriadosFolga);
+      // Quantidade de folgas úteis a garantir: 1 folga útil por domingo trabalhado
+      const maxFolgasSemanaisPermitidas = Math.max(0, domingos.length - domingosFolgaSet.size);
 
-      // Garantia preventiva: Se trabalha no Domingo, pré-agenda 1 folga útil na semana anterior (Quarta ou Quinta) para evitar atingir 7 dias seguidos
+      // Garantia preventiva: Se trabalha no Domingo, pré-agenda 1 folga útil na semana com Trava FD->TD
       const diasFolgaUteisGarantidas = new Set<number>();
       let folgasGarantidasCount = 0;
       domingos.forEach((dDom, dIdx) => {
         if (!domingosFolgaSet.has(dDom) && folgasGarantidasCount < maxFolgasSemanaisPermitidas) {
           const diaSemanaDom = new Date(ano, mes - 1, dDom).getDay();
           if (diaSemanaDom === 0) {
-            let diaFolgaAlvo = dDom - 4; // Quarta-feira anterior
-            if (diaFolgaAlvo < 1) diaFolgaAlvo = dDom - 3; // Quinta-feira se início de mês
-            if (diaFolgaAlvo >= 1 && !feriadosFechados.has(diaFolgaAlvo) && !domingosFolgaSet.has(diaFolgaAlvo)) {
+            // Trava FD -> TD: Aloca a folga útil prioritariamente na Quarta-feira (dDom - 4) para dividir semanas de trabalho
+            let diaFolgaAlvo = dDom - 4;
+            if (diaFolgaAlvo < 1) diaFolgaAlvo = Math.max(1, dDom - 3);
+
+            // Absorção de feriado fechado (ex: Natal 25/12): Se a semana possui feriado fechado, ele absorve a folga útil
+            const semanaTemFeriadoFechado = Array.from(feriadosFechados).some(fDia => fDia >= dDom - 6 && fDia <= dDom);
+            if (!semanaTemFeriadoFechado && diaFolgaAlvo >= 1 && !feriadosFechados.has(diaFolgaAlvo) && !domingosFolgaSet.has(diaFolgaAlvo)) {
               diasFolgaUteisGarantidas.add(diaFolgaAlvo);
               folgasGarantidasCount++;
             }
@@ -280,11 +294,15 @@ export class EscalaGeneratorService {
         // REGRA 0.5: Feriado Aberto (Turma Reduzida -> Apenas a cota trabalha TF, Maioria folga F)
         if (feriadosAbertos.has(dia)) {
           const quemTrabalhaNoFeriado = feriadoTrabalhadoresMap.get(dia);
-          if (quemTrabalhaNoFeriado?.has(func.matricula_aleatoria)) {
-            dias[dia] = 'TF';
+          if (isDomingo && domingosFolgaSet.has(dia)) {
+            dias[dia] = 'FD';
+            diasTrabalhadosSeguidos = 0;
+            ultimaFolgaDia = dia;
+          } else if (quemTrabalhaNoFeriado?.has(func.matricula_aleatoria)) {
+            dias[dia] = isDomingo ? 'TD' : 'TF';
             diasTrabalhadosSeguidos++;
           } else {
-            dias[dia] = 'F';
+            dias[dia] = isDomingo ? 'FD' : 'F';
             diasTrabalhadosSeguidos = 0;
             ultimaFolgaDia = dia;
           }
@@ -341,11 +359,11 @@ export class EscalaGeneratorService {
 
         const podeFolgarRotacao = !temFolgaNoDomingoDaSemana || (trabDomingoAnterior && diasTrabalhadosSeguidos >= 3);
 
-        // REGRA PREVENTIVA E ROTAÇÃO 6x1: Concede folga se for o dia garantido ou o dia de rotação, se ainda tiver vaga de folgas na semana, não folgou ontem e trabalhou pelo menos 2 dias seguidos
-        const totalFolgasSemanaisAtuais = Object.values(dias).filter(st => st === 'F' || st === 'FD' || st === 'FE').length;
+        // REGRA PREVENTIVA E ROTAÇÃO 6x1: Concede folga se for o dia útil garantido (Trava FD->TD) ou por trava CLT 6 dias
         const eDiaGarantido = diasFolgaUteisGarantidas.has(dia);
+        const precisaFolgaCLT = (diasTrabalhadosSeguidos >= 6);
 
-        if ((dia - ultimaFolgaDia >= 3 || eDiaGarantido) && (eDiaGarantido || (podeFolgarRotacao && diaSemana === diaFolgaRotacao)) && totalFolgasSemanaisAtuais < maxFolgasSemanaisPermitidas && config.diasPermitidosFolga.includes(diaSemana) && !diaAnteriorEhFolga && diasTrabalhadosSeguidos >= 2) {
+        if ((eDiaGarantido || precisaFolgaCLT) && config.diasPermitidosFolga.includes(diaSemana) && !diaAnteriorEhFolga) {
           dias[dia] = 'F';
           diasTrabalhadosSeguidos = 0;
           ultimaFolgaDia = dia;
@@ -460,14 +478,22 @@ export class EscalaGeneratorService {
    * Remove primeiro folgas em dias consecutivos e reposiciona o ponto médio se necessário para respeitar CLT.
    */
   private _ajustarLimiteFolgasMensais(itens: EscalaItem[], totalDias: number, ano: number, mes: number, feriadosAbertos: Set<number>): void {
+    const domingosNoMes: number[] = [];
+    for (let d = 1; d <= totalDias; d++) {
+      if (new Date(ano, mes - 1, d).getDay() === 0) domingosNoMes.push(d);
+    }
+    const targetMax = domingosNoMes.length === 5 ? 6 : 5;
+
     itens.forEach(item => {
       let folgas = Object.entries(item.dias).filter(([_, st]) => st === 'F' || st === 'FD' || st === 'FE');
-      
-      while (folgas.length > 5) {
+      const domingosFolgaCount = folgas.filter(([_, st]) => st === 'FD').length;
+      const tetoItem = Math.max(targetMax, domingosFolgaCount + 3);
+
+      while (folgas.length > tetoItem) {
         let removido = false;
 
         // Passagem Especial: Eliminar folga 'F' redundante localizada entre dois Domingos de folga ('FD')
-        for (let i = 1; i < folgas.length - 1 && folgas.length > 5; i++) {
+        for (let i = 1; i < folgas.length - 1 && folgas.length > tetoItem; i++) {
           const [dStr, st] = folgas[i];
           const prevSt = folgas[i - 1][1];
           const nextSt = folgas[i + 1][1];
@@ -630,12 +656,12 @@ export class EscalaGeneratorService {
           const item = folgando[k];
           const isDomingo = (new Date(ano, mes - 1, dia).getDay() === 0);
           
-          // Trava CLT 386 Inviolável: Mulheres NUNCA trabalham 2 domingos seguidos
-          if (isDomingo && item.genero === 'F') {
+          // Trava de Revezamento de Domingo Inviolável: Impede 2 domingos seguidos trabalhados para preservar 1T:2F e CLT 386
+          if (isDomingo) {
             const domAnteriorTrab = (dia > 7) && (item.dias[dia - 7] === 'TD' || item.dias[dia - 7] === 'TF');
             const domProximoTrab = (dia <= totalDias - 7) && (item.dias[dia + 7] === 'TD' || item.dias[dia + 7] === 'TF');
             if (domAnteriorTrab || domProximoTrab) {
-              continue; // Pula colaboradores do sexo feminino que já trabalharam em domingo vizinho
+              continue; // Pula colaboradores que já trabalharam em domingo vizinho
             }
           }
 
@@ -675,8 +701,25 @@ export class EscalaGeneratorService {
             }
 
             if (!compensou) {
-              // Se não pôde compensar sem ferir a cobertura de outro dia, reverte
+              // Se não pôde compensar sem ferir a cobertura de outro dia, reverte a alteração
               item.dias[dia] = isDomingo ? 'FD' : 'F';
+            } else {
+              // Recalcula maxConsec após a compensação
+              let maxConsecAfter = 0;
+              let curConsecAfter = 0;
+              for (let d = 1; d <= totalDias; d++) {
+                const s = item.dias[d];
+                if (s === 'T' || s === 'TD' || s === 'TF') {
+                  curConsecAfter++;
+                  if (curConsecAfter > maxConsecAfter) maxConsecAfter = curConsecAfter;
+                } else {
+                  curConsecAfter = 0;
+                }
+              }
+              if (maxConsecAfter > 6) {
+                // Reverte se a compensação ainda violar o limite CLT de 6 dias
+                item.dias[dia] = isDomingo ? 'FD' : 'F';
+              }
             }
           }
         }
@@ -714,6 +757,7 @@ export class EscalaGeneratorService {
     const erros: ValidacaoItem[] = [];
     const coberturaPorDia: Record<number, number> = {};
 
+    const feriadosFechadosVal = new Set<number>();
     const feriadosAbertos = new Set<number>();
     for (const f of feriados) {
       const parts = f.data.split('-');
@@ -721,8 +765,12 @@ export class EscalaGeneratorService {
         const fAno = Number.parseInt(parts[0], 10);
         const fMes = Number.parseInt(parts[1], 10);
         const fDia = Number.parseInt(parts[2], 10);
-        if (fAno === ano && fMes === mes && !f.funcionamento_proibido) {
-          feriadosAbertos.add(fDia);
+        if (fAno === ano && fMes === mes) {
+          if (f.funcionamento_proibido) {
+            feriadosFechadosVal.add(fDia);
+          } else {
+            feriadosAbertos.add(fDia);
+          }
         }
       }
     }
@@ -743,6 +791,10 @@ export class EscalaGeneratorService {
       coberturaPorDia[dia] = emTrabalho;
 
       const minPermitidoDia = (isDomingo && itens.length < 6 && !eFrenteDeCaixa) ? Math.max(1, Math.floor(itens.length / 3)) : minEfetivoValida;
+
+      if (feriadosFechadosVal.has(dia)) {
+        continue; // Feriado fechado: loja fechada, cobertura zero é correta e esperada por lei.
+      }
 
       if (emTrabalho === 0 && itens.length >= 2) {
         erros.push({
@@ -845,19 +897,62 @@ export class EscalaGeneratorService {
         }
       }
 
-      // Checagem de limite mensal de folgas (4 a 5 folgas)
-      if (totalFolgasNoMes > 5) {
+      // Identificar domingos e feriados do mês na validação
+      const domingosNoMesVal: number[] = [];
+      for (let d = 1; d <= totalDias; d++) {
+        if (new Date(ano, mes - 1, d).getDay() === 0) domingosNoMesVal.push(d);
+      }
+      const feriadosNoMesCount = feriados.filter(f => {
+        const parts = f.data.split('-');
+        return parts.length === 3 && Number(parts[0]) === ano && Number(parts[1]) === mes;
+      }).length;
+
+      const minFolgasEsperadas = (domingosNoMesVal.length === 5) ? 5 : 4;
+      const maxFolgasPermitidasVal = 5 + feriadosNoMesCount;
+
+      // Validação da Trava FD -> TD (Transição de Domingo Folgado para Domingo Trabalhado)
+      domingosNoMesVal.forEach(dDom => {
+        const domAnterior = dDom - 7;
+        if (domAnterior >= 1 && domingosNoMesVal.includes(domAnterior)) {
+          const stDomAnterior = item.dias[domAnterior];
+          const stDomAtual = item.dias[dDom];
+          if ((stDomAnterior === 'FD' || stDomAnterior === 'F') && (stDomAtual === 'TD' || stDomAtual === 'TF')) {
+            // Verificar se houve folga intermediária entre os dois domingos
+            let folgaIntermediaria = false;
+            for (let d = domAnterior + 1; d < dDom; d++) {
+              if (item.dias[d] === 'F' || item.dias[d] === 'FE' || item.dias[d] === 'FD') {
+                folgaIntermediaria = true;
+                break;
+              }
+            }
+            if (!folgaIntermediaria) {
+              erros.push({
+                dia: dDom,
+                setor: item.setor,
+                mensagem: `${item.nome}: Trabalhou 7 dias seguidos entre o Domingo Folgado (Dia ${domAnterior}) e o Domingo Trabalhado (Dia ${dDom}). Violação da Trava FD->TD (Art. 67).`,
+                tipo: 'ERRO_TRANSICAO_DOMINGO'
+              });
+            }
+          }
+        }
+      });
+
+      // Checagem de limite mensal de folgas (respeitando o mínimo legal do calendário e rotação)
+      const domingosFolgaCount = Object.values(item.dias).filter(st => st === 'FD').length;
+      const maxPermitidoItem = Math.max(5, domingosFolgaCount + 3) + feriadosNoMesCount;
+
+      if (totalFolgasNoMes > maxPermitidoItem) {
         erros.push({
           dia: 1,
           setor: item.setor,
-          mensagem: `${item.nome}: Excede o limite de folgas no mês (${totalFolgasNoMes} folgas). Máximo permitido: 5 folgas.`,
+          mensagem: `${item.nome}: Excede o limite de folgas no mês (${totalFolgasNoMes} folgas). Máximo permitido para o seu perfil: ${maxPermitidoItem} folgas.`,
           tipo: 'ERRO_FOLGAS_MES'
         });
-      } else if (totalFolgasNoMes < 4 && totalDias >= 28) {
+      } else if (totalFolgasNoMes < minFolgasEsperadas && totalDias >= 28) {
         erros.push({
           dia: 1,
           setor: item.setor,
-          mensagem: `${item.nome}: Possui apenas ${totalFolgasNoMes} folga(s) no mês. Priorizar meta de 4 a 5 folgas.`,
+          mensagem: `${item.nome}: Possui apenas ${totalFolgasNoMes} folga(s) no mês. Esperado no mínimo: ${minFolgasEsperadas} folgas (mês de ${domingosNoMesVal.length} domingos).`,
           tipo: 'ERRO_FOLGAS_MES'
         });
       }

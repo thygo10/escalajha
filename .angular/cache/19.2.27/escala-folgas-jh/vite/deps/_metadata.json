@@ -1,55 +1,55 @@
 {
-  "hash": "2a0810ef",
-  "configHash": "86a5e5cf",
-  "lockfileHash": "fbd69b63",
-  "browserHash": "225559d3",
+  "hash": "a3c5038c",
+  "configHash": "3a00cb82",
+  "lockfileHash": "bd67382a",
+  "browserHash": "06dcf6d6",
   "optimized": {
     "@angular/common": {
       "src": "../../../../../../node_modules/@angular/common/fesm2022/common.mjs",
       "file": "@angular_common.js",
-      "fileHash": "109ac4b6",
+      "fileHash": "042e688e",
       "needsInterop": false
     },
     "@angular/common/http": {
       "src": "../../../../../../node_modules/@angular/common/fesm2022/http.mjs",
       "file": "@angular_common_http.js",
-      "fileHash": "2cb35eb0",
+      "fileHash": "4ecb717d",
       "needsInterop": false
     },
     "@angular/core": {
       "src": "../../../../../../node_modules/@angular/core/fesm2022/core.mjs",
       "file": "@angular_core.js",
-      "fileHash": "74dbc8b7",
+      "fileHash": "358e79e1",
       "needsInterop": false
     },
     "@angular/forms": {
       "src": "../../../../../../node_modules/@angular/forms/fesm2022/forms.mjs",
       "file": "@angular_forms.js",
-      "fileHash": "dfe4ac13",
+      "fileHash": "112d492e",
       "needsInterop": false
     },
     "@angular/platform-browser": {
       "src": "../../../../../../node_modules/@angular/platform-browser/fesm2022/platform-browser.mjs",
       "file": "@angular_platform-browser.js",
-      "fileHash": "453af665",
+      "fileHash": "5a462b66",
       "needsInterop": false
     },
     "@angular/platform-browser/animations/async": {
       "src": "../../../../../../node_modules/@angular/platform-browser/fesm2022/animations/async.mjs",
       "file": "@angular_platform-browser_animations_async.js",
-      "fileHash": "24aa8989",
+      "fileHash": "b673d63c",
       "needsInterop": false
     },
     "@angular/router": {
       "src": "../../../../../../node_modules/@angular/router/fesm2022/router.mjs",
       "file": "@angular_router.js",
-      "fileHash": "80cb1da4",
+      "fileHash": "550faf9f",
       "needsInterop": false
     },
     "@supabase/supabase-js": {
       "src": "../../../../../../node_modules/@supabase/supabase-js/dist/index.mjs",
       "file": "@supabase_supabase-js.js",
-      "fileHash": "9c4b42e5",
+      "fileHash": "ea9c5c25",
       "needsInterop": false
     }
   },
