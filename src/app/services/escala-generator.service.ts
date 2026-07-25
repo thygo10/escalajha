@@ -139,6 +139,46 @@ export class EscalaGeneratorService {
     const diaSemanaDia1 = new Date(ano, mes - 1, 1).getDay();
     const turmaDia1 = diaSemanaDia1 === 0 ? 0 : (diaSemanaDia1 - 1) % 6;
 
+    // Pre-calcular a Turma Reduzida para cada feriado aberto no mês (Equilibrada por Turnos de Abertura, Intermediário e Fechamento)
+    const feriadoTrabalhadoresMap = new Map<number, Set<string>>();
+    let feriadoIndexCount = 0;
+
+    feriadosAbertos.forEach((fDia) => {
+      const minReqFeriado = config.minFuncionariosFeriado ?? (eFrenteDeCaixa ? 6 : (funcionarios.length >= 4 ? 2 : 1));
+      const escaladosFeriado = new Set<string>();
+
+      // Agrupa funcionários por categoria de turno (Abertura, Intermediário, Fechamento)
+      const porTurno = this._agruparPorCategoriaTurno(funcionarios);
+      const categorias = Array.from(porTurno.keys()).filter(cat => (porTurno.get(cat)?.length ?? 0) > 0);
+      const cotaPorTurno = Math.max(1, Math.floor(minReqFeriado / Math.max(1, categorias.length)));
+
+      // Para cada categoria de turno, seleciona proporcionalmente em rodízio
+      categorias.forEach(cat => {
+        const funcsTurno = porTurno.get(cat) || [];
+        const offsetTurno = feriadoIndexCount % Math.max(1, funcsTurno.length);
+        let selecionadosNoTurno = 0;
+
+        for (let i = 0; i < funcsTurno.length && selecionadosNoTurno < cotaPorTurno && escaladosFeriado.size < minReqFeriado; i++) {
+          const targetFunc = funcsTurno[(offsetTurno + i) % funcsTurno.length];
+          if (!escaladosFeriado.has(targetFunc.matricula_aleatoria)) {
+            escaladosFeriado.add(targetFunc.matricula_aleatoria);
+            selecionadosNoTurno++;
+          }
+        }
+      });
+
+      // Se ainda não preencheu o mínimo total exigido no feriado, completa com os demais turnos
+      if (escaladosFeriado.size < minReqFeriado) {
+        for (const func of funcionarios) {
+          if (escaladosFeriado.size >= minReqFeriado) break;
+          escaladosFeriado.add(func.matricula_aleatoria);
+        }
+      }
+
+      feriadoIndexCount++;
+      feriadoTrabalhadoresMap.set(fDia, escaladosFeriado);
+    });
+
     funcionarios.forEach((func, idx) => {
       const dias: Record<number, TipoDia> = {};
       const souFeminino = func.genero === 'F';
@@ -179,7 +219,10 @@ export class EscalaGeneratorService {
       });
 
       // Quantidade máxima de folgas em dias úteis para respeitar a meta mensal de 5 folgas
-      const maxFolgasSemanaisPermitidas = Math.max(0, 5 - domingosFolgaSet.size - (feriadosFechados.size));
+      // Se o colaborador ganha folga no feriado aberto, essa folga consome 1 vaga do teto mensal de 5 folgas
+      const ganhaFolgaFeriado = Array.from(feriadosAbertos).some(fDia => !feriadoTrabalhadoresMap.get(fDia)?.has(func.matricula_aleatoria));
+      const totalFeriadosFolga = feriadosFechados.size + (ganhaFolgaFeriado ? feriadosAbertos.size : 0);
+      const maxFolgasSemanaisPermitidas = Math.max(0, 5 - domingosFolgaSet.size - totalFeriadosFolga);
 
       // Garantia preventiva: Se trabalha no Domingo, pré-agenda 1 folga útil na semana anterior (Quarta ou Quinta) para evitar atingir 7 dias seguidos
       const diasFolgaUteisGarantidas = new Set<number>();
@@ -209,6 +252,20 @@ export class EscalaGeneratorService {
           dias[dia] = 'FE';
           diasTrabalhadosSeguidos = 0;
           ultimaFolgaDia = dia;
+          continue;
+        }
+
+        // REGRA 0.5: Feriado Aberto (Turma Reduzida -> Apenas a cota trabalha TF, Maioria folga F)
+        if (feriadosAbertos.has(dia)) {
+          const quemTrabalhaNoFeriado = feriadoTrabalhadoresMap.get(dia);
+          if (quemTrabalhaNoFeriado?.has(func.matricula_aleatoria)) {
+            dias[dia] = 'TF';
+            diasTrabalhadosSeguidos++;
+          } else {
+            dias[dia] = 'F';
+            diasTrabalhadosSeguidos = 0;
+            ultimaFolgaDia = dia;
+          }
           continue;
         }
 
@@ -306,6 +363,29 @@ export class EscalaGeneratorService {
   }
 
   /**
+   * Agrupa colaboradores por categoria de turno (Abertura, Intermediário, Fechamento).
+   */
+  private _agruparPorCategoriaTurno(funcionarios: Funcionario[]): Map<string, Funcionario[]> {
+    const grupos = new Map<string, Funcionario[]>();
+    grupos.set('ABERTURA', []);
+    grupos.set('INTERMEDIARIO', []);
+    grupos.set('FECHAMENTO', []);
+
+    funcionarios.forEach(func => {
+      const t = func.turno_padrao.toLowerCase();
+      if (t.includes('07:0') || t.includes('08:0')) {
+        grupos.get('ABERTURA')!.push(func);
+      } else if (t.includes('14:0') || t.includes('13:3') || t.includes('15:0')) {
+        grupos.get('FECHAMENTO')!.push(func);
+      } else {
+        grupos.get('INTERMEDIARIO')!.push(func);
+      }
+    });
+
+    return grupos;
+  }
+
+  /**
    * Retorna o status de trabalho correto (TD se Domingo, TF se Feriado Aberto, T se Dia Útil).
    */
   private _getTipoTrabalho(dia: number, ano: number, mes: number, feriadosAbertos: Set<number>): TipoDia {
@@ -379,11 +459,11 @@ export class EscalaGeneratorService {
         }
 
         if (!removido) {
-          // 2ª Passagem: Tenta remover qualquer folga 'F' que não viole a trava CLT de 6 dias
+          // 2ª Passagem: Tenta remover qualquer folga 'F' em dia útil (não feriado) que não viole a trava CLT de 6 dias
           for (let i = folgas.length - 1; i >= 0; i--) {
             const [diaStr, st] = folgas[i];
             const dia = Number(diaStr);
-            if (st === 'F') {
+            if (st === 'F' && !feriadosAbertos.has(dia)) {
               item.dias[dia] = this._getTipoTrabalho(dia, ano, mes, feriadosAbertos);
 
               let maxConsec = 0;
@@ -468,7 +548,7 @@ export class EscalaGeneratorService {
             if (folgas.length > 5) {
               for (const [fDiaStr, fSt] of folgas) {
                 const fDia = Number(fDiaStr);
-                if (fSt === 'F' && fDia !== dia) {
+                if (fSt === 'F' && fDia !== dia && !feriadosAbertos.has(fDia)) {
                   item.dias[fDia] = this._getTipoTrabalho(fDia, ano, mes, feriadosAbertos);
                   break;
                 }
