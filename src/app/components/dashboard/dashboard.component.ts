@@ -130,8 +130,8 @@ export class DashboardComponent implements OnInit {
   guiadaMinFuncionarios = signal<number>(2);
   guiadaPermitirDoisConsecutivos = signal<boolean>(false);
 
-  // Mínimo por dia no setor ativo
-  minFuncionariosPorDiaSetor = signal<number>(2);
+  // Mínimo por dia no setor ativo (Frente de Caixa exige 6)
+  minFuncionariosPorDiaSetor = signal<number>(6);
 
   // Turnos & Intervalos Intrajornada
   isTurnosModalOpen = signal<boolean>(false);

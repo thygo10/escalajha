@@ -175,6 +175,7 @@ export class EscalaGeneratorService {
         const dateObj = new Date(ano, mes - 1, dia);
         const diaSemana = dateObj.getDay();
         const isDomingo = diaSemana === 0;
+        const diaAnteriorEhFolga = (dia > 1) && (dias[dia - 1] === 'F' || dias[dia - 1] === 'FD' || dias[dia - 1] === 'FE');
 
         // REGRA 0: Feriado Fechado
         if (feriadosFechados.has(dia)) {
@@ -185,15 +186,20 @@ export class EscalaGeneratorService {
 
         // REGRA 1: Trava CLT de 6 dias consecutivos máximo
         if (diasTrabalhadosSeguidos >= 6) {
-          dias[dia] = isDomingo ? 'FD' : 'F';
-          diasTrabalhadosSeguidos = 0;
-          if (isDomingo) domingosSeguidos = 0;
-          continue;
+          if (!diaAnteriorEhFolga) {
+            dias[dia] = isDomingo ? 'FD' : 'F';
+            diasTrabalhadosSeguidos = 0;
+            if (isDomingo) domingosSeguidos = 0;
+            continue;
+          }
         }
 
         // REGRA 2: Trata Domingos
         if (isDomingo) {
-          if (domingosFolgaSet.has(dia)) {
+          // Permite folga no domingo apenas se não folgou no sábado e já trabalhou 5 ou 6 dias
+          const podeFolgarNoDom = domingosFolgaSet.has(dia) && !diaAnteriorEhFolga && (diasTrabalhadosSeguidos >= 4 || totalDias <= 7);
+          
+          if (podeFolgarNoDom) {
             dias[dia] = 'FD';
             domingosSeguidos = 0;
             diasTrabalhadosSeguidos = 0;
@@ -205,16 +211,15 @@ export class EscalaGeneratorService {
           continue;
         }
 
-        // REGRA 3: Dias Úteis com Rotação Giratória 6x1
-        // No ciclo 6x1, se o colaborador JÁ folga no Domingo da semana atual (ou seguinte),
-        // ele cumpre sua folga semanal no domingo e trabalha os dias úteis.
+        // REGRA 3: Dias Úteis com Rotação Giratória 6x1 (Folga após 5 ou 6 dias de trabalho, NUNCA consecutiva)
         const semanaIndex = Math.floor((dia - 1) / 7);
         const proximoDomingoSemana = domingos.find(d => d >= dia && d <= dia + 6);
         const temFolgaNoDomingoDaSemana = proximoDomingoSemana ? domingosFolgaSet.has(proximoDomingoSemana) : false;
 
         const diaFolgaRotacao = 1 + ((turmaOffset + semanaIndex) % 6); // 1=Seg, 2=Ter... 6=Sáb
 
-        if (!temFolgaNoDomingoDaSemana && diaSemana === diaFolgaRotacao && config.diasPermitidosFolga.includes(diaSemana)) {
+        // Concede folga se: não folga no domingo da semana, é o dia da rotação, não folgou ontem e trabalhou entre 5 e 6 dias
+        if (!temFolgaNoDomingoDaSemana && diaSemana === diaFolgaRotacao && config.diasPermitidosFolga.includes(diaSemana) && !diaAnteriorEhFolga && diasTrabalhadosSeguidos >= 4) {
           dias[dia] = 'F';
           diasTrabalhadosSeguidos = 0;
           continue;
@@ -243,8 +248,11 @@ export class EscalaGeneratorService {
       this._ajustarCoberturaPadaria(itens, totalDias);
     }
 
-    // PÓS-PROCESSAMENTO 3: Limite mensal de folgas (4 a 5 folgas)
-    this._ajustarLimiteFolgasMensais(itens, totalDias);
+    // PÓS-PROCESSAMENTO 3: Limite mensal de folgas (4 a 5 folgas) sem violar CLT
+    this._ajustarLimiteFolgasMensais(itens, totalDias, ano, mes);
+
+    // PÓS-PROCESSAMENTO 4: Sanitização Final Inviolável CLT Art. 67 (Máximo 6 dias seguidos)
+    this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes);
 
     return itens;
   }
@@ -286,9 +294,9 @@ export class EscalaGeneratorService {
   }
 
   /**
-   * Garante que nenhum colaborador ultrapasse o limite de 5 folgas por mês, sem romper a regra dos 6 dias úteis.
+   * Garante que nenhum colaborador ultrapasse o limite de 5 folgas por mês, sem NUNCA romper a regra dos 6 dias úteis CLT.
    */
-  private _ajustarLimiteFolgasMensais(itens: EscalaItem[], totalDias: number): void {
+  private _ajustarLimiteFolgasMensais(itens: EscalaItem[], totalDias: number, ano: number, mes: number): void {
     itens.forEach(item => {
       const folgas = Object.entries(item.dias).filter(([_, st]) => st === 'F' || st === 'FD' || st === 'FE');
       
@@ -300,8 +308,49 @@ export class EscalaGeneratorService {
           const dia = Number(diaStr);
           if (st === 'F') {
             item.dias[dia] = 'T';
-            removidos++;
+            
+            // Verifica se remover esta folga cria > 6 dias seguidos de trabalho
+            let consecutivosTemp = 0;
+            let violouCLT = false;
+            for (let d = 1; d <= totalDias; d++) {
+              const s = item.dias[d];
+              if (s === 'T' || s === 'TD' || s === 'TF') {
+                consecutivosTemp++;
+                if (consecutivosTemp > 6) { violouCLT = true; break; }
+              } else {
+                consecutivosTemp = 0;
+              }
+            }
+
+            if (violouCLT) {
+              item.dias[dia] = 'F'; // Reverte pois violaria Art. 67 CLT
+            } else {
+              removidos++;
+            }
           }
+        }
+      }
+    });
+  }
+
+  /**
+   * Sanitização Final Inviolável da CLT Art. 67.
+   * Garante matematicamente que NENHUM colaborador trabalhe mais de 6 dias consecutivos em qualquer circunstância.
+   */
+  private _sanitizarTravaCLT6Dias(itens: EscalaItem[], totalDias: number, ano: number, mes: number): void {
+    itens.forEach(item => {
+      let consecutivos = 0;
+      for (let dia = 1; dia <= totalDias; dia++) {
+        const st = item.dias[dia];
+        if (st === 'T' || st === 'TD' || st === 'TF') {
+          consecutivos++;
+          if (consecutivos > 6) {
+            const isDom = (new Date(ano, mes - 1, dia).getDay() === 0);
+            item.dias[dia] = isDom ? 'FD' : 'F';
+            consecutivos = 0;
+          }
+        } else {
+          consecutivos = 0;
         }
       }
     });
