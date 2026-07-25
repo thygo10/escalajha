@@ -6,6 +6,7 @@ export interface OpcionesGeracaoEscala {
   diasPermitidosFolga: number[]; // Array de dias da semana (0 = Dom, 1 = Seg, 2 = Ter, 3 = Qua, 4 = Qui, 5 = Sex, 6 = Sáb)
   feriados: Feriado[];
   minFuncionariosPorDia?: number; // Mínimo de colaboradores trabalhando no setor por dia (ex: 2 fiscais)
+  minFuncionariosFeriado?: number; // Mínimo de colaboradores no feriado aberto (Equipe Reduzida)
 }
 
 @Injectable({
@@ -90,7 +91,8 @@ export class EscalaGeneratorService {
         ? opcoes.diasPermitidosFolga
         : [0, 1, 2, 3, 4, 5, 6],
       feriados: opcoes?.feriados || [],
-      minFuncionariosPorDia: minRequerido
+      minFuncionariosPorDia: minRequerido,
+      minFuncionariosFeriado: opcoes?.minFuncionariosFeriado
     };
 
     // Feriados de fechamento proibido no mês atual
@@ -288,25 +290,36 @@ export class EscalaGeneratorService {
 
     // PÓS-PROCESSAMENTO INTEGRADO COM LOOP DE CONVERGÊNCIA (Garante 0 erros):
     for (let iter = 0; iter < 4; iter++) {
-      this._ajustarCoberturaMinima(itens, totalDias, minEfetivo, ano, mes);
+      this._ajustarCoberturaMinima(itens, totalDias, minEfetivo, ano, mes, feriadosAbertos, config.minFuncionariosFeriado);
 
       if (ePadaria) {
-        this._ajustarCoberturaPadaria(itens, totalDias, ano, mes);
+        this._ajustarCoberturaPadaria(itens, totalDias, ano, mes, feriadosAbertos);
       }
 
-      this._ajustarLimiteFolgasMensais(itens, totalDias, ano, mes);
+      this._ajustarLimiteFolgasMensais(itens, totalDias, ano, mes, feriadosAbertos);
 
-      this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes);
+      this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes, feriadosAbertos);
     }
-    this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes);
+    this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes, feriadosAbertos);
 
     return itens;
   }
 
   /**
+   * Retorna o status de trabalho correto (TD se Domingo, TF se Feriado Aberto, T se Dia Útil).
+   */
+  private _getTipoTrabalho(dia: number, ano: number, mes: number, feriadosAbertos: Set<number>): TipoDia {
+    const isDom = (new Date(ano, mes - 1, dia).getDay() === 0);
+    if (feriadosAbertos.has(dia)) {
+      return isDom ? 'TD' : 'TF';
+    }
+    return isDom ? 'TD' : 'T';
+  }
+
+  /**
    * Garante que na Padaria haja no máximo 1 colaborador de folga por dia na produção em dias úteis.
    */
-  private _ajustarCoberturaPadaria(itens: EscalaItem[], totalDias: number, ano: number, mes: number): void {
+  private _ajustarCoberturaPadaria(itens: EscalaItem[], totalDias: number, ano: number, mes: number, feriadosAbertos: Set<number>): void {
     if (itens.length <= 1) return;
 
     for (let dia = 1; dia <= totalDias; dia++) {
@@ -333,7 +346,7 @@ export class EscalaGeneratorService {
           }
 
           if (diaSemFolga !== -1) {
-            item.dias[dia] = 'T';
+            item.dias[dia] = this._getTipoTrabalho(dia, ano, mes, feriadosAbertos);
             item.dias[diaSemFolga] = 'F';
           }
         }
@@ -345,7 +358,7 @@ export class EscalaGeneratorService {
    * Garante que nenhum colaborador ultrapasse o limite de 5 folgas por mês.
    * Remove primeiro folgas em dias consecutivos e reposiciona o ponto médio se necessário para respeitar CLT.
    */
-  private _ajustarLimiteFolgasMensais(itens: EscalaItem[], totalDias: number, ano: number, mes: number): void {
+  private _ajustarLimiteFolgasMensais(itens: EscalaItem[], totalDias: number, ano: number, mes: number, feriadosAbertos: Set<number>): void {
     itens.forEach(item => {
       let folgas = Object.entries(item.dias).filter(([_, st]) => st === 'F' || st === 'FD' || st === 'FE');
       
@@ -358,7 +371,8 @@ export class EscalaGeneratorService {
           const prevSt = folgas[i - 1][1];
           const nextSt = folgas[i + 1][1];
           if (st === 'F' && prevSt === 'FD' && nextSt === 'FD') {
-            item.dias[Number(dStr)] = 'T';
+            const fDiaNum = Number(dStr);
+            item.dias[fDiaNum] = this._getTipoTrabalho(fDiaNum, ano, mes, feriadosAbertos);
             removido = true;
             break;
           }
@@ -370,7 +384,7 @@ export class EscalaGeneratorService {
             const [diaStr, st] = folgas[i];
             const dia = Number(diaStr);
             if (st === 'F') {
-              item.dias[dia] = 'T';
+              item.dias[dia] = this._getTipoTrabalho(dia, ano, mes, feriadosAbertos);
 
               let maxConsec = 0;
               let curConsec = 0;
@@ -400,7 +414,7 @@ export class EscalaGeneratorService {
           if (fIndices.length === 0) break;
 
           const diaRemover = fIndices[fIndices.length - 1];
-          item.dias[diaRemover] = 'T';
+          item.dias[diaRemover] = this._getTipoTrabalho(diaRemover, ano, mes, feriadosAbertos);
 
           let inicioBloco = 1, maiorBlocoInicio = 1, maiorBlocoFim = 1, maxConsec = 0, curConsec = 0;
           for (let d = 1; d <= totalDias; d++) {
@@ -437,7 +451,7 @@ export class EscalaGeneratorService {
    * Sanitização Final Inviolável da CLT Art. 67.
    * Garante matematicamente que NENHUM colaborador trabalhe mais de 6 dias consecutivos em qualquer circunstância.
    */
-  private _sanitizarTravaCLT6Dias(itens: EscalaItem[], totalDias: number, ano: number, mes: number): void {
+  private _sanitizarTravaCLT6Dias(itens: EscalaItem[], totalDias: number, ano: number, mes: number, feriadosAbertos: Set<number>): void {
     itens.forEach(item => {
       let consecutivos = 0;
       for (let dia = 1; dia <= totalDias; dia++) {
@@ -455,7 +469,7 @@ export class EscalaGeneratorService {
               for (const [fDiaStr, fSt] of folgas) {
                 const fDia = Number(fDiaStr);
                 if (fSt === 'F' && fDia !== dia) {
-                  item.dias[fDia] = 'T';
+                  item.dias[fDia] = this._getTipoTrabalho(fDia, ano, mes, feriadosAbertos);
                   break;
                 }
               }
@@ -470,15 +484,29 @@ export class EscalaGeneratorService {
 
   /**
    * Garante que em nenhum dia o número de colaboradores trabalhando no setor seja menor que o mínimo.
+   * Suporta escala reduzida específica em Feriados Abertos.
    */
-  private _ajustarCoberturaMinima(itens: EscalaItem[], totalDias: number, minPorDia: number, ano: number, mes: number): void {
-    if (itens.length <= minPorDia) return;
+  private _ajustarCoberturaMinima(
+    itens: EscalaItem[],
+    totalDias: number,
+    minPorDia: number,
+    ano: number,
+    mes: number,
+    feriadosAbertos: Set<number>,
+    minFeriado?: number
+  ): void {
+    if (itens.length <= 1) return;
 
     for (let dia = 1; dia <= totalDias; dia++) {
+      const eFeriadoAberto = feriadosAbertos.has(dia);
+      const minExigidoDia = eFeriadoAberto
+        ? (minFeriado !== undefined ? minFeriado : Math.max(1, Math.floor(minPorDia / 2)))
+        : minPorDia;
+
       const trabalhando = itens.filter(i => i.dias[dia] === 'T' || i.dias[dia] === 'TD' || i.dias[dia] === 'TF');
       
-      if (trabalhando.length < minPorDia) {
-        const necessarios = minPorDia - trabalhando.length;
+      if (trabalhando.length < minExigidoDia) {
+        const necessarios = minExigidoDia - trabalhando.length;
         const folgando = itens.filter(i => i.dias[dia] === 'F' || i.dias[dia] === 'FD');
 
         for (let k = 0; k < Math.min(necessarios, folgando.length); k++) {
@@ -497,7 +525,7 @@ export class EscalaGeneratorService {
           }
 
           // Altera a folga deste colaborador para trabalho no dia deficitário
-          item.dias[dia] = isDomingo ? 'TD' : 'T';
+          item.dias[dia] = this._getTipoTrabalho(dia, ano, mes, feriadosAbertos);
 
           // Compensação de folga na mesma semana para manter cobertura e limite de 6 dias
           const inicioSemana = Math.max(1, dia - 5);
@@ -509,10 +537,24 @@ export class EscalaGeneratorService {
               const diaAltIsDom = (new Date(ano, mes - 1, dAlt).getDay() === 0);
               const vizinhoFolga = (dAlt > 1 && (item.dias[dAlt - 1] === 'F' || item.dias[dAlt - 1] === 'FD')) || (dAlt < totalDias && (item.dias[dAlt + 1] === 'F' || item.dias[dAlt + 1] === 'FD'));
               
-              if (trabNoDiaAlt > minPorDia && !vizinhoFolga && !diaAltIsDom) {
+              if (trabNoDiaAlt > minExigidoDia && !vizinhoFolga && !diaAltIsDom) {
                 item.dias[dAlt] = 'F';
                 break;
               }
+            }
+          }
+        }
+      } else if (eFeriadoAberto && trabalhando.length > minExigidoDia) {
+        // Equipe Reduzida no Feriado: se há mais trabalhando do que a cota reduzida do feriado, libera excesso para folga 'F'
+        const excedentes = trabalhando.length - minExigidoDia;
+        let liberados = 0;
+        for (let k = 0; k < trabalhando.length && liberados < excedentes; k++) {
+          const item = trabalhando[k];
+          if (item.dias[dia] === 'TF') {
+            const totalFolgas = Object.values(item.dias).filter(st => st === 'F' || st === 'FD' || st === 'FE').length;
+            if (totalFolgas < 5) {
+              item.dias[dia] = 'F';
+              liberados++;
             }
           }
         }
@@ -529,11 +571,25 @@ export class EscalaGeneratorService {
     ano: number,
     mes: number,
     minRequerido: number = 2,
-    turnosConfigs: TurnoConfig[] = []
+    turnosConfigs: TurnoConfig[] = [],
+    feriados: Feriado[] = []
   ): ValidacaoEscalaResultado {
     const totalDias = new Date(ano, mes, 0).getDate();
     const erros: ValidacaoItem[] = [];
     const coberturaPorDia: Record<number, number> = {};
+
+    const feriadosAbertos = new Set<number>();
+    for (const f of feriados) {
+      const parts = f.data.split('-');
+      if (parts.length === 3) {
+        const fAno = Number.parseInt(parts[0], 10);
+        const fMes = Number.parseInt(parts[1], 10);
+        const fDia = Number.parseInt(parts[2], 10);
+        if (fAno === ano && fMes === mes && !f.funcionamento_proibido) {
+          feriadosAbertos.add(fDia);
+        }
+      }
+    }
 
     const setorNomeOriginal = itens[0]?.setor || 'Setor';
     const setorNomeClean = setorNomeOriginal.toLowerCase();
@@ -599,6 +655,15 @@ export class EscalaGeneratorService {
 
         if (st === 'F' || st === 'FD' || st === 'FE') {
           totalFolgasNoMes++;
+        }
+
+        if (feriadosAbertos.has(dia) && st === 'T') {
+          erros.push({
+            dia,
+            setor: item.setor,
+            mensagem: `${item.nome}: Trabalhou no feriado (Dia ${dia}), mas o status está como 'T' comum em vez de 'TF'.`,
+            tipo: 'ERRO_STATUS_FERIADO'
+          });
         }
 
         if (st === 'T' || st === 'TD' || st === 'TF') {
