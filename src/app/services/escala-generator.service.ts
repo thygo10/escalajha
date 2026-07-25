@@ -247,7 +247,7 @@ export class EscalaGeneratorService {
     });
 
     // PÓS-PROCESSAMENTO 1: Cobertura Mínima Diária (Garante mínimo de 6 caixas se Frente de Caixa)
-    this._ajustarCoberturaMinima(itens, totalDias, minEfetivo);
+    this._ajustarCoberturaMinima(itens, totalDias, minEfetivo, ano, mes);
 
     // PÓS-PROCESSAMENTO 2: Padaria (Garante no máximo 1 folga por dia na produção)
     if (ePadaria) {
@@ -388,7 +388,7 @@ export class EscalaGeneratorService {
   /**
    * Garante que em nenhum dia o número de colaboradores trabalhando no setor seja menor que o mínimo.
    */
-  private _ajustarCoberturaMinima(itens: EscalaItem[], totalDias: number, minPorDia: number): void {
+  private _ajustarCoberturaMinima(itens: EscalaItem[], totalDias: number, minPorDia: number, ano: number, mes: number): void {
     if (itens.length <= minPorDia) return;
 
     for (let dia = 1; dia <= totalDias; dia++) {
@@ -406,10 +406,9 @@ export class EscalaGeneratorService {
           const eExcecao = setorClean.includes('padaria') || setorClean.includes('acougue') || setorClean.includes('açougue');
           
           if (isDomingo && !eExcecao) {
-            const domAnteriorTrab = (dia > 7) && (item.dias[dia - 7] === 'TD' || item.dias[dia - 7] === 'T' || item.dias[dia - 7] === 'TF');
-            const domSeguinteTrab = (dia + 7 <= totalDias) && (item.dias[dia + 7] === 'TD' || item.dias[dia + 7] === 'T' || item.dias[dia + 7] === 'TF');
-            if (domAnteriorTrab && domSeguinteTrab) {
-              continue;
+            const domAnteriorTrab = (dia > 7) && (item.dias[dia - 7] === 'TD' || item.dias[dia - 7] === 'TF');
+            if (domAnteriorTrab) {
+              continue; // Pula colaboradores que já trabalharam no domingo anterior para preservar 1T : 2F
             }
           }
 
@@ -423,7 +422,7 @@ export class EscalaGeneratorService {
           for (let dAlt = inicioSemana; dAlt <= fimSemana; dAlt++) {
             if (dAlt !== dia && (item.dias[dAlt] === 'T' || item.dias[dAlt] === 'TF')) {
               const trabNoDiaAlt = itens.filter(i => i.dias[dAlt] === 'T' || i.dias[dAlt] === 'TD' || i.dias[dAlt] === 'TF').length;
-              const diaAltIsDom = (new Date(2026, 6, dAlt).getDay() === 0);
+              const diaAltIsDom = (new Date(ano, mes - 1, dAlt).getDay() === 0);
               const vizinhoFolga = (dAlt > 1 && (item.dias[dAlt - 1] === 'F' || item.dias[dAlt - 1] === 'FD')) || (dAlt < totalDias && (item.dias[dAlt + 1] === 'F' || item.dias[dAlt + 1] === 'FD'));
               
               if (trabNoDiaAlt > minPorDia && !vizinhoFolga && !diaAltIsDom) {
