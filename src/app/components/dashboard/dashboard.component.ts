@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { SupabaseService } from '../../services/supabase.service';
 import { EscalaGeneratorService } from '../../services/escala-generator.service';
 import { ToastService } from '../../services/toast.service';
-import { Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho, TurnoConfig, IntervaloOption, ValidacaoEscalaResultado } from '../../models/types';
+import { Loja, Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho, TurnoConfig, IntervaloOption, ValidacaoEscalaResultado } from '../../models/types';
 import { IconComponent } from '../shared/icon.component';
 
 interface ConfirmModalData {
@@ -53,7 +53,7 @@ export class DashboardComponent implements OnInit {
   get selectedMonth() { return this._selectedMonth; }
   set selectedMonth(val: string) {
     this._selectedMonth = val;
-    this.triggerRecalculoEscala.update(v => v + 1);
+    this.triggerRecalculoEscala.update((v: number) => v + 1);
     const [ano, mes] = val.split('-').map(Number);
     this.generator.invalidateCache(ano, mes);
     this.onMonthOrSetorChange();
@@ -63,7 +63,7 @@ export class DashboardComponent implements OnInit {
   get selectedSetor() { return this._selectedSetor; }
   set selectedSetor(val: string) {
     this._selectedSetor = val;
-    this.triggerRecalculoEscala.update(v => v + 1);
+    this.triggerRecalculoEscala.update((v: number) => v + 1);
     this.onMonthOrSetorChange();
   }
 
@@ -83,7 +83,7 @@ export class DashboardComponent implements OnInit {
   // Cache central da escala gerada para a loja inteira (todas as pessoas ativas no mês atual)
   escalaCompletaDaLojaCache = computed(() => {
     this.triggerRecalculoEscala();
-    const funcs = this.funcionarios().filter(f => f.ativo);
+    const funcs = this.funcionarios().filter((f: Funcionario) => f.ativo);
     const feriados = this.feriados();
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
 
@@ -102,13 +102,13 @@ export class DashboardComponent implements OnInit {
     
     for (const setor of this.setores()) {
       const matriculasFolga = new Set(
-        itens.filter(i => {
+        itens.filter((i: EscalaItem) => {
           if (i.setor !== setor.nome) return false;
           const s = i.dias[hojeDia];
           return s === 'F' || s === 'FD' || s === 'FE';
-        }).map(i => i.matricula)
+        }).map((i: EscalaItem) => i.matricula)
       );
-      map.set(setor.nome, funcs.filter(f => matriculasFolga.has(f.matricula_aleatoria)));
+      map.set(setor.nome, funcs.filter((f: Funcionario) => matriculasFolga.has(f.matricula_aleatoria)));
     }
     return map;
   });
@@ -256,7 +256,7 @@ export class DashboardComponent implements OnInit {
   readonly funcionariosPorSetorMap = computed(() => {
     const map = new Map<string, Funcionario[]>();
     for (const setor of this.setores()) {
-      map.set(setor.nome, this.funcionarios().filter(f => f.setor === setor.nome));
+      map.set(setor.nome, this.funcionarios().filter((f: Funcionario) => f.setor === setor.nome));
     }
     return map;
   });
@@ -265,7 +265,7 @@ export class DashboardComponent implements OnInit {
   readonly cargosPorSetorMap = computed(() => {
     const map = new Map<string, Cargo[]>();
     for (const setor of this.setores()) {
-      map.set(setor.nome, this.cargos().filter(c => c.setor_nome === setor.nome));
+      map.set(setor.nome, this.cargos().filter((c: Cargo) => c.setor_nome === setor.nome));
     }
     return map;
   });
@@ -279,7 +279,7 @@ export class DashboardComponent implements OnInit {
     for (const setor of this.setores()) {
       const total = (funcsPorSetor.get(setor.nome) ?? []).length;
       if (total === 0) { map.set(setor.nome, 100); continue; }
-      const emFolga = escala.filter(i => {
+      const emFolga = escala.filter((i: EscalaItem) => {
         if (i.setor !== setor.nome) return false;
         const s = i.dias[hojeDia];
         return s === 'F' || s === 'FD' || s === 'FE';
@@ -322,9 +322,9 @@ export class DashboardComponent implements OnInit {
     const dias = this.diasDoMes();
 
     for (const setor of this.setores()) {
-      let itensSetor = escalaItens.filter(item => item.setor === setor.nome);
+      let itensSetor = escalaItens.filter((item: EscalaItem) => item.setor === setor.nome);
       if (itensSetor.length === 0) {
-        itensSetor = cacheItens.filter(item => item.setor === setor.nome);
+        itensSetor = cacheItens.filter((item: EscalaItem) => item.setor === setor.nome);
       }
       for (const d of dias) {
         const key = `${setor.nome}|${d}`;
@@ -382,13 +382,13 @@ export class DashboardComponent implements OnInit {
 
   // Computeds Reativos
   cargosDoNovoSetor = computed(() => {
-    return this.cargos().filter(c => c.setor_nome === this.novoSetor());
+    return this.cargos().filter((c: Cargo) => c.setor_nome === this.novoSetor());
   });
 
   cargosDoEditSetor = computed(() => {
     const ef = this.editingFunc();
     if (!ef) return [];
-    return this.cargos().filter(c => c.setor_nome === ef.setor);
+    return this.cargos().filter((c: Cargo) => c.setor_nome === ef.setor);
   });
 
   funcionariosFiltrados = computed(() => {
@@ -397,10 +397,10 @@ export class DashboardComponent implements OnInit {
     const sQuery = this.searchQuery().toLowerCase().trim();
 
     if (fSetor) {
-      list = list.filter(f => f.setor === fSetor);
+      list = list.filter((f: Funcionario) => f.setor === fSetor);
     }
     if (sQuery) {
-      list = list.filter(f =>
+      list = list.filter((f: Funcionario) =>
         f.primeiro_nome.toLowerCase().includes(sQuery) ||
         f.matricula_aleatoria.includes(sQuery)
       );
@@ -412,9 +412,9 @@ export class DashboardComponent implements OnInit {
     let list = this.feriados();
     const tipo = this.filterTipoFeriado();
     if (tipo) {
-      list = list.filter(f => f.tipo === tipo);
+      list = list.filter((f: Feriado) => f.tipo === tipo);
     }
-    return list.sort((a, b) => a.data.localeCompare(b.data));
+    return list.sort((a: Feriado, b: Feriado) => a.data.localeCompare(b.data));
   });
 
   regrasFiltradas = computed(() => {
@@ -422,9 +422,9 @@ export class DashboardComponent implements OnInit {
     const filtro = this.filterTipoRegra();
     if (filtro) {
       if (filtro === 'IMPLEMENTADA' || filtro === 'PENDENTE_PROGRAMADOR') {
-        list = list.filter(r => r.status === filtro);
+        list = list.filter((r: RegraEscala) => r.status === filtro);
       } else {
-        list = list.filter(r => r.categoria === filtro);
+        list = list.filter((r: RegraEscala) => r.categoria === filtro);
       }
     }
     return list;
@@ -432,15 +432,15 @@ export class DashboardComponent implements OnInit {
 
   statsRegras = computed(() => {
     const list = this.regras();
-    const implementadas = list.filter(r => r.status === 'IMPLEMENTADA').length;
-    const pendentes = list.filter(r => r.status === 'PENDENTE_PROGRAMADOR').length;
+    const implementadas = list.filter((r: RegraEscala) => r.status === 'IMPLEMENTADA').length;
+    const pendentes = list.filter((r: RegraEscala) => r.status === 'PENDENTE_PROGRAMADOR').length;
     return { implementadas, pendentes };
   });
 
   setoresFiltradosDashboard = computed(() => {
     const fSetor = this.filterSetorDashboard();
     if (fSetor) {
-      return this.setores().filter(s => s.nome === fSetor);
+      return this.setores().filter((s: Setor) => s.nome === fSetor);
     }
     return this.setores();
   });
@@ -467,13 +467,13 @@ export class DashboardComponent implements OnInit {
 
     const [ano, mes] = this.selectedMonthHistorico().split('-').map(Number);
     const totalDias = new Date(ano, mes, 0).getDate();
-    const funcsDoSetor = this.funcionarios().filter(f => f.setor === func.setor && f.ativo);
+    const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => f.setor === func.setor && f.ativo);
 
     const escalaItem = this.generator.gerarEscalaMensalCached(funcsDoSetor, ano, mes, {
       permitirDoisDiasConsecutivos: untracked(() => this.permitirDoisDiasConsecutivos()),
       diasPermitidosFolga: untracked(() => this.diasPermitidosFolga()),
       feriados: untracked(() => this.feriados())
-    }).find(i => i.matricula === func.matricula_aleatoria);
+    }).find((i: EscalaItem) => i.matricula === func.matricula_aleatoria);
 
     const result: DiaHistoricoTrabalho[] = [];
 
@@ -513,13 +513,13 @@ export class DashboardComponent implements OnInit {
     const completo = this.diasHistoricoCompleto();
     const tipoFilter = this.filterTipoHistorico();
     if (tipoFilter === 'TODOS') return completo;
-    return completo.filter(d => d.tipo === tipoFilter);
+    return completo.filter((d: DiaHistoricoTrabalho) => d.tipo === tipoFilter);
   });
 
   statsColaboradorMes = computed(() => {
     const historico = this.diasHistoricoCompleto();
-    const totalFolgas = historico.filter(h => h.tipo === 'FOLGA').length;
-    const domingosTrabalhados = historico.filter(h => {
+    const totalFolgas = historico.filter((h: DiaHistoricoTrabalho) => h.tipo === 'FOLGA').length;
+    const domingosTrabalhados = historico.filter((h: DiaHistoricoTrabalho) => {
       const [ano, mes] = this.selectedMonthHistorico().split('-').map(Number);
       const dataObj = new Date(ano, mes - 1, h.dia);
       return dataObj.getDay() === 0 && h.tipo === 'TRABALHO';
@@ -532,7 +532,7 @@ export class DashboardComponent implements OnInit {
     if (list.length === 0) return { nome: 'Nenhum feriado', dataFormatted: '-', diasRestantesText: 'Nenhum' };
 
     const hojeStrLocal = this.hojeStr;
-    const proximos = list.filter(f => f.data >= hojeStrLocal).sort((a, b) => a.data.localeCompare(b.data));
+    const proximos = list.filter((f: Feriado) => f.data >= hojeStrLocal).sort((a: Feriado, b: Feriado) => a.data.localeCompare(b.data));
     const target = proximos.length > 0 ? proximos[0] : list[0];
 
     const targetDate = new Date(target.data + 'T00:00:00');
@@ -564,7 +564,7 @@ export class DashboardComponent implements OnInit {
     const hojeDiaLocal = this.hojeDia;
     const itens = this.escalaCompletaDaLojaCache();
     
-    const emFolga = itens.filter(item => {
+    const emFolga = itens.filter((item: EscalaItem) => {
       const status = item.dias[hojeDiaLocal];
       return status === 'F' || status === 'FD' || status === 'FE';
     });
@@ -580,7 +580,7 @@ export class DashboardComponent implements OnInit {
   }
 
   toggleMobileMenu() {
-    this.isMobileMenuOpen.update(v => !v);
+    this.isMobileMenuOpen.update((v: boolean) => !v);
   }
 
   selectTab(tab: 'dashboard' | 'escala' | 'funcionarios' | 'setores' | 'feriados' | 'regras' | 'detalhes-funcionario') {
@@ -599,7 +599,7 @@ export class DashboardComponent implements OnInit {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
     // Reutiliza cache principal em vez de gerar nova escala
     const escalaItem = this.escalaCompletaDaLojaCache()
-      .find(i => i.matricula === func.matricula_aleatoria);
+      .find((i: EscalaItem) => i.matricula === func.matricula_aleatoria);
 
     const domingosReais: { dataStr: string; descricao: string }[] = [];
     if (escalaItem) {
@@ -618,8 +618,8 @@ export class DashboardComponent implements OnInit {
 
     const hojeStrLocal = this.hojeStr;
     const feriadosPassados = this.feriados()
-      .filter(f => f.data <= hojeStrLocal)
-      .sort((a, b) => b.data.localeCompare(a.data));
+      .filter((f: Feriado) => f.data <= hojeStrLocal)
+      .sort((a: Feriado, b: Feriado) => b.data.localeCompare(a.data));
 
     const ultimoFeriadoReal = feriadosPassados.length > 0 ? {
       nome: feriadosPassados[0].nome,
@@ -684,7 +684,7 @@ export class DashboardComponent implements OnInit {
   }
 
   getCargoPorMatricula(matricula: string): string {
-    const func = this.funcionarios().find(f => f.matricula_aleatoria === matricula);
+    const func = this.funcionarios().find((f: Funcionario) => f.matricula_aleatoria === matricula);
     return func ? func.cargo : '-';
   }
 
@@ -693,7 +693,7 @@ export class DashboardComponent implements OnInit {
     let list = this.folgasPorSetorMap().get(setorNome) ?? [];
     const query = this.searchQueryDashboard().toLowerCase().trim();
     if (query) {
-      list = list.filter(f =>
+      list = list.filter((f: Funcionario) =>
         f.primeiro_nome.toLowerCase().includes(query) ||
         f.matricula_aleatoria.includes(query)
       );
@@ -722,7 +722,7 @@ export class DashboardComponent implements OnInit {
   }
 
   getRegrasPorCategoria(cat: string): RegraEscala[] {
-    return this.regras().filter(r => r.categoria === cat);
+    return this.regras().filter((r: RegraEscala) => r.categoria === cat);
   }
 
   // Lookup rápido via mapa pré-computado (BUG-P1)
@@ -760,7 +760,7 @@ export class DashboardComponent implements OnInit {
   }
 
   async onLojaChange(lojaId: string) {
-    const loja = this.userLojas().find(l => l.id === lojaId);
+    const loja = this.userLojas().find((l: Loja) => l.id === lojaId);
     if (loja) {
       this.supabase.setActiveLoja(loja);
       this.toastService.info('Unidade Alterada', `Visualizando dados da loja ${loja.nome}.`);
@@ -772,13 +772,20 @@ export class DashboardComponent implements OnInit {
   isEscalaLoading = signal(false);
 
   async loadData() {
-    const loja = this.activeLoja();
-    if (!loja) return;
     this.isLoading.set(true);
 
     try {
+      await this.supabase.waitForAuthReady();
+      let loja = this.activeLoja();
+      if (!loja) {
+        await this.supabase.loadUserLojas();
+        loja = this.activeLoja();
+      }
+
+      const lojaId = loja?.id || 'loja-02-demo';
+
       const [funcs, sets, crgs, fers, rgrs] = await Promise.all([
-        this.supabase.getFuncionarios(loja.id),
+        this.supabase.getFuncionarios(lojaId),
         this.supabase.getSetores(),
         this.supabase.getCargos(),
         this.supabase.getFeriados(),
@@ -792,9 +799,9 @@ export class DashboardComponent implements OnInit {
       this.feriados.set(fers);
       this.regras.set(rgrs);
 
-      if (sets.length > 0 && !sets.some(s => s.nome === this.selectedSetor)) {
+      if (sets.length > 0 && !sets.some((s: Setor) => s.nome === this.selectedSetor)) {
         this._selectedSetor = sets[0].nome;
-        this.triggerRecalculoEscala.update(v => v + 1);
+        this.triggerRecalculoEscala.update((v: number) => v + 1);
       }
       this.syncNovoSetorAndCargo();
     } catch (err) {
@@ -818,14 +825,14 @@ export class DashboardComponent implements OnInit {
       this.novoSetor.set(this.setores()[0].nome);
     }
     const availableCargos = this.cargosDoNovoSetor();
-    if (availableCargos.length > 0 && !availableCargos.some(c => c.nome === this.novoCargo())) {
+    if (availableCargos.length > 0 && !availableCargos.some((c: Cargo) => c.nome === this.novoCargo())) {
       this.novoCargo.set(availableCargos[0].nome);
     }
   }
 
   onNovoSetorChange(setorNome: string) {
     this.novoSetor.set(setorNome);
-    const available = this.cargos().filter(c => c.setor_nome === setorNome);
+    const available = this.cargos().filter((c: Cargo) => c.setor_nome === setorNome);
     if (available.length > 0) {
       this.novoCargo.set(available[0].nome);
     } else {
@@ -856,13 +863,13 @@ export class DashboardComponent implements OnInit {
   }
 
   toggleDiaFolgaPermitido(diaSemana: number) {
-    this.diasPermitidosFolga.update(current => {
+    this.diasPermitidosFolga.update((current: number[]) => {
       if (current.includes(diaSemana)) {
         if (current.length === 1) {
           this.toastService.warning('Atenção', 'Selecione pelo menos 1 dia da semana para folgas.');
           return current;
         }
-        return current.filter(d => d !== diaSemana);
+        return current.filter((d: number) => d !== diaSemana);
       } else {
         return [...current, diaSemana].sort((a, b) => a - b);
       }
@@ -884,7 +891,7 @@ export class DashboardComponent implements OnInit {
   }
 
   gerarNovaEscala() {
-    const funcsDoSetor = this.funcionarios().filter(f => f.setor === this.selectedSetor && f.ativo);
+    const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => f.setor === this.selectedSetor && f.ativo);
     if (funcsDoSetor.length === 0) {
       this.toastService.warning('Sem Colaboradores Ativos', `Nenhum colaborador ativo cadastrado para o setor "${this.selectedSetor}".`);
       return;
@@ -913,11 +920,11 @@ export class DashboardComponent implements OnInit {
   }
 
   proximoPassoGuiada() {
-    this.guiadaStep.update(s => Math.min(4, s + 1));
+    this.guiadaStep.update((s: number) => Math.min(4, s + 1));
   }
 
   passoAnteriorGuiada() {
-    this.guiadaStep.update(s => Math.max(1, s - 1));
+    this.guiadaStep.update((s: number) => Math.max(1, s - 1));
   }
 
   concluirEscalaGuiada() {
@@ -926,7 +933,7 @@ export class DashboardComponent implements OnInit {
     this.permitirDoisDiasConsecutivos.set(this.guiadaPermitirDoisConsecutivos());
     this.isEscalaGuiadaModalOpen.set(false);
 
-    const funcsDoSetor = this.funcionarios().filter(f => f.setor === this.selectedSetor && f.ativo);
+    const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => f.setor === this.selectedSetor && f.ativo);
     if (funcsDoSetor.length === 0) {
       this.toastService.warning('Sem Colaboradores Ativos', `Nenhum colaborador ativo cadastrado para o setor "${this.selectedSetor}".`);
       return;
@@ -960,7 +967,7 @@ export class DashboardComponent implements OnInit {
       excedeLimiteDiario: calc.excedeLimite
     };
 
-    this.turnosConfigs.update(list => [...list, novoTurno]);
+    this.turnosConfigs.update((list: TurnoConfig[]) => [...list, novoTurno]);
     this.toastService.success('Turno Cadastrado!', `Horário ${nomeTurno} (${calc.horasFormatted} líquidos) cadastrado.`);
     if (calc.excedeLimite) {
       this.toastService.warning('Alerta CLT', 'Este turno excede o limite diário de 8h48m.');
@@ -977,15 +984,15 @@ export class DashboardComponent implements OnInit {
   }
 
   diminuirGuiadaMin() {
-    this.guiadaMinFuncionarios.update(v => Math.max(1, v - 1));
+    this.guiadaMinFuncionarios.update((v: number) => Math.max(1, v - 1));
   }
 
   aumentarGuiadaMin() {
-    this.guiadaMinFuncionarios.update(v => v + 1);
+    this.guiadaMinFuncionarios.update((v: number) => v + 1);
   }
 
   getFuncsDoSetorCount(setorNome: string): number {
-    return this.funcionarios().filter(f => f.setor === setorNome && f.ativo).length;
+    return this.funcionarios().filter((f: Funcionario) => f.setor === setorNome && f.ativo).length;
   }
 
   private _executarGeracaoEscala(funcsDoSetor: Funcionario[], minPorDia?: number) {
@@ -1002,13 +1009,13 @@ export class DashboardComponent implements OnInit {
 
     // Salva rascunho em memória para não perder ao trocar de abas
     const key = `${this.activeLoja()?.id || 'loja-02-demo'}|${this.selectedMonth}|${this.selectedSetor}`;
-    this.draftEscalasMap.update(map => {
+    this.draftEscalasMap.update((map: Map<string, EscalaItem[]>) => {
       const newMap = new Map(map);
       newMap.set(key, gerada);
       return newMap;
     });
 
-    this.triggerRecalculoEscala.update(v => v + 1); // Atualiza os computeds de cache
+    this.triggerRecalculoEscala.update((v: number) => v + 1); // Atualiza os computeds de cache
     this.toastService.success('Escala Gerada!', `Escala 6x1 Giratória calculada com garantia de ${minReq} colaboradores por dia.`);
   }
 
@@ -1040,7 +1047,7 @@ export class DashboardComponent implements OnInit {
 
       // Limpa rascunho em memória pois agora está gravado no banco
       const key = `${loja.id}|${this.selectedMonth}|${this.selectedSetor}`;
-      this.draftEscalasMap.update(map => {
+      this.draftEscalasMap.update((map: Map<string, EscalaItem[]>) => {
         const newMap = new Map(map);
         newMap.delete(key);
         return newMap;
