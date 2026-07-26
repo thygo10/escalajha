@@ -178,7 +178,22 @@ drop policy if exists "usuario_lojas_select_policy" on public.usuario_lojas;
 create policy "usuario_lojas_select_policy" on public.usuario_lojas
   for select using (user_id = auth.uid());
 
--- RLS: Setores & Cargos — leitura e escrita apenas para usuários autenticados
+-- Função utilitária para checar se o usuário autenticado tem papel de gestão (admin/gestor_rh)
+create or replace function public.user_is_gestor()
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select exists (
+    select 1
+    from public.usuario_lojas ul
+    where ul.user_id = auth.uid()
+      and ul.role in ('admin', 'gestor_rh')
+  );
+$$;
+
+-- RLS: Setores & Cargos — leitura para autenticados, escrita restrita a gestores
 drop policy if exists "setores_all_policy" on public.setores;
 drop policy if exists "setores_select_policy" on public.setores;
 drop policy if exists "setores_write_policy" on public.setores;
@@ -187,7 +202,7 @@ create policy "setores_select_policy" on public.setores
   for select using (auth.uid() is not null);
 
 create policy "setores_write_policy" on public.setores
-  for all using (auth.uid() is not null) with check (auth.uid() is not null);
+  for all using (public.user_is_gestor()) with check (public.user_is_gestor());
 
 drop policy if exists "cargos_all_policy" on public.cargos;
 drop policy if exists "cargos_select_policy" on public.cargos;
@@ -197,7 +212,7 @@ create policy "cargos_select_policy" on public.cargos
   for select using (auth.uid() is not null);
 
 create policy "cargos_write_policy" on public.cargos
-  for all using (auth.uid() is not null) with check (auth.uid() is not null);
+  for all using (public.user_is_gestor()) with check (public.user_is_gestor());
 
 -- RLS: Funcionários
 drop policy if exists "funcionarios_select_policy" on public.funcionarios;
@@ -235,7 +250,7 @@ drop policy if exists "escalas_delete_policy" on public.escalas;
 create policy "escalas_delete_policy" on public.escalas
   for delete using (public.user_has_loja_access(loja_id));
 
--- RLS: Feriados & Regras — apenas usuários autenticados
+-- RLS: Feriados & Regras — leitura para autenticados, escrita restrita a gestores
 drop policy if exists "feriados_all_policy" on public.feriados;
 drop policy if exists "feriados_select_policy" on public.feriados;
 drop policy if exists "feriados_write_policy" on public.feriados;
@@ -244,7 +259,7 @@ create policy "feriados_select_policy" on public.feriados
   for select using (auth.uid() is not null);
 
 create policy "feriados_write_policy" on public.feriados
-  for all using (auth.uid() is not null) with check (auth.uid() is not null);
+  for all using (public.user_is_gestor()) with check (public.user_is_gestor());
 
 drop policy if exists "regras_all_policy" on public.regras_escala;
 drop policy if exists "regras_select_policy" on public.regras_escala;
@@ -254,7 +269,7 @@ create policy "regras_select_policy" on public.regras_escala
   for select using (auth.uid() is not null);
 
 create policy "regras_write_policy" on public.regras_escala
-  for all using (auth.uid() is not null) with check (auth.uid() is not null);
+  for all using (public.user_is_gestor()) with check (public.user_is_gestor());
 
 
 -- ==============================================================================

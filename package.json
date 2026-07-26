@@ -6,7 +6,8 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "watch": "ng build --watch --configuration development"
+    "watch": "ng build --watch --configuration development",
+    "test": "npx tsx src/app/services/escala-generator.service.spec.ts"
   },
   "dependencies": {
     "@angular/animations": "^19.0.0",

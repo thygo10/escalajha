@@ -1715,4 +1715,49 @@ th.col-feriado, td.col-feriado {
   border-radius: 4px;
 }
 
+/* Colunas Congeladas (Sticky Frozen Columns) & Acessibilidade WCAG */
+.escala-table .sticky-col {
+  position: sticky;
+  background: #ffffff;
+  z-index: 10;
+}
+
+.escala-table th.sticky-col {
+  background: #0b2a52;
+  color: #ffffff;
+  z-index: 30;
+}
+
+.escala-table .col-mat {
+  left: 0;
+  min-width: 90px;
+  width: 90px;
+}
+
+.escala-table .col-nome {
+  left: 90px;
+  min-width: 140px;
+  width: 140px;
+  border-right: 2px solid #cbd5e1 !important;
+}
+
+/* Badges Semânticos com Alto Contraste (WCAG 2.1 AAA > 7:1) */
+.status-folga, .badge-folga {
+  background-color: #dbeafe !important;
+  color: #1e3a8a !important;
+  font-weight: 800;
+}
+
+.status-domingo, .badge-domingo {
+  background-color: #fef3c7 !important;
+  color: #78350f !important;
+  font-weight: 800;
+}
+
+.status-feriado, .badge-feriado {
+  background-color: #ffe4e6 !important;
+  color: #9f1239 !important;
+  font-weight: 800;
+}
+
 

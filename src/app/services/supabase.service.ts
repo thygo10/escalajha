@@ -108,21 +108,18 @@ export class SupabaseService {
           return data;
         }
       } catch (err) {
-        console.warn('Falha no Supabase Auth, tentando fallback de credenciais autorizadas:', err);
+        console.warn('Falha no Supabase Auth, verificando modo de demonstração seguro:', err);
       }
     }
 
-    // 2. Fallback de login local para credenciais autorizadas (thygo10@gmail.com, rh, demo)
+    // 2. Fallback de demonstração local sem armazenar senhas em texto puro no bundle client-side
     const normalizedEmail = email.toLowerCase().trim();
-    const isRhUser = normalizedEmail === 'rhjoaohenriqueatacadista@gmail.com' && pass === '282419';
-    const isThygoUser = normalizedEmail === 'thygo10@gmail.com' && (pass === '320512' || pass === '123456');
-    const isDemoUser = (pass === '123456' || pass === 'admin' || pass === 'DEMO_2026_JH') ||
-      environment.demoMode || isPlaceholderUrl;
+    const isDemoEnvironment = environment.demoMode || isPlaceholderUrl;
 
-    if (isRhUser || isThygoUser || isDemoUser) {
+    if (isDemoEnvironment) {
       const mockUser = {
-        id: 'user-demo-' + (isThygoUser ? 'thygo' : 'rh'),
-        email: email
+        id: 'user-demo-' + (normalizedEmail.includes('thygo') ? 'thygo' : 'rh'),
+        email: normalizedEmail
       } as unknown as User;
       const mockLoja: Loja = {
         id: 'loja-02-demo',
