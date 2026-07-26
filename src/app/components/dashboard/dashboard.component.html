@@ -415,6 +415,72 @@
             </div>
           </div>
 
+          <!-- RESUMO DE MÉTRICAS DE FOLGA E HORAS LÍQUIDAS DA ESCALA CORRENTE -->
+          <div class="metrics-summary-grid mb-15">
+            <div class="metric-summary-card">
+              <div class="metric-summary-icon blue">
+                <app-icon name="calendar" [size]="20" color="#2563eb"></app-icon>
+              </div>
+              <div class="metric-summary-info">
+                <span class="lbl">Total de Folgas no Mês</span>
+                <h4 class="val">{{ totalFolgasEscala() }} folgas</h4>
+                <small class="text-xs text-muted">Na escala do setor {{ selectedSetor }}</small>
+              </div>
+            </div>
+
+            <div class="metric-summary-card">
+              <div class="metric-summary-icon green">
+                <app-icon name="clock" [size]="20" color="#16a34a"></app-icon>
+              </div>
+              <div class="metric-summary-info">
+                <span class="lbl">Modelo de Jornada</span>
+                <h4 class="val">Escala {{ modeloEscalaAtivo() }}</h4>
+                <small class="text-xs text-muted">Jornada {{ modeloEscalaAtivo() === '5x1' ? 'Ciclo Contínuo' : 'Giratória Semanal' }}</small>
+              </div>
+            </div>
+
+            <div class="metric-summary-card">
+              <div class="metric-summary-icon gold">
+                <app-icon name="users" [size]="20" color="#d97706"></app-icon>
+              </div>
+              <div class="metric-summary-info">
+                <span class="lbl">Equipe Escalada</span>
+                <h4 class="val">{{ resumoMetrics().length }} colaboradores</h4>
+                <small class="text-xs text-muted">Setor {{ selectedSetor }}</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL DA CURVA DE PRESENÇA DE FUNCIONÁRIOS NO MERCADO POR HORÁRIO -->
+          <div class="clean-card p-15 mb-15 no-print border rounded bg-white">
+            <div class="flex-between align-center mb-10">
+              <h4 class="color-navy font-bold m-0">📊 Presença de Funcionários no Mercado Por Horário</h4>
+              <div class="flex-align-center gap-10">
+                <label for="diaPresencaSelect" class="text-xs font-bold color-navy m-0">Dia do Mês:</label>
+                <select id="diaPresencaSelect" [ngModel]="diaSelecionadoPresenca()" (ngModelChange)="diaSelecionadoPresenca.set($event)" class="form-control form-control-sm w-auto">
+                  @for (d of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]; track d) {
+                    <option [value]="d">Dia {{ d }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="presenca-horarios-scroll">
+              <div class="presenca-horarios-grid">
+                @for (p of presencaPorHorario(); track p.horaStr) {
+                  <div class="presenca-hora-card" [class.highlight]="p.quantidadeTrabalhando > 0">
+                    <span class="hora-label">{{ p.horaStr }}</span>
+                    <strong class="count-val">{{ p.quantidadeTrabalhando }} pess.</strong>
+                    <div class="names-tooltip" [title]="p.funcionariosNomes.join(', ')">
+                      <small class="text-xs text-muted">{{ p.funcionariosNomes.length > 0 ? (p.funcionariosNomes[0] + (p.funcionariosNomes.length > 1 ? ' +' + (p.funcionariosNomes.length - 1) : '')) : 'Ninguém' }}</small>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+
           <!-- PAINEL DE VALIDAÇÃO REAL E COBERTURA DIÁRIA -->
           @if (escalaItens().length > 0) {
             <div class="validation-audit-card mb-15" [class.valid-card]="validacaoResultado().valida" [class.invalid-card]="!validacaoResultado().valida">
@@ -1472,8 +1538,8 @@
           <!-- PASSO 1 -->
           @if (guiadaStep() === 1) {
             <div class="wizard-step-content">
-              <h4 class="color-navy font-bold mb-5">Passo 1: Qual setor e mês você deseja escalar?</h4>
-              <p class="text-sm text-muted mb-20">Selecione o setor operacional para configurar os parâmetros da rotação giratória.</p>
+              <h4 class="color-navy font-bold mb-5">Passo 1: Selecione o Setor, Mês e Modelo de Jornada</h4>
+              <p class="text-sm text-muted mb-20">Escolha entre a escala 6x1 tradicional ou a escala 5x1 com ciclo contínuo.</p>
 
               <div class="form-group mb-15">
                 <label for="guiadaSetorSelect" class="font-bold color-navy">Setor Operacional:</label>
@@ -1482,6 +1548,17 @@
                     <option [value]="s.nome">{{ s.nome }}</option>
                   }
                 </select>
+              </div>
+
+              <div class="form-group mb-15">
+                <label for="guiadaModeloSelect" class="font-bold color-navy">Modelo de Jornada de Trabalho:</label>
+                <select id="guiadaModeloSelect" [ngModel]="guiadaModeloEscala()" (ngModelChange)="guiadaModeloEscala.set($event)" class="form-control">
+                  <option value="6x1">Escala 6x1 (6 dias de trabalho por 1 de folga — Giratória Semanal)</option>
+                  <option value="5x1">Escala 5x1 (5 dias de trabalho por 1 de folga — Ciclo Contínuo de 6 dias)</option>
+                </select>
+                <small class="text-muted mt-5 d-block">
+                  💡 <strong>Modelo 5x1</strong>: O colaborador trabalha 5 dias seguidos e folga no 6º dia. A folga avança 1 dia a cada semana.
+                </small>
               </div>
 
               <div class="form-group mb-15">
@@ -1494,11 +1571,11 @@
           <!-- PASSO 2 -->
           @if (guiadaStep() === 2) {
             <div class="wizard-step-content">
-              <h4 class="color-navy font-bold mb-5">Passo 2: Quantos colaboradores são necessários por dia?</h4>
-              <p class="text-sm text-muted mb-20">Esta regra garante que NUNCA haverá folga geral ou equipe insuficiente no setor.</p>
+              <h4 class="color-navy font-bold mb-5">Passo 2: Cobertura Mínima e Biblioteca de Regras</h4>
+              <p class="text-sm text-muted mb-20">Defina o headcount mínimo por dia e selecione regras inter-setoriais adicionais.</p>
 
               <div class="form-group mb-20">
-                <label for="guiadaMinInput" class="font-bold color-navy">Mínimo de Colaboradores em Trabalho Diário (Segunda a Domingo):</label>
+                <label for="guiadaMinInput" class="font-bold color-navy">Mínimo de Colaboradores em Trabalho Diário:</label>
                 <div class="input-counter-wrapper">
                   <button type="button" (click)="diminuirGuiadaMin()" class="btn-counter">-</button>
                   <input id="guiadaMinInput" type="number" min="1" [ngModel]="guiadaMinFuncionarios()" (ngModelChange)="guiadaMinFuncionarios.set($event)" class="form-control text-center font-bold" />
@@ -1507,6 +1584,28 @@
                 <small class="text-muted mt-5 d-block">
                   📌 Recomendação para <strong>{{ guiadaSetor() }}</strong>: Mínimo {{ guiadaSetor() === 'Fiscal de Caixa' ? '2 fiscais' : '1 colaborador' }} trabalhando todos os dias.
                 </small>
+              </div>
+
+              <!-- BIBLIOTECA DE REGRAS INTER-SETORIAIS -->
+              <div class="regras-intersetoriais-box mt-20 p-15 border rounded bg-light">
+                <h5 class="color-navy font-bold mb-10">📋 Biblioteca Cruzada de Regras (Selecione as Regras Aplicáveis):</h5>
+                <div class="regras-checklist-grid">
+                  @for (regra of regrasConformidade(); track regra.id) {
+                    <div class="chk-rule-item mb-10 p-10 border rounded bg-white">
+                      <div class="flex-between align-center">
+                        <label [for]="'chk_rule_' + regra.id" class="font-bold text-sm color-navy m-0 cursor-pointer">
+                          <span class="badge-nivel-sm">Nível {{ regra.nivel_hierarquia }}</span>
+                          {{ regra.titulo }}
+                        </label>
+                        <span class="badge-categoria-sm">{{ regra.categoria }}</span>
+                      </div>
+                      <p class="text-xs text-muted m-0 mt-5">{{ regra.descricao }}</p>
+                      @if (regra.fonte) {
+                        <small class="text-xs color-navy font-bold mt-5 d-block">Fonte: {{ regra.fonte }}</small>
+                      }
+                    </div>
+                  }
+                </div>
               </div>
 
               <div class="chk-consecutivos-wrapper mt-15">
@@ -1521,7 +1620,7 @@
             <div class="wizard-step-content">
               <div class="flex-header-between mb-10">
                 <div>
-                  <h4 class="color-navy font-bold m-0">Passo 3: Quais são os turnos e intervalos intrajornada?</h4>
+                  <h4 class="color-navy font-bold m-0">Passo 3: Turnos e Intervalos Intrajornada</h4>
                   <p class="text-sm text-muted m-0">Os intervalos intrajornada são computados e abatidos da jornada total para conformidade CLT.</p>
                 </div>
                 <button (click)="carregarHorariosFixosCaixa()" class="btn-action-sm btn-yellow" title="Carregar os 4 Horários Fixos do Caixa">
@@ -1565,6 +1664,10 @@
                   <strong>{{ guiadaSetor() }}</strong>
                 </div>
                 <div class="summary-row">
+                  <span>Modelo de Jornada:</span>
+                  <strong class="color-navy">Escala {{ guiadaModeloEscala() }}</strong>
+                </div>
+                <div class="summary-row">
                   <span>Mínimo por dia / domingo:</span>
                   <strong class="color-navy">{{ guiadaMinFuncionarios() }} colaboradores em trabalho</strong>
                 </div>
@@ -1573,8 +1676,8 @@
                   <strong>{{ getFuncsDoSetorCount(guiadaSetor()) }} pessoa(s)</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Garantia de 2 fiscais / domingo:</span>
-                  <strong class="color-green">Ativado via Revezamento Escalonado</strong>
+                  <span>Revezamento e Travas Legais:</span>
+                  <strong class="color-green">Ativado (Hierarquia Nível 0 a 6)</strong>
                 </div>
               </div>
             </div>

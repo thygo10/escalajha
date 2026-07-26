@@ -120,6 +120,74 @@ export interface TurnoConfig {
   excedeLimiteDiario?: boolean;
 }
 
+export type ModeloEscala = '6x1' | '5x1';
+
+export interface EstadoTransicao {
+  matricula: string;
+  mes_origem: string; // 'YYYY-MM'
+  dias_trabalhados_fim_mes: number; // Sequência nos últimos dias do mês anterior
+  status_ultimo_domingo: 'TD' | 'FD';
+  domingos_consecutivos_trabalhados: number;
+  data_ultima_folga?: string; // 'YYYY-MM-DD'
+}
+
+export interface EventoAfastamento {
+  id?: string;
+  matricula: string;
+  tipo: 'FERIAS' | 'ATESTADO' | 'LICENCA' | 'FOLGA_COMPENSATORIA';
+  data_inicio: string; // 'YYYY-MM-DD'
+  data_fim: string; // 'YYYY-MM-DD'
+  observacao?: string;
+}
+
+export interface RegraConformidade {
+  id: string;
+  nivel_hierarquia: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  categoria: 'LEGAL' | 'CCT' | 'INTERNA_RH' | 'OPERACIONAL';
+  titulo: string;
+  descricao: string;
+  valor: any; // Número, booleano ou objeto configurável
+  setor_aplicavel: string; // 'TODOS' ou nome do setor
+  vigencia_inicio?: string;
+  vigencia_fim?: string;
+  aprovado_por_juridico?: boolean;
+  fonte?: string;
+}
+
+export interface LogAuditoria {
+  id?: string;
+  escala_id?: string;
+  loja_id: string;
+  usuario_email: string;
+  acao: 'GERACAO_AUTOMATICA' | 'EDICAO_MANUAL' | 'OVERRIDE_REGRA' | 'PUBLICACAO';
+  detalhes: string;
+  justificativa_override?: string;
+  criado_em: string;
+}
+
+export interface HorarioPresenca {
+  horaStr: string; // Ex: '07:00', '08:00', ..., '21:00'
+  quantidadeTrabalhando: number;
+  funcionariosNomes: string[];
+}
+
+export interface ResumoFuncionarioMetrics {
+  matricula: string;
+  nome: string;
+  setor: string;
+  cargo: string;
+  turno: string;
+  genero: 'M' | 'F';
+  totalFolgas: number;
+  domingosFolgados: number;
+  feriadosFolgados: number;
+  diasTrabalhados: number;
+  horasLiquidasMinutos: number;
+  horasLiquidasFormatted: string;
+  statusConformidade: 'OK' | 'ALERTA' | 'VIOLACAO';
+  alertas: string[];
+}
+
 export interface ValidacaoItem {
   dia: number;
   setor: string;
@@ -135,5 +203,3 @@ export interface ValidacaoEscalaResultado {
   coberturaPorDia: Record<number, number>; // dia -> quantidade de pessoas trabalhando
   minimoRequerido: number;
 }
-
-

@@ -1,4 +1,5 @@
-import { Funcionario, Setor, Cargo, Feriado, RegraEscala } from './types';
+import { Funcionario, Setor, Cargo, Feriado, RegraEscala, RegraConformidade } from './types';
+
 
 export const HORARIOS_FIXOS_CAIXA = [
   { id: 'h1', nome: '07:00 às 15:50 (Almoço 11:00 às 12:30)', entrada: '07:00', saida: '15:50', almoco: '11:00 às 12:30' },
@@ -245,3 +246,117 @@ export const INITIAL_REGRAS: RegraEscala[] = [
   { id: 'r6', titulo: 'Feriados Municipais de Poções-BA', descricao: 'Garantir folga ou compensação em dobro para feriados municipais de Poções (Festa do Divino Espírito Santo e Emancipação).', categoria: 'Interna RH', status: 'IMPLEMENTADA', obrigatoria: true },
   { id: 'r7', titulo: 'Prioridade de Folga Véspera de Feriado (Reposição)', descricao: 'Solicitação do RH: O pessoal da reposição que folgar no sábado véspera de feriado estadual não deve dobrar o turno na segunda-feira.', categoria: 'Solicitação RH', status: 'PENDENTE_PROGRAMADOR', obrigatoria: false }
 ];
+
+export const INITIAL_REGRAS_CONFORMIDADE: RegraConformidade[] = [
+  {
+    id: 'rc_0',
+    nivel_hierarquia: 0,
+    categoria: 'LEGAL',
+    titulo: 'Pausa de Sequência por Afastamento/Férias',
+    descricao: 'Eventos de férias, atestados ou licenças suspendem a contagem de dias seguidos e não contam como trabalho nem folga comum.',
+    valor: true,
+    setor_aplicavel: 'TODOS',
+    fonte: 'CLT Art. 130 / Súmula TST'
+  },
+  {
+    id: 'rc_1_clt67',
+    nivel_hierarquia: 1,
+    categoria: 'LEGAL',
+    titulo: 'Trava CLT Art. 67 (Máximo 6 dias de trabalho)',
+    descricao: 'Nenhum colaborador pode trabalhar mais de 6 dias consecutivos sem gozar de descanso semanal remunerado.',
+    valor: 6,
+    setor_aplicavel: 'TODOS',
+    fonte: 'CLT Art. 67 / OJ 410 SBDI-1 TST'
+  },
+  {
+    id: 'rc_1_inter',
+    nivel_hierarquia: 1,
+    categoria: 'LEGAL',
+    titulo: 'Intervalo Interjornada 11h (CLT Art. 66)',
+    descricao: 'Entre duas jornadas de trabalho haverá um período mínimo de 11 horas consecutivas para descanso.',
+    valor: 660,
+    setor_aplicavel: 'TODOS',
+    fonte: 'CLT Art. 66'
+  },
+  {
+    id: 'rc_2_clt386',
+    nivel_hierarquia: 2,
+    categoria: 'LEGAL',
+    titulo: 'Revezamento Quinzenal Feminino (CLT Art. 386)',
+    descricao: 'Mulheres devem gozar de folga no domingo no máximo a cada 2 semanas (1 Domingo Trabalhado : 1 Domingo Folgado).',
+    valor: 1,
+    setor_aplicavel: 'TODOS',
+    fonte: 'CLT Art. 386 / STF Tema 828'
+  },
+  {
+    id: 'rc_3_cct_caixa',
+    nivel_hierarquia: 3,
+    categoria: 'CCT',
+    titulo: 'Revezamento Domingos Frente de Caixa (1T : 2F)',
+    descricao: 'Operadores no Frente de Caixa trabalham 1 domingo e folgam nos 2 domingos seguintes.',
+    valor: { trabalhado: 1, folgado: 2 },
+    setor_aplicavel: 'Frente de Caixa',
+    fonte: 'CCT Poções/BA'
+  },
+  {
+    id: 'rc_3_cct_acougue',
+    nivel_hierarquia: 3,
+    categoria: 'CCT',
+    titulo: 'Revezamento Domingos Açougue/Padaria (2T : 1F)',
+    descricao: 'Atendentes e produções de Açougue/Padaria trabalham 2 domingos e folgam 1 domingo.',
+    valor: { trabalhado: 2, folgado: 1 },
+    setor_aplicavel: 'Açougue',
+    fonte: 'CCT Poções/BA'
+  },
+  {
+    id: 'rc_3_fiscais_duplas',
+    nivel_hierarquia: 3,
+    categoria: 'CCT',
+    titulo: 'Duplas Fixas de Fiscais nos Domingos',
+    descricao: 'Nos domingos, a equipe de Fiscais opera em duplas fixas (1 abertura + 1 fechamento).',
+    valor: true,
+    setor_aplicavel: 'Fiscal de Caixa',
+    fonte: 'Acordo Interno / CCT'
+  },
+  {
+    id: 'rc_4_feriados',
+    nivel_hierarquia: 4,
+    categoria: 'LEGAL',
+    titulo: 'Feriados Fechados (FE) e Abertos (TF)',
+    descricao: 'Em feriados fechados a loja não abre (folga FE). Em feriados abertos opera com equipe reduzida.',
+    valor: true,
+    setor_aplicavel: 'TODOS',
+    fonte: 'Lei Municipal Poções / CCT'
+  },
+  {
+    id: 'rc_5_teto_folgas',
+    nivel_hierarquia: 5,
+    categoria: 'INTERNA_RH',
+    titulo: 'Meta Mensal de Folgas (4 a 5 folgas/mês)',
+    descricao: 'Todo colaborador deve ter de 4 a 5 folgas mensais acumuladas.',
+    valor: { min: 4, max: 5 },
+    setor_aplicavel: 'TODOS',
+    fonte: 'Política RH JH'
+  },
+  {
+    id: 'rc_6_cobertura_caixa',
+    nivel_hierarquia: 6,
+    categoria: 'OPERACIONAL',
+    titulo: 'Cobertura Mínima Frente de Caixa (Mínimo 6)',
+    descricao: 'Garante no mínimo 6 operadores no caixa durante o funcionamento.',
+    valor: 6,
+    setor_aplicavel: 'Frente de Caixa',
+    fonte: 'Dimensionamento Operacional'
+  },
+  {
+    id: 'rc_6_padaria_folga_unica',
+    nivel_hierarquia: 6,
+    categoria: 'OPERACIONAL',
+    titulo: 'Máximo 1 Folga por Dia na Produção da Padaria',
+    descricao: 'Em dias úteis, permite no máximo 1 padeiro/auxiliar de folga simultânea para não parar a produção.',
+    valor: 1,
+    setor_aplicavel: 'Padaria (Produção)',
+    fonte: 'Dimensionamento Operacional'
+  }
+];
+

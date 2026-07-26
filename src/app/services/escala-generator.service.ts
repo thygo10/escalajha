@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Funcionario, EscalaItem, TipoDia, Feriado, ValidacaoEscalaResultado, ValidacaoItem, TurnoConfig } from '../models/types';
+import { Funcionario, EscalaItem, TipoDia, Feriado, ValidacaoEscalaResultado, ValidacaoItem, TurnoConfig, ModeloEscala, EstadoTransicao, EventoAfastamento, RegraConformidade, HorarioPresenca, ResumoFuncionarioMetrics } from '../models/types';
 
 export interface OpcionesGeracaoEscala {
   permitirDoisDiasConsecutivos: boolean;
@@ -7,7 +7,12 @@ export interface OpcionesGeracaoEscala {
   feriados: Feriado[];
   minFuncionariosPorDia?: number; // Mínimo de colaboradores trabalhando no setor por dia (ex: 2 fiscais)
   minFuncionariosFeriado?: number; // Mínimo de colaboradores no feriado aberto (Equipe Reduzida)
+  modeloEscala?: ModeloEscala;
+  estadosTransicao?: Map<string, EstadoTransicao>;
+  afastamentos?: EventoAfastamento[];
+  regrasConformidade?: RegraConformidade[];
 }
+
 
 @Injectable({
   providedIn: 'root'
@@ -1022,6 +1027,161 @@ export class EscalaGeneratorService {
       excedeLimite
     };
   }
+
+  /**
+   * Calcula a curva de presença de colaboradores no mercado por faixa horária (07:00 às 22:00) para um dia específico.
+   * Considera entrada, saída e intervalo de refeição/descanso cadastrados.
+   */
+  calcularPresencaPorFaixaHoraria(
+    itens: EscalaItem[],
+    turnosConfigs: TurnoConfig[],
+    dia: number
+  ): HorarioPresenca[] {
+    const horasFaixas = [
+      '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', 
+      '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', 
+      '19:00', '20:00', '21:00', '22:00'
+    ];
+
+    const resultado: HorarioPresenca[] = horasFaixas.map(hStr => ({
+      horaStr: hStr,
+      quantidadeTrabalhando: 0,
+      funcionariosNomes: []
+    }));
+
+    itens.forEach(item => {
+      const st = item.dias[dia];
+      if (st !== 'T' && st !== 'TD' && st !== 'TF') return;
+
+      let entradaMin = 7 * 60;
+      let saidaMin = 16 * 60;
+      let intInicioMin = 12 * 60;
+      let intFimMin = 13 * 60;
+
+      const turnoConf = turnosConfigs.find(tc => tc.nome === item.turno);
+      if (turnoConf) {
+        const [hE, mE] = turnoConf.entrada.split(':').map(Number);
+        const [hS, mS] = turnoConf.saida.split(':').map(Number);
+        entradaMin = hE * 60 + (mE || 0);
+        saidaMin = hS * 60 + (mS || 0);
+        if (saidaMin < entradaMin) saidaMin += 24 * 60;
+
+        const meio = Math.floor((entradaMin + saidaMin) / 2);
+        const halfInt = Math.floor(turnoConf.intervaloMinutos / 2);
+        intInicioMin = meio - halfInt;
+        intFimMin = meio + halfInt;
+      } else {
+        const matchHoras = item.turno.match(/(\d{2}:\d{2})\s+às\s+(\d{2}:\d{2})/);
+        if (matchHoras) {
+          const [hE, mE] = matchHoras[1].split(':').map(Number);
+          const [hS, mS] = matchHoras[2].split(':').map(Number);
+          entradaMin = hE * 60 + (mE || 0);
+          saidaMin = hS * 60 + (mS || 0);
+          if (saidaMin < entradaMin) saidaMin += 24 * 60;
+        }
+        const matchAlmoco = item.turno.match(/Almoço\s+(\d{2}:\d{2})\s+às\s+(\d{2}:\d{2})/i);
+        if (matchAlmoco) {
+          const [hIE, mIE] = matchAlmoco[1].split(':').map(Number);
+          const [hIS, mIS] = matchAlmoco[2].split(':').map(Number);
+          intInicioMin = hIE * 60 + (mIE || 0);
+          intFimMin = hIS * 60 + (mIS || 0);
+        } else {
+          const meio = Math.floor((entradaMin + saidaMin) / 2);
+          intInicioMin = meio - 45;
+          intFimMin = meio + 45;
+        }
+      }
+
+      resultado.forEach(res => {
+        const [hH, mH] = res.horaStr.split(':').map(Number);
+        const horaAtualMin = hH * 60 + (mH || 0);
+
+        const estaEmJornada = horaAtualMin >= entradaMin && horaAtualMin < saidaMin;
+        const estaEmIntervalo = horaAtualMin >= intInicioMin && horaAtualMin < intFimMin;
+
+        if (estaEmJornada && !estaEmIntervalo) {
+          res.quantidadeTrabalhando++;
+          res.funcionariosNomes.push(item.nome);
+        }
+      });
+    });
+
+    return resultado;
+  }
+
+  /**
+   * Calcula o resumo individual de métricas (folgas totais, folgas domingos, horas líquidas) para cada funcionário.
+   */
+  calcularResumoMetrics(
+    itens: EscalaItem[],
+    funcionarios: Funcionario[],
+    turnosConfigs: TurnoConfig[],
+    ano: number,
+    mes: number
+  ): ResumoFuncionarioMetrics[] {
+    const totalDias = new Date(ano, mes, 0).getDate();
+
+    return itens.map(item => {
+      const funcObj = funcionarios.find(f => f.matricula_aleatoria === item.matricula);
+      let folgas = 0;
+      let domingosFolgados = 0;
+      let feriadosFolgados = 0;
+      let diasTrabalhados = 0;
+      const alertas: string[] = [];
+
+      for (let d = 1; d <= totalDias; d++) {
+        const st = item.dias[d];
+        if (st === 'F' || st === 'FD' || st === 'FE') {
+          folgas++;
+          if (st === 'FD') domingosFolgados++;
+          if (st === 'FE') feriadosFolgados++;
+        } else if (st === 'T' || st === 'TD' || st === 'TF') {
+          diasTrabalhados++;
+        }
+      }
+
+      let minPorDia = 440;
+      const tConf = turnosConfigs.find(tc => tc.nome === item.turno);
+      if (tConf) {
+        minPorDia = tConf.cargaHorariaLiquidaMinutos;
+      } else {
+        const calc = this.calcularCargaHorariaLiquida('08:00', '17:00', 60);
+        minPorDia = calc.minutos;
+      }
+
+      const horasLiquidasMinutos = diasTrabalhados * minPorDia;
+      const hTot = Math.floor(horasLiquidasMinutos / 60);
+      const mTot = horasLiquidasMinutos % 60;
+      const horasLiquidasFormatted = `${hTot}h${mTot > 0 ? String(mTot).padStart(2, '0') + 'm' : '00'}`;
+
+      let statusConformidade: 'OK' | 'ALERTA' | 'VIOLACAO' = 'OK';
+      if (folgas < 4) {
+        statusConformidade = 'ALERTA';
+        alertas.push(`Folgas no mês (${folgas}) abaixo do esperado (mín. 4)`);
+      } else if (folgas > 6) {
+        statusConformidade = 'ALERTA';
+        alertas.push(`Excesso de folgas no mês (${folgas})`);
+      }
+
+      return {
+        matricula: item.matricula,
+        nome: item.nome,
+        setor: item.setor,
+        cargo: funcObj?.cargo || 'Colaborador',
+        turno: item.turno,
+        genero: item.genero,
+        totalFolgas: folgas,
+        domingosFolgados,
+        feriadosFolgados,
+        diasTrabalhados,
+        horasLiquidasMinutos,
+        horasLiquidasFormatted,
+        statusConformidade,
+        alertas
+      };
+    });
+  }
 }
+
 
 

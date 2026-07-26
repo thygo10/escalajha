@@ -5,9 +5,9 @@ import { Router } from '@angular/router';
 import { SupabaseService } from '../../services/supabase.service';
 import { EscalaGeneratorService } from '../../services/escala-generator.service';
 import { ToastService } from '../../services/toast.service';
-import { Loja, Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho, TurnoConfig, IntervaloOption, ValidacaoEscalaResultado } from '../../models/types';
+import { Loja, Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho, TurnoConfig, IntervaloOption, ValidacaoEscalaResultado, ModeloEscala, RegraConformidade, HorarioPresenca, ResumoFuncionarioMetrics, EstadoTransicao } from '../../models/types';
 import { IconComponent } from '../shared/icon.component';
-import { HORARIOS_FIXOS_CAIXA, HORARIOS_FIXOS_FISCAL } from '../../models/mock-data';
+import { HORARIOS_FIXOS_CAIXA, HORARIOS_FIXOS_FISCAL, INITIAL_REGRAS_CONFORMIDADE } from '../../models/mock-data';
 
 interface ConfirmModalData {
   visible: boolean;
@@ -18,6 +18,7 @@ interface ConfirmModalData {
   isDanger?: boolean;
   onConfirm: () => Promise<void> | void;
 }
+
 
 @Component({
   selector: 'app-dashboard',
@@ -130,6 +131,17 @@ export class DashboardComponent implements OnInit {
   guiadaSetor = signal<string>('Fiscal de Caixa');
   guiadaMinFuncionarios = signal<number>(2);
   guiadaPermitirDoisConsecutivos = signal<boolean>(false);
+  guiadaModeloEscala = signal<ModeloEscala>('6x1');
+  guiadaRegrasSelecionadas = signal<string[]>(['rc_1_clt67', 'rc_2_clt386', 'rc_3_cct_caixa']);
+
+  // Modelo de Escala Ativo (6x1 ou 5x1)
+  modeloEscalaAtivo = signal<ModeloEscala>('6x1');
+
+  // Regras de Conformidade
+  regrasConformidade = signal<RegraConformidade[]>(INITIAL_REGRAS_CONFORMIDADE);
+
+  // Dia Selecionado para Curva de Presença Horária
+  diaSelecionadoPresenca = signal<number>(1);
 
   // Mínimo por dia no setor ativo (Frente de Caixa exige 6)
   minFuncionariosPorDiaSetor = signal<number>(6);
@@ -159,6 +171,30 @@ export class DashboardComponent implements OnInit {
   novoTurnoIntervalo = signal<number>(60);
   novoTurnoCustomIntervalo = signal<number | null>(null);
 
+  // Computado: Resumo de Métricas Individuais por Colaborador (Folgas, Horas Líquidas)
+  resumoMetrics = computed<ResumoFuncionarioMetrics[]>(() => {
+    const itens = this.escalaItens();
+    const funcs = this.funcionarios();
+    const tConfigs = this.turnosConfigs();
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+
+    return this.generator.calcularResumoMetrics(itens, funcs, tConfigs, ano, mes);
+  });
+
+  // Computado: Total de Folgas na Escala Exibida
+  totalFolgasEscala = computed<number>(() => {
+    return this.resumoMetrics().reduce((acc, curr) => acc + curr.totalFolgas, 0);
+  });
+
+  // Computado: Curva de Presença de Colaboradores na Loja por Faixa Horária no Dia Selecionado
+  presencaPorHorario = computed<HorarioPresenca[]>(() => {
+    const itens = this.escalaItens();
+    const tConfigs = this.turnosConfigs();
+    const dia = this.diaSelecionadoPresenca();
+
+    return this.generator.calcularPresencaPorFaixaHoraria(itens, tConfigs, dia);
+  });
+
   // Engine de Validação Real Computada da Escala Exibida
   validacaoResultado = computed<ValidacaoEscalaResultado>(() => {
     const itens = this.escalaItens();
@@ -167,6 +203,7 @@ export class DashboardComponent implements OnInit {
     const tConfigs = this.turnosConfigs();
     return this.generator.validarEscala(itens, ano, mes, minReq, tConfigs);
   });
+
 
   userInitials = computed(() => {
     const email = this.currentUser()?.email || 'gestor@empresa.com';
@@ -1101,6 +1138,7 @@ export class DashboardComponent implements OnInit {
     const setorAlvo = this.guiadaSetor();
     this.minFuncionariosPorDiaSetor.set(this.guiadaMinFuncionarios());
     this.permitirDoisDiasConsecutivos.set(this.guiadaPermitirDoisConsecutivos());
+    this.modeloEscalaAtivo.set(this.guiadaModeloEscala());
     this.isEscalaGuiadaModalOpen.set(false);
 
     this._selectedSetor = setorAlvo;
@@ -1180,7 +1218,9 @@ export class DashboardComponent implements OnInit {
       permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
       diasPermitidosFolga: this.diasPermitidosFolga(),
       feriados: this.feriados(),
-      minFuncionariosPorDia: minReq
+      minFuncionariosPorDia: minReq,
+      modeloEscala: this.modeloEscalaAtivo(),
+      regrasConformidade: this.regrasConformidade()
     });
     this.escalaItens.set(gerada);
 
@@ -1193,8 +1233,9 @@ export class DashboardComponent implements OnInit {
     });
 
     this.triggerRecalculoEscala.update((v: number) => v + 1); // Atualiza os computeds de cache
-    this.toastService.success('Escala Gerada!', `Escala 6x1 Giratória calculada com garantia de ${minReq} colaboradores por dia.`);
+    this.toastService.success('Escala Gerada!', `Escala ${this.modeloEscalaAtivo()} calculada com garantia de ${minReq} colaboradores por dia.`);
   }
+
 
   async salvarEscala() {
     const loja = this.activeLoja();
