@@ -74,8 +74,8 @@ export class EscalaGeneratorService {
   /**
    * Gera a escala 6x1 Giratória respeitando:
    * 1. 6 dias de trabalho máximo consecutivos (INVIOLÁVEL CLT Art. 67).
-   * 2. Revezamento feminino quinzenal (1 domingo trab -> 1 domingo folga - CLT Art. 386).
-   * 3. Revezamento masculino (2 domingos trab -> 1 domingo folga - CCT).
+   * 2. Revezamento feminino quinzenal (1 domingo trab -> 1 domingo folga - CLT Art. 386) em Padaria e Açougue.
+   * 3. Regra Geral 1T:2F (1 domingo trab -> 2 domingos folga) para todos os colaboradores nos demais setores.
    * 4. COBERTURA MÍNIMA OBRIGATÓRIA (Garante N fiscais/atendentes por dia, sem folga geral).
    * 5. Feriados de funcionamento proibido contam como folga (FE).
    */
@@ -220,37 +220,23 @@ export class EscalaGeneratorService {
 
         const eFiscalDeCaixa = setorNome.includes('fiscal');
         if (eFiscalDeCaixa) {
-          // FISCAL DE CAIXA (Duplas Fixas no Domingo: 1 Abertura + 1 Fechamento por domingo)
-          // Dupla 0: Cleide (Abertura) + Thiago (Fechamento)
-          // Dupla 1: Walta (Abertura) + Ualas (Fechamento)
-          // Dupla 2: Lane (Abertura) + Romildo (Fechamento)
-          const n = func.primeiro_nome.toLowerCase();
-          let minhaDupla = 0;
-          if (n.includes('cleide') || n.includes('thiago')) {
-            minhaDupla = 0;
-          } else if (n.includes('walta') || n.includes('ualas') || n.includes('walas')) {
-            minhaDupla = 1;
-          } else if (n.includes('lane') || n.includes('romildo')) {
-            minhaDupla = 2;
-          } else {
-            minhaDupla = idx % 3;
-          }
-          deveFolgar = (dIdx % 3 !== minhaDupla);
-        } else if (eFrenteDeCaixa) {
-          // FRENTE DE CAIXA: Todo mundo sem exceção 1 Domingo Trabalhado para 2 Domingos Folgados (1T : 2F)
-          const turmaDom = idx % 3;
-          deveFolgar = (dIdx % 3 !== turmaDom);
-        } else if (!eExcecaoDomingo) {
-          // REGRA GERAL (Demais Setores Pequenos): 1 Domingo Trabalhado para 2 Domingos de Folga (1T : 2F)
-          const turmaDom = idx % 3;
-          deveFolgar = (dIdx % 3 !== turmaDom);
-        } else {
-          // EXCEÇÃO (Açougue e Padaria): 2 Domingos Trabalhados para 1 Domingo de Folga (2T : 1F) ou CLT 386
+          // FISCAL DE CAIXA (Duplas Dinâmicas no Domingo: 1 Abertura + 1 Fechamento por domingo)
+          // Agrupa colaboradores dinamicamente em duplas pelo índice na lista (100% dinâmico, sem nomes hardcoded)
+          const totalDuplas = Math.max(1, Math.ceil(funcionarios.length / 2));
+          const minhaDupla = Math.floor(idx / 2) % totalDuplas;
+          deveFolgar = (dIdx % totalDuplas !== minhaDupla);
+        } else if (eExcecaoDomingo) {
+          // EXCEÇÃO (Açougue e Padaria): 2 Domingos Trabalhados para 1 Domingo de Folga (2T : 1F) para homens ou CLT 386 para mulheres
           if (souFeminino) {
             deveFolgar = folgaDomingoImpar ? eDomingoImpar : !eDomingoImpar;
           } else {
             deveFolgar = (dIdx % 3 === (idx % 3));
           }
+        } else {
+          // REGRA GERAL UNIFICADA (Frente de Caixa, Reposição, Depósito, Hortifrúti, PP, etc.):
+          // Todo mundo (homens e mulheres) trabalha 1 Domingo e folga os 2 Domingos seguintes (1T : 2F)
+          const turmaDom = idx % 3;
+          deveFolgar = (dIdx % 3 !== turmaDom);
         }
 
         if (deveFolgar && config.diasPermitidosFolga.includes(0)) {
@@ -872,24 +858,30 @@ export class EscalaGeneratorService {
 
           if (isDom) {
             domingosSeguidosGeral++;
-            if (!eExcecaoDomingo && domingosSeguidosGeral >= 2) {
-              erros.push({
-                dia,
-                setor: item.setor,
-                mensagem: `${item.nome}: Trabalhou 2 domingos seguidos (Dia ${dia}). A Regra Geral do setor exige 1 domingo trabalhado para 2 folgas.`,
-                tipo: 'ERRO_CLT'
-              });
-            }
 
-            if (item.genero === 'F') {
-              domingosSeguidosFeminino++;
-              if (domingosSeguidosFeminino >= 2) {
+            if (!eExcecaoDomingo) {
+              // Para setores gerais, NINGUÉM (homem ou mulher) pode trabalhar 2 domingos seguidos (Regra 1T:2F)
+              if (domingosSeguidosGeral >= 2) {
                 erros.push({
                   dia,
                   setor: item.setor,
-                  mensagem: `${item.nome} (Feminino): Trabalhou 2 domingos seguidos (Dia ${dia}). Violação CLT Art. 386.`,
+                  mensagem: `${item.nome}: Trabalhou 2 domingos seguidos (Dia ${dia}). Regra do setor exige 1 domingo trabalhado para 2 folgas (1T:2F).`,
                   tipo: 'ERRO_CLT'
                 });
+              }
+            } else {
+              // Para Padaria e Açougue (Exceções):
+              // Mulheres têm restrição de 1T:1F (CLT 386) -> Não podem trabalhar 2 domingos seguidos
+              if (item.genero === 'F') {
+                domingosSeguidosFeminino++;
+                if (domingosSeguidosFeminino >= 2) {
+                  erros.push({
+                    dia,
+                    setor: item.setor,
+                    mensagem: `${item.nome} (Feminino - ${item.setor}): Trabalhou 2 domingos seguidos (Dia ${dia}). Violação CLT Art. 386.`,
+                    tipo: 'ERRO_CLT'
+                  });
+                }
               }
             }
           }

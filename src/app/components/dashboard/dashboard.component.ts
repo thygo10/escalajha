@@ -893,6 +893,7 @@ export class DashboardComponent implements OnInit {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
+
     if (name.includes('caixa') && !name.includes('fiscal')) return '#0b2a52';
     if (name.includes('reposi')) return '#16a34a';
     if (name.includes('lanchonete')) return '#d97706';
@@ -902,8 +903,16 @@ export class DashboardComponent implements OnInit {
     if (name.includes('empilhadeira')) return '#0d9488';
     if (name.includes('higieni')) return '#475569';
     if (name.includes('manuten')) return '#0284c7';
-    return '#0b2a52';
+
+    // Gerador Dinâmico HSL via Hash para qualquer novo setor cadastrado pelo gestor
+    let hash = 0;
+    for (let i = 0; i < setorNome.length; i++) {
+      hash = (setorNome.charCodeAt(i) + ((hash << 5) - hash)) & 0xffffffff;
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 65%, 35%)`;
   }
+
 
   getFeriadoBadgeColor(tipo: string): string {
     if (tipo === 'Nacional') return '#16a34a';

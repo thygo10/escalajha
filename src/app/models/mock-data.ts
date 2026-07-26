@@ -239,7 +239,7 @@ export const INITIAL_FERIADOS: Feriado[] = [
 
 export const INITIAL_REGRAS: RegraEscala[] = [
   { id: 'r1', titulo: 'Descanso Semanal Remunerado (DSR 6x1)', descricao: 'Todo colaborador tem direito a 1 folga semanal preferencialmente no domingo após no máximo 6 dias consecutivos de trabalho (Art. 67 da CLT).', categoria: 'CLT', status: 'IMPLEMENTADA', obrigatoria: true },
-  { id: 'r2', titulo: 'Revezamento Dominical Quinzenal (Mulheres)', descricao: 'Para colaboradoras do sexo feminino, é proibido trabalhar 2 domingos consecutivos (Art. 386 da CLT).', categoria: 'CLT', status: 'IMPLEMENTADA', obrigatoria: true },
+  { id: 'r2', titulo: 'Revezamento Dominical Quinzenal (Mulheres na Produção)', descricao: 'Para colaboradoras dos setores de Padaria e Açougue, aplica-se o revezamento quinzenal (Art. 386 da CLT). Nos demais setores, aplica-se a regra 1T:2F unificada para todos.', categoria: 'CLT', status: 'IMPLEMENTADA', obrigatoria: true },
   { id: 'r3', titulo: 'Revezamento Dominical Mensal (CCT)', descricao: 'Garantia de pelo menos 1 folga no domingo dentro de cada mês trabalhado para todos os colaboradores (Convenção Coletiva de Trabalho).', categoria: 'Acordo Coletivo', status: 'IMPLEMENTADA', obrigatoria: true },
   { id: 'r4', titulo: 'Intervalo Interjornada de 11 Horas', descricao: 'Entre duas jornadas de trabalho é obrigatório o intervalo mínimo de 11 horas consecutivas para descanso (Art. 66 da CLT).', categoria: 'CLT', status: 'IMPLEMENTADA', obrigatoria: true },
   { id: 'r5', titulo: 'Intervalo Intrajornada Flexível (Refeição)', descricao: 'Concessão de intervalo de refeição ajustável em 30 min, 1h, 1h30min, 2h, 2h30min, 2h40min ou 3h para jornadas acima de 6 horas (Salvo Convenção Coletiva).', categoria: 'Acordo Coletivo', status: 'IMPLEMENTADA', obrigatoria: true },
@@ -285,7 +285,7 @@ export const INITIAL_REGRAS_CONFORMIDADE: RegraConformidade[] = [
     titulo: 'Revezamento Quinzenal Feminino (CLT Art. 386)',
     descricao: 'Mulheres devem gozar de folga no domingo no máximo a cada 2 semanas (1 Domingo Trabalhado : 1 Domingo Folgado).',
     valor: 1,
-    setor_aplicavel: 'TODOS',
+    setor_aplicavel: 'Padaria e Açougue',
     fonte: 'CLT Art. 386 / STF Tema 828'
   },
   {
