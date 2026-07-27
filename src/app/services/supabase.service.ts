@@ -274,14 +274,14 @@ export class SupabaseService {
 
       if (!error && data) {
         const updated = data as Funcionario;
-        this.localFuncionarios.update(list => list.map(f => f.id === func.id ? updated : f));
+        this.localFuncionarios.update(list => list.map(f => (f.id === func.id || (!!func.matricula_aleatoria && f.matricula_aleatoria === func.matricula_aleatoria)) ? updated : f));
         return updated;
       }
     } catch (err) {
       console.error('Erro ao atualizar funcionário no Supabase:', err);
     }
 
-    this.localFuncionarios.update(list => list.map(f => f.id === func.id ? { ...f, ...func } : f));
+    this.localFuncionarios.update(list => list.map(f => (f.id === func.id || (!!func.matricula_aleatoria && f.matricula_aleatoria === func.matricula_aleatoria)) ? { ...f, ...func } : f));
     return func;
   }
 

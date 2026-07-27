@@ -692,7 +692,7 @@
                 </tr>
               </thead>
               <tbody>
-                @for (f of funcionariosFiltrados(); track f.id) {
+                @for (f of funcionariosFiltrados(); track f.id + '_' + f.primeiro_nome + '_' + f.cargo) {
                   <tr>
                     <td class="font-mono font-bold color-navy">
                       {{ f.matricula_aleatoria }}

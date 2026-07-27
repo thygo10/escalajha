@@ -94,11 +94,25 @@ export class DashboardComponent implements OnInit {
     const funcs = this.funcionarios().filter((f: Funcionario) => f.ativo);
     const feriados = this.feriados();
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    const funcsMap = new Map(funcs.map((f: Funcionario) => [f.matricula_aleatoria, f]));
 
-    return this.generator.gerarEscalaMensalCached(funcs, ano, mes, {
+    const raw = this.generator.gerarEscalaMensalCached(funcs, ano, mes, {
       permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
       diasPermitidosFolga: this.diasPermitidosFolga(),
       feriados
+    });
+
+    return raw.map(item => {
+      const f = funcsMap.get(item.matricula);
+      if (!f) return item;
+      return {
+        ...item,
+        nome: f.primeiro_nome,
+        cargo: f.cargo,
+        setor: f.setor,
+        turno: f.turno_padrao,
+        genero: f.genero
+      };
     });
   });
 
@@ -563,7 +577,7 @@ export class DashboardComponent implements OnInit {
         f.matricula_aleatoria.includes(sQuery)
       );
     }
-    return list;
+    return list.map((f: Funcionario) => ({ ...f }));
   });
 
   feriadosFiltrados = computed(() => {
