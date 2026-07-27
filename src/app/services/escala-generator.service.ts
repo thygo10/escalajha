@@ -7,6 +7,7 @@ export interface OpcionesGeracaoEscala {
   feriados: Feriado[];
   minFuncionariosPorDia?: number; // Mínimo de colaboradores trabalhando no setor por dia (ex: 2 fiscais)
   minFuncionariosFeriado?: number; // Mínimo de colaboradores no feriado aberto (Equipe Reduzida)
+  minOperadoresPorHora?: number; // Mínimo de colaboradores ativos por faixa horária (ex: 2 por hora nas faixas operacionais)
   modeloEscala?: ModeloEscala;
   estadosTransicao?: Map<string, EstadoTransicao>;
   afastamentos?: EventoAfastamento[];
@@ -223,9 +224,18 @@ export class EscalaGeneratorService {
       feriadoTrabalhadoresMap.set(fDia, escaladosFeriado);
     });
 
+    const porTurnoMap = this._agruparPorCategoriaTurno(funcionarios);
+    const funcIndexNoTurno = new Map<string, number>();
+    porTurnoMap.forEach((funcsInTurno) => {
+      funcsInTurno.forEach((f, iTurno) => {
+        funcIndexNoTurno.set(f.matricula_aleatoria, iTurno);
+      });
+    });
+
     funcionarios.forEach((func, idx) => {
       const dias: Record<number, TipoDia> = {};
       const souFeminino = func.genero === 'F';
+      const idxNoTurno = funcIndexNoTurno.get(func.matricula_aleatoria) ?? idx;
       
       // Offset da turma para rotação semanal (0 a 5)
       const turmaOffset = idx % 6;
@@ -286,16 +296,16 @@ export class EscalaGeneratorService {
           if (diaSemanaDom === 0) {
             let diaFolgaAlvo: number;
             if (dDom < 7) {
-              diaFolgaAlvo = dDom + 2 + (idx % 3);
+              diaFolgaAlvo = dDom + 2 + (idxNoTurno % 3);
             } else if (ePadariaSetor) {
               const offsetsPadaria = [-5, -4, -3, -3, -4]; // Ter, Qua, Qui, Qui, Qua
-              diaFolgaAlvo = dDom + offsetsPadaria[idx % offsetsPadaria.length];
+              diaFolgaAlvo = dDom + offsetsPadaria[idxNoTurno % offsetsPadaria.length];
             } else {
-              diaFolgaAlvo = dDom - 5 + (idx % 4);
+              diaFolgaAlvo = dDom - 5 + (idxNoTurno % 4);
             }
 
             if (diaFolgaAlvo < 1 || feriadosFechados.has(diaFolgaAlvo)) {
-              diaFolgaAlvo = Math.min(totalDias, dDom + 2 + (idx % 3));
+              diaFolgaAlvo = Math.min(totalDias, dDom + 2 + (idxNoTurno % 3));
             }
 
             if (diaFolgaAlvo < 1) diaFolgaAlvo = Math.max(1, dDom - 4);
@@ -935,6 +945,28 @@ export class EscalaGeneratorService {
           tipo: 'ERRO_PADARIA_PRODUCAO'
         });
       }
+
+      // Regra de Cobertura Horária por Faixa (07:00 às 21:00)
+      if (!feriadosFechadosVal.has(dia) && itens.length >= 2 && turnosConfigs.length > 0) {
+        const curva = this.calcularPresencaPorFaixaHoraria(itens, turnosConfigs, dia);
+        const minReqHora = eFrenteDeCaixa ? 2 : (itens.length >= 4 ? 1 : 0);
+        if (minReqHora > 0) {
+          for (const faixa of curva) {
+            const hNum = Number.parseInt(faixa.horaStr.split(':')[0], 10);
+            if (hNum >= 7 && hNum <= 21) {
+              if (faixa.quantidadeTrabalhando < minReqHora) {
+                erros.push({
+                  dia,
+                  setor: setorNomeOriginal,
+                  mensagem: `Dia ${dia}: Cobertura horária insuficiente às ${faixa.horaStr} (${faixa.quantidadeTrabalhando} colaborador(es) trabalhando). Mínimo exigido: ${minReqHora}.`,
+                  tipo: 'ERRO_COBERTURA_HORARIA'
+                });
+                break;
+              }
+            }
+          }
+        }
+      }
     }
 
     // Validação de regras CLT e limite de folgas por funcionário
@@ -1089,6 +1121,7 @@ export class EscalaGeneratorService {
     const totalErros = erros.filter(e => 
       e.tipo === 'ERRO_COBERTURA' || 
       e.tipo === 'ERRO_COBERTURA_CAIXA' || 
+      e.tipo === 'ERRO_COBERTURA_HORARIA' || 
       e.tipo === 'ERRO_PADARIA_PRODUCAO' || 
       e.tipo === 'ERRO_FOLGAS_MES' || 
       e.tipo === 'ERRO_CLT' ||

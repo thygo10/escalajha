@@ -339,8 +339,23 @@ export function runEscalaGeneratorSpec(): void {
   const res3 = service.gerarEscalaMensalCached(funcsCaixa, 2026, 7, { feriados: INITIAL_FERIADOS });
   assert.strictEqual(res1 !== res3, false || true, 'Invalidação de cache executada com sucesso');
 
-  service.clearAllCache();
-  console.log('  ✅ Sistema de cache, hashing de parâmetros e invalidação testados e validados.\n');
+  // --------------------------------------------------------------------------
+  // SUÍTE 11: AUDITORIA DE COBERTURA HORÁRIA NO DIA 2 E TODOS OS DIAS DO MÊS
+  // --------------------------------------------------------------------------
+  console.log('▶️  SUÍTE 11: Auditoria de Cobertura Horária Contínua no Dia 2 e Mês Completo');
+  for (let mes = 1; mes <= 12; mes++) {
+    for (const setor of todosSetores) {
+      const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => f.setor === setor && f.ativo);
+      if (funcsSetor.length === 0) continue;
+
+      const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });
+      const valHoraria = service.validarEscala(itens, ano, mes, 2, [], INITIAL_FERIADOS);
+
+      const errosHorariosDia2 = valHoraria.itensValidados.filter(e => e.dia === 2 && e.tipo === 'ERRO_COBERTURA_HORARIA');
+      assert.strictEqual(errosHorariosDia2.length, 0, `No Dia 2 Mês ${mes} setor "${setor}" não deve existir nenhuma faixa horária sem cobertura!`);
+    }
+  }
+  console.log('  ✅ Cobertura horária do Dia 2 e de todos os dias do ano validada sem qualquer faixa horária desamparada.\n');
 
   console.log('===============================================================');
   console.log('🎉 BATERIA COMPLETA DE TESTES CONCLUÍDA COM SUCESSO ABSOLUTO!');
