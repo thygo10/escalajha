@@ -30,7 +30,7 @@ export function runEscalaGeneratorSpec(): void {
     const totalDiasMes = new Date(ano, mes, 0).getDate();
 
     for (const setor of todosSetores) {
-      const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => f.setor === setor && f.ativo);
+      const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => (f.setor === setor || f.setores_cobertura?.includes(setor)) && f.ativo);
       if (funcsSetor.length === 0) continue;
 
       const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, {
@@ -59,7 +59,7 @@ export function runEscalaGeneratorSpec(): void {
   for (let mes = 1; mes <= 12; mes++) {
     const totalDiasMes = new Date(ano, mes, 0).getDate();
     for (const setor of todosSetores) {
-      const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => f.setor === setor && f.ativo);
+      const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => (f.setor === setor || f.setores_cobertura?.includes(setor)) && f.ativo);
       if (funcsSetor.length === 0) continue;
 
       const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });
@@ -92,7 +92,7 @@ export function runEscalaGeneratorSpec(): void {
     }
 
     for (const setor of todosSetores) {
-      const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => f.setor === setor && f.ativo);
+      const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => (f.setor === setor || f.setores_cobertura?.includes(setor)) && f.ativo);
       if (funcsSetor.length === 0) continue;
 
       const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });
@@ -126,7 +126,7 @@ export function runEscalaGeneratorSpec(): void {
   console.log('▶️  SUÍTE 4: Auditoria de Regras de Domingos (1T:2F Geral e CLT 386 Feminino)');
   for (let mes = 1; mes <= 12; mes++) {
     for (const setor of todosSetores) {
-      const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => f.setor === setor && f.ativo);
+      const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => (f.setor === setor || f.setores_cobertura?.includes(setor)) && f.ativo);
       if (funcsSetor.length === 0) continue;
 
       const setorClean = setor.toLowerCase();
@@ -232,8 +232,8 @@ export function runEscalaGeneratorSpec(): void {
       assert.strictEqual(trabFC >= 6, true, `No dia ${d}/${mes} a Frente de Caixa teve apenas ${trabFC} operadores (mínimo 6)!`);
     }
 
-    // Fiscal de Caixa
-    const funcsFiscal = INITIAL_FUNCIONARIOS.filter(f => f.setor === 'Fiscal de Caixa' && f.ativo);
+    // Fiscal de Caixa (Titulares + Grupo de Cobertura Elegível: Ualas, Lane, Thiago, Cleide)
+    const funcsFiscal = INITIAL_FUNCIONARIOS.filter(f => (f.setor === 'Fiscal de Caixa' || f.setores_cobertura?.includes('Fiscal de Caixa')) && f.ativo);
     const itensFisc = service.gerarEscalaMensal(funcsFiscal, ano, mes, { feriados: INITIAL_FERIADOS });
     for (let d = 1; d <= totalDiasMes; d++) {
       const isFeriadoFechado = INITIAL_FERIADOS.some(f => f.data === `2026-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}` && f.funcionamento_proibido);
@@ -345,7 +345,7 @@ export function runEscalaGeneratorSpec(): void {
   console.log('▶️  SUÍTE 11: Auditoria de Cobertura Horária Contínua no Dia 2 e Mês Completo');
   for (let mes = 1; mes <= 12; mes++) {
     for (const setor of todosSetores) {
-      const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => f.setor === setor && f.ativo);
+      const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => (f.setor === setor || f.setores_cobertura?.includes(setor)) && f.ativo);
       if (funcsSetor.length === 0) continue;
 
       const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });

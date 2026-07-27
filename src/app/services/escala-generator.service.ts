@@ -130,9 +130,11 @@ export class EscalaGeneratorService {
       }
     }
 
-    // Identificar setor para aplicar regras dinâmicas
-    const setorNome = (funcionarios[0]?.setor || '').toLowerCase();
+    // Identificar setor para aplicar regras dinâmicas (priorizando o setor alvo em equipes com cobertura)
+    const candFiscal = funcionarios.find(f => f.setor.toLowerCase().includes('fiscal'));
+    const setorNome = (candFiscal ? candFiscal.setor : (funcionarios[0]?.setor || '')).toLowerCase();
     const eFrenteDeCaixa = setorNome.includes('caixa') && !setorNome.includes('fiscal');
+    const eFiscalDeCaixa = setorNome.includes('fiscal');
     const ePadaria = setorNome.includes('padaria');
     const eAcougue = setorNome.includes('acougue') || setorNome.includes('açougue');
     const eExcecaoDomingo = ePadaria || eAcougue;
@@ -454,6 +456,26 @@ export class EscalaGeneratorService {
         }
       }
     });
+
+    if (eFiscalDeCaixa) {
+      domingos.forEach(dDom => {
+        if (!feriadosFechados.has(dDom) && itens.length >= 2) {
+          const trabDom = itens.filter(i => i.dias[dDom] === 'TD' || i.dias[dDom] === 'TF' || i.dias[dDom] === 'T').length;
+          if (trabDom < 2) {
+            for (const item of itens) {
+              if (itens.filter(i => i.dias[dDom] === 'TD' || i.dias[dDom] === 'TF' || i.dias[dDom] === 'T').length >= 2) break;
+              if (item.dias[dDom] === 'FD' || item.dias[dDom] === 'F') {
+                const domAntTrab = (dDom > 7) && (item.dias[dDom - 7] === 'TD' || item.dias[dDom - 7] === 'TF' || item.dias[dDom - 7] === 'T');
+                if (!domAntTrab) {
+                  item.dias[dDom] = feriadosAbertos.has(dDom) ? 'TF' : 'TD';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
     this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes, feriadosAbertos);
 
     return itens;
@@ -922,7 +944,8 @@ export class EscalaGeneratorService {
       }
     }
 
-    const setorNomeOriginal = itens[0]?.setor || 'Setor';
+    const candFiscalVal = itens.find(i => i.setor.toLowerCase().includes('fiscal'));
+    const setorNomeOriginal = candFiscalVal ? candFiscalVal.setor : (itens[0]?.setor || 'Setor');
     const setorNomeClean = setorNomeOriginal.toLowerCase();
     const eFrenteDeCaixa = setorNomeClean.includes('caixa') && !setorNomeClean.includes('fiscal');
     const eFiscalDeCaixa = setorNomeClean.includes('fiscal');

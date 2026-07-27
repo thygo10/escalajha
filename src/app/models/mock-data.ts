@@ -141,8 +141,6 @@ export const INITIAL_FUNCIONARIOS: Funcionario[] = [
   // 6. Fiscal de Caixa (Exatamente 2 Fiscais por dia: 1 de 07:00 às 15:50 e 1 de 12:40 às 21:00)
   { id: 'f_fisc1', loja_id: 'loja-02-demo', primeiro_nome: 'Walta', matricula_aleatoria: '192050', setor: 'Fiscal de Caixa', cargo: 'Fiscal de Caixa Líder', turno_padrao: '07:00 às 15:50 (Almoço 11:00 às 12:30)', genero: 'F', ativo: true },
   { id: 'f_fisc2', loja_id: 'loja-02-demo', primeiro_nome: 'Romildo', matricula_aleatoria: '918207', setor: 'Fiscal de Caixa', cargo: 'Fiscal de Caixa', turno_padrao: '12:40 às 21:00 (Almoço 14:20 às 15:40)', genero: 'M', ativo: true },
-  { id: 'f_fisc3', loja_id: 'loja-02-demo', primeiro_nome: 'Cleide (Fiscal)', matricula_aleatoria: '948102', setor: 'Fiscal de Caixa', cargo: 'Fiscal de Caixa Líder', turno_padrao: '07:00 às 15:50 (Almoço 11:00 às 12:30)', genero: 'F', ativo: true },
-  { id: 'f_fisc4', loja_id: 'loja-02-demo', primeiro_nome: 'Mateus (Fiscal)', matricula_aleatoria: '492018', setor: 'Fiscal de Caixa', cargo: 'Fiscal de Caixa', turno_padrao: '12:40 às 21:00 (Almoço 14:20 às 15:40)', genero: 'M', ativo: true },
 
   // 7. Operador de Empilhadeira
   { id: 'f_emp1', loja_id: 'loja-02-demo', primeiro_nome: 'Reginaldo', matricula_aleatoria: '673923', setor: 'Operador de Empilhadeira', cargo: 'Operador de Empilhadeira', turno_padrao: '07:00 às 15:00', genero: 'M', ativo: true },
@@ -155,7 +153,7 @@ export const INITIAL_FUNCIONARIOS: Funcionario[] = [
   { id: 'f_hig5', loja_id: 'loja-02-demo', primeiro_nome: 'Lecia', matricula_aleatoria: '482014', setor: 'Higienização', cargo: 'Auxiliar de Serviços Gerais', turno_padrao: '07:00 às 16:00', genero: 'F', ativo: true },
 
   // 9. Manutenção
-  { id: 'f_man1', loja_id: 'loja-02-demo', primeiro_nome: 'Thiago', matricula_aleatoria: '100001', setor: 'Manutenção', cargo: 'Técnico de Manutenção', turno_padrao: '07:30 às 17:18', genero: 'M', ativo: true },
+  { id: 'f_man1', loja_id: 'loja-02-demo', primeiro_nome: 'Thiago', matricula_aleatoria: '100001', setor: 'Manutenção', cargo: 'Auxiliar de TI', turno_padrao: '07:30 às 17:18', genero: 'M', ativo: true, setores_cobertura: ['Fiscal de Caixa'] },
   { id: 'f_man2', loja_id: 'loja-02-demo', primeiro_nome: 'Marcos (Manut)', matricula_aleatoria: '710294', setor: 'Manutenção', cargo: 'Oficial de Manutenção Líder', turno_padrao: '07:30 às 17:18', genero: 'M', ativo: true },
   { id: 'f_man3', loja_id: 'loja-02-demo', primeiro_nome: 'José (Manut)', matricula_aleatoria: '492019', setor: 'Manutenção', cargo: 'Auxiliar de Manutenção Predial', turno_padrao: '07:30 às 17:18', genero: 'M', ativo: true },
   { id: 'f_man4', loja_id: 'loja-02-demo', primeiro_nome: 'Edilson', matricula_aleatoria: '839202', setor: 'Manutenção', cargo: 'Eletricista de Manutenção', turno_padrao: '07:30 às 17:18', genero: 'M', ativo: true },
@@ -216,7 +214,8 @@ export const INITIAL_CARGOS: Cargo[] = [
   { id: 'c23', setor_nome: 'Depósito', nome: 'Conferente de Depósito' },
   { id: 'c24', setor_nome: 'Depósito', nome: 'Repositor de Depósito' },
   { id: 'c25', setor_nome: 'ADM', nome: 'Auxiliar Administrativo' },
-  { id: 'c26', setor_nome: 'ADM', nome: 'Gerente de Loja' }
+  { id: 'c26', setor_nome: 'ADM', nome: 'Gerente de Loja' },
+  { id: 'c27', setor_nome: 'Manutenção', nome: 'Auxiliar de TI' }
 ];
 
 export const INITIAL_FERIADOS: Feriado[] = [
