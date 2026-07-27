@@ -136,9 +136,10 @@ export class EscalaGeneratorService {
     const ePadaria = setorNome.includes('padaria');
     const eAcougue = setorNome.includes('acougue') || setorNome.includes('açougue');
     const eExcecaoDomingo = ePadaria || eAcougue;
+    const eAdmSetor = setorNome.includes('adm') || setorNome.includes('geren') || setorNome.includes('gerên');
 
-    // Mínimo automático de 6 para Frente de Caixa
-    const minEfetivo = eFrenteDeCaixa ? Math.max(config.minFuncionariosPorDia ?? 2, 6) : (config.minFuncionariosPorDia ?? 2);
+    // Mínimo automático de 6 para Frente de Caixa e 1 para ADM
+    const minEfetivo = eFrenteDeCaixa ? Math.max(config.minFuncionariosPorDia ?? 2, 6) : (eAdmSetor ? 1 : (config.minFuncionariosPorDia ?? 2));
 
     // Dividir os funcionários em turmas escalonadas (Cohortes)
     // Isso evita que todos entrem em folga no mesmo domingo ou dia útil.
@@ -270,10 +271,11 @@ export class EscalaGeneratorService {
             deveFolgar = (dIdx % 3 === (idx % 3));
           }
         } else {
-          // REGRA GERAL UNIFICADA (Frente de Caixa, Reposição, Depósito, Hortifrúti, etc.):
-          // Mulheres: Revezamento 1T:1F (CLT Art. 386). Homens: Revezamento 1T:2F (Convenção Coletiva).
+          // REGRA GERAL UNIFICADA (Frente de Caixa, Reposição, Depósito, Hortifrúti, ADM, etc.):
+          // Mulheres: Revezamento 1T:1F alternado (CLT Art. 386). Homens: Revezamento 1T:2F (Convenção Coletiva).
+          const femaleIndex = funcionarios.filter((f, i) => f.genero === 'F' && i < idx).length;
           const ratio = souFeminino ? 2 : 3;
-          const turmaDom = idx % ratio;
+          const turmaDom = souFeminino ? (femaleIndex % 2) : (idx % ratio);
           deveFolgar = (dIdx % ratio !== turmaDom);
         }
 
@@ -434,9 +436,25 @@ export class EscalaGeneratorService {
     }
     this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes, feriadosAbertos);
     this._ajustarCoberturaMinima(itens, totalDias, minEfetivo, ano, mes, feriadosAbertos, config.minFuncionariosFeriado);
-    if (ePadaria) {
-      this._ajustarCoberturaPadaria(itens, totalDias, ano, mes, feriadosAbertos, feriadosFechados);
-    }
+    // Garantia de Cobertura Mínima no Domingo (Evita Domingo Zerado sem violar CLT)
+    domingos.forEach(dDom => {
+      if (!feriadosFechados.has(dDom) && itens.length > 1) {
+        const trabDom = itens.filter(i => i.dias[dDom] === 'TD' || i.dias[dDom] === 'TF' || i.dias[dDom] === 'T').length;
+        if (trabDom === 0) {
+          for (const item of itens) {
+            const domAntTrab = (dDom > 7) && (item.dias[dDom - 7] === 'TD' || item.dias[dDom - 7] === 'TF');
+            const domProxTrab = (dDom <= totalDias - 7) && (item.dias[dDom + 7] === 'TD' || item.dias[dDom + 7] === 'TF');
+            const podeTrabalharDom = (item.genero === 'F') ? !domAntTrab : (!domAntTrab && !domProxTrab);
+
+            if (podeTrabalharDom) {
+              item.dias[dDom] = feriadosAbertos.has(dDom) ? 'TF' : 'TD';
+              break;
+            }
+          }
+        }
+      }
+    });
+    this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes, feriadosAbertos);
 
     return itens;
   }
@@ -687,8 +705,8 @@ export class EscalaGeneratorService {
             const setorClean = (item.setor || '').toLowerCase();
             const eFrenteDeCaixa = setorClean.includes('caixa') && !setorClean.includes('fiscal');
 
-            // Se for domingo no Frente de Caixa, preserva o trabalho do Domingo e aloca a folga em um dia útil no meio do bloco
-            if (isDom && eFrenteDeCaixa) {
+            // Se for domingo, preserva o trabalho do Domingo e aloca a folga em um dia útil no meio do bloco
+            if (isDom) {
               let diaFolgaMeio = dia - 3;
               if (diaFolgaMeio >= 1 && (item.dias[diaFolgaMeio] === 'T' || item.dias[diaFolgaMeio] === 'TF')) {
                 item.dias[diaFolgaMeio] = 'F';
@@ -746,10 +764,11 @@ export class EscalaGeneratorService {
       const eFrenteDeCaixaGlobal = setorCleanGlobal.includes('caixa') && !setorCleanGlobal.includes('fiscal');
       const ePadariaGlobal = setorCleanGlobal.includes('padaria');
       const eFiscalGlobal = setorCleanGlobal.includes('fiscal');
+      const eAdmGlobal = setorCleanGlobal.includes('adm') || setorCleanGlobal.includes('geren') || setorCleanGlobal.includes('gerên');
 
       const minExigidoDia = eFeriadoAberto
         ? (minFeriado !== undefined ? minFeriado : (eFrenteDeCaixaGlobal ? Math.max(minPorDia, 6) : ((ePadariaGlobal || eFiscalGlobal) ? Math.max(minPorDia, 2) : Math.max(1, Math.floor(minPorDia / 2)))))
-        : minPorDia;
+        : (eAdmGlobal ? 1 : minPorDia);
 
       const trabalhando = itens.filter(i => i.dias[dia] === 'T' || i.dias[dia] === 'TD' || i.dias[dia] === 'TF');
       
@@ -814,8 +833,20 @@ export class EscalaGeneratorService {
             }
 
             if (!compensou) {
-              // Se não pôde compensar sem ferir a cobertura de outro dia, reverte a alteração
-              item.dias[dia] = isDomingo ? 'FD' : 'F';
+              if (trabalhando.length === 0) {
+                for (let dAlt = 1; dAlt <= totalDias; dAlt++) {
+                  if (dAlt !== dia && (item.dias[dAlt] === 'T' || item.dias[dAlt] === 'TF')) {
+                    const trabAlt = itens.filter(i => i.dias[dAlt] === 'T' || i.dias[dAlt] === 'TD' || i.dias[dAlt] === 'TF').length;
+                    const diaAltIsDom = (new Date(ano, mes - 1, dAlt).getDay() === 0);
+                    if (trabAlt > 1 && !diaAltIsDom) {
+                      item.dias[dAlt] = 'F';
+                      break;
+                    }
+                  }
+                }
+              } else {
+                item.dias[dia] = isDomingo ? 'FD' : 'F';
+              }
             } else {
               // Recalcula maxConsec após a compensação
               let maxConsecAfter = 0;
@@ -895,11 +926,12 @@ export class EscalaGeneratorService {
     const setorNomeClean = setorNomeOriginal.toLowerCase();
     const eFrenteDeCaixa = setorNomeClean.includes('caixa') && !setorNomeClean.includes('fiscal');
     const eFiscalDeCaixa = setorNomeClean.includes('fiscal');
+    const eAdm = setorNomeClean.includes('adm') || setorNomeClean.includes('geren') || setorNomeClean.includes('gerên');
     const ePadaria = setorNomeClean.includes('padaria');
     const eAcougue = setorNomeClean.includes('acougue') || setorNomeClean.includes('açougue');
     const eExcecaoDomingo = ePadaria || eAcougue;
 
-    const minEfetivoValida = eFrenteDeCaixa ? Math.max(minRequerido, 6) : minRequerido;
+    const minEfetivoValida = eFrenteDeCaixa ? Math.max(minRequerido, 6) : (eAdm ? 1 : minRequerido);
 
     for (let dia = 1; dia <= totalDias; dia++) {
       const isDomingo = (new Date(ano, mes - 1, dia).getDay() === 0);
@@ -907,7 +939,7 @@ export class EscalaGeneratorService {
       const emFolga = itens.filter(i => i.dias[dia] === 'F' || i.dias[dia] === 'FE').length;
       coberturaPorDia[dia] = emTrabalho;
 
-      const minPermitidoDia = (isDomingo && itens.length < 6 && !eFrenteDeCaixa) ? Math.max(1, Math.floor(itens.length / 3)) : minEfetivoValida;
+      const minPermitidoDia = (isDomingo && itens.length < 6 && !eFrenteDeCaixa) ? Math.max(1, Math.floor(itens.length / 3)) : (eAdm ? 1 : minEfetivoValida);
 
       if (feriadosFechadosVal.has(dia)) {
         continue; // Feriado fechado: loja fechada, cobertura zero é correta e esperada por lei.
@@ -931,7 +963,7 @@ export class EscalaGeneratorService {
         erros.push({
           dia,
           setor: setorNomeOriginal,
-          mensagem: `Dia ${dia}: Fiscal de Caixa no domingo exige EXATAMENTE 2 fiscais (1 dupla trabalhando, 2 duplas folgando). Encontrado(s): ${emTrabalho}.`,
+          mensagem: `Dia ${dia}: Fiscal de Caixa no domingo exige EXATAMENTE 2 fiscais (1 dupla trabalhando, 1 dupla folgando). Encontrado(s): ${emTrabalho}.`,
           tipo: 'ERRO_COBERTURA'
         });
       } else if (emTrabalho < minPermitidoDia && itens.length >= minEfetivoValida) {
