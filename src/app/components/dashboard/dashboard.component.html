@@ -140,7 +140,7 @@
     <header class="topbar no-print">
       <div class="topbar-left">
         <button (click)="toggleMobileMenu()" class="mobile-menu-btn" title="Abrir Menu">
-          ☰
+          <app-icon name="menu" [size]="20" color="#0b2a52"></app-icon>
         </button>
 
         <!-- Loja Ativa Tag -->
@@ -153,7 +153,8 @@
       <div class="topbar-actions">
         <!-- Botão de Opções de Impressão A4 -->
         @if (activeTab() === 'escala' || activeTab() === 'dashboard') {
-          <button (click)="openPrintOptionsModal()" class="btn-premium btn-yellow-solid">
+          <button (click)="openPrintOptionsModal()" class="btn-premium btn-yellow-solid flex-items-center-gap">
+            <app-icon name="printer" [size]="16" color="#0b2a52"></app-icon>
             <span class="no-mobile-text">Imprimir A4</span>
           </button>
         }
@@ -742,13 +743,18 @@
       @if (activeTab() === 'setores') {
         <div class="clean-card no-print">
           <div class="flex-header-between">
-            <h3>Setores e Cargos</h3>
+            <h3 class="flex-items-center-gap">
+              <app-icon name="layers" [size]="22" color="#0b2a52"></app-icon>
+              <span>Setores e Cargos</span>
+            </h3>
 
             <div class="actions-flex-gap">
-              <button (click)="openAddSetorModal()" class="btn-premium btn-primary-solid">
+              <button (click)="openAddSetorModal()" class="btn-premium btn-primary-solid flex-items-center-gap">
+                <app-icon name="plus" [size]="16" color="#ffffff"></app-icon>
                 <span>Novo Setor</span>
               </button>
-              <button (click)="openAddCargoModal()" class="btn-premium btn-yellow-solid">
+              <button (click)="openAddCargoModal()" class="btn-premium btn-yellow-solid flex-items-center-gap">
+                <app-icon name="plus" [size]="16" color="#0b2a52"></app-icon>
                 <span>Novo Cargo</span>
               </button>
             </div>
@@ -757,37 +763,42 @@
           <div class="setores-grid mt-20">
             @for (setor of setores(); track setor.id) {
               <div class="setor-card">
-                <div class="setor-card-header" [style.background-color]="getSetorColor(setor.nome)">
-                  <div>
-                    <h4 class="setor-title">{{ setor.nome }}</h4>
-                    @if (setor.descricao) {
-                      <p class="setor-desc">{{ setor.descricao }}</p>
-                    }
+                <div class="setor-card-header">
+                  <div class="setor-header-main">
+                    <span class="setor-color-pill" [style.background-color]="getSetorColor(setor.nome)"></span>
+                    <div>
+                      <h4 class="setor-title">{{ setor.nome }}</h4>
+                      @if (setor.descricao) {
+                        <p class="setor-desc">{{ setor.descricao }}</p>
+                      }
+                    </div>
                   </div>
 
                   <div class="actions-flex-gap">
-                    <button (click)="openEditSetorModal(setor)" title="Editar Setor" class="icon-btn-white">
-                      <app-icon name="pencil" [size]="14" color="#ffffff"></app-icon>
+                    <button (click)="openEditSetorModal(setor)" title="Editar Setor" class="icon-btn-sm" aria-label="Editar setor">
+                      <app-icon name="pencil" [size]="14" color="#0b2a52"></app-icon>
                     </button>
-                    <button (click)="confirmDeleteSetor(setor)" title="Excluir Setor" class="icon-btn-white danger">
-                      <app-icon name="trash" [size]="14" color="#ffffff"></app-icon>
+                    <button (click)="confirmDeleteSetor(setor)" title="Excluir Setor" class="icon-btn-sm danger" aria-label="Excluir setor">
+                      <app-icon name="trash" [size]="14" color="#ef4444"></app-icon>
                     </button>
                   </div>
                 </div>
 
                 <div class="setor-card-body">
-                  <div class="flex-between align-center mb-10 pb-10 border-bottom">
-                    <span class="text-xs font-bold color-navy">
-                      Equipe: {{ (funcionariosPorSetorMap().get(setor.nome) ?? []).length }} colaborador(es)
+                  <div class="flex-between align-center mb-12 pb-10 border-bottom">
+                    <span class="text-xs font-bold color-navy flex-items-center-gap">
+                      <app-icon name="users" [size]="14" color="#0b2a52"></app-icon>
+                      <span>Equipe: {{ (funcionariosPorSetorMap().get(setor.nome) ?? []).length }} colaborador(es)</span>
                     </span>
                     <button (click)="openSetorDetalhamentoModal(setor.nome)" class="btn-link-sm">
                       Ver Equipe Completa
                     </button>
                   </div>
 
-                  <div class="cargos-section-header">
-                    <span class="cargos-count-label">
-                      Cargos ({{ getCargosDoSetor(setor.nome).length }})
+                  <div class="cargos-section-header mb-10">
+                    <span class="cargos-count-label flex-items-center-gap">
+                      <app-icon name="briefcase" [size]="14" color="#64748b"></app-icon>
+                      <span>Cargos ({{ getCargosDoSetor(setor.nome).length }})</span>
                     </span>
                     <button (click)="openAddCargoModal(setor.nome)" class="btn-link-sm">
                       + Função
@@ -797,12 +808,15 @@
                   <div class="cargos-list">
                     @for (cargo of getCargosDoSetor(setor.nome); track cargo.id) {
                       <div class="cargo-item">
-                        <span class="cargo-name">• {{ cargo.nome }}</span>
+                        <div class="cargo-name-group">
+                          <app-icon name="briefcase" [size]="14" color="#2563eb"></app-icon>
+                          <span class="cargo-name">{{ cargo.nome }}</span>
+                        </div>
                         <div class="actions-flex-gap">
-                          <button (click)="openEditCargoModal(cargo)" title="Editar Cargo" class="icon-btn-sm">
-                            <app-icon name="pencil" [size]="14"></app-icon>
+                          <button (click)="openEditCargoModal(cargo)" title="Editar Cargo" class="icon-btn-sm" aria-label="Editar cargo">
+                            <app-icon name="pencil" [size]="14" color="#0b2a52"></app-icon>
                           </button>
-                          <button (click)="confirmDeleteCargo(cargo)" title="Excluir Cargo" class="icon-btn-sm danger">
+                          <button (click)="confirmDeleteCargo(cargo)" title="Excluir Cargo" class="icon-btn-sm danger" aria-label="Excluir cargo">
                             <app-icon name="trash" [size]="14" color="#ef4444"></app-icon>
                           </button>
                         </div>

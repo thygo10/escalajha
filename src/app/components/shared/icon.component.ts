@@ -139,6 +139,32 @@ import { CommonModule } from '@angular/common';
         <line x1="15" y1="10" x2="15.01" y2="15.01"></line>
         <path d="M10 18h4v4h-4z"></path>
       }
+
+      <!-- Menu / Hamburger -->
+      @if (name === 'menu') {
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      }
+
+      <!-- Briefcase / Cargo / Função -->
+      @if (name === 'briefcase') {
+        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+      }
+
+      <!-- Layers / Setores -->
+      @if (name === 'layers') {
+        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+        <polyline points="2 17 12 22 22 17"></polyline>
+        <polyline points="2 12 12 17 22 12"></polyline>
+      }
+
+      <!-- Tag -->
+      @if (name === 'tag') {
+        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+      }
     </svg>
   `
 })
