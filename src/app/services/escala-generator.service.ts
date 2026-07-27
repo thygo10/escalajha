@@ -314,11 +314,15 @@ export class EscalaGeneratorService {
           const diaSemanaDom = new Date(ano, mes - 1, dDom).getDay();
           if (diaSemanaDom === 0) {
             let diaFolgaAlvo: number;
+            const domAnteriorEhFolga = domingosFolgaSet.has(dDom - 7);
             if (dDom < 7) {
-              diaFolgaAlvo = dDom + 2 + (idxNoTurno % 3);
+              diaFolgaAlvo = dDom + 1 + (idxNoTurno % 3);
             } else if (ePadariaSetor) {
-              const offsetsPadaria = [-5, -4, -3, -3, -4]; // Ter, Qua, Qui, Qui, Qua
+              const offsetsPadaria = [-6, -5, -4, -3, -2, -1]; // Seg, Ter, Qua, Qui, Sex, Sáb
               diaFolgaAlvo = dDom + offsetsPadaria[idxNoTurno % offsetsPadaria.length];
+            } else if (domAnteriorEhFolga) {
+              // Se o domingo anterior foi folga, agenda a folga útil no meio/fim da semana (Qua, Qui, Sex) para evitar a folga picada no Terça (apenas 1 dia trabalhado)
+              diaFolgaAlvo = dDom - 4 + (idxNoTurno % 3);
             } else {
               diaFolgaAlvo = dDom - 5 + (idxNoTurno % 4);
             }
@@ -443,11 +447,11 @@ export class EscalaGeneratorService {
 
         const podeFolgarRotacao = !temFolgaNoDomingoDaSemana && !temFolgaGarantidaNaSemana;
 
-        // REGRA PREVENTIVA E ROTAÇÃO 6x1: Concede folga se for o dia útil garantido (Trava FD->TD) ou por trava CLT 6 dias
         const eDiaGarantido = diasFolgaUteisGarantidas.has(dia);
         const precisaFolgaCLT = (diasTrabalhadosSeguidos >= 6);
+        const diaProximoEhFolga = (dia < totalDias) && (dias[dia + 1] === 'F' || dias[dia + 1] === 'FD' || dias[dia + 1] === 'FE');
 
-        if ((eDiaGarantido || (podeFolgarRotacao && precisaFolgaCLT)) && config.diasPermitidosFolga.includes(diaSemana) && !diaAnteriorEhFolga) {
+        if ((eDiaGarantido || (podeFolgarRotacao && precisaFolgaCLT)) && config.diasPermitidosFolga.includes(diaSemana) && !diaAnteriorEhFolga && !diaProximoEhFolga) {
           dias[dia] = 'F';
           diasTrabalhadosSeguidos = 0;
           ultimaFolgaDia = dia;
@@ -503,8 +507,12 @@ export class EscalaGeneratorService {
     if (eFiscalDeCaixa) {
       domingos.forEach(dDom => {
         if (!feriadosFechados.has(dDom) && itens.length >= 2) {
-          const trabDom = itens.filter(i => i.dias[dDom] === 'TD' || i.dias[dDom] === 'TF' || i.dias[dDom] === 'T').length;
-          if (trabDom < 2) {
+          const trabDomItens = itens.filter(i => i.dias[dDom] === 'TD' || i.dias[dDom] === 'TF' || i.dias[dDom] === 'T');
+          if (trabDomItens.length > 2) {
+            for (let k = 2; k < trabDomItens.length; k++) {
+              trabDomItens[k].dias[dDom] = 'FD';
+            }
+          } else if (trabDomItens.length < 2) {
             for (const item of itens) {
               if (itens.filter(i => i.dias[dDom] === 'TD' || i.dias[dDom] === 'TF' || i.dias[dDom] === 'T').length >= 2) break;
               if (item.dias[dDom] === 'FD' || item.dias[dDom] === 'F') {
@@ -519,7 +527,28 @@ export class EscalaGeneratorService {
       });
     }
 
-    this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes, feriadosAbertos);
+    this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes, feriadosAbertos, opcoes?.historicoMesAnterior);
+    if (ePadaria) {
+      this._ajustarCoberturaPadaria(itens, totalDias, ano, mes, feriadosAbertos, feriadosFechados);
+      this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes, feriadosAbertos, opcoes?.historicoMesAnterior);
+    }
+
+    this._ajustarCoberturaHoraria(itens, totalDias, ano, mes, feriadosAbertos, feriadosFechados, opcoes?.turnosConfigs, config.minOperadoresPorHora);
+    this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes, feriadosAbertos, opcoes?.historicoMesAnterior);
+    this._sanitizarTravaCLT6Dias(itens, totalDias, ano, mes, feriadosAbertos, opcoes?.historicoMesAnterior);
+
+    if (eFiscalDeCaixa) {
+      domingos.forEach(dDom => {
+        if (!feriadosFechados.has(dDom) && itens.length >= 2) {
+          const trabDomItens = itens.filter(i => i.dias[dDom] === 'TD' || i.dias[dDom] === 'TF' || i.dias[dDom] === 'T');
+          if (trabDomItens.length > 2) {
+            for (let k = 2; k < trabDomItens.length; k++) {
+              trabDomItens[k].dias[dDom] = 'FD';
+            }
+          }
+        }
+      });
+    }
 
     return itens;
   }
@@ -535,10 +564,16 @@ export class EscalaGeneratorService {
 
     funcionarios.forEach(func => {
       const t = func.turno_padrao.toLowerCase();
-      if (t.includes('07:0') || t.includes('08:0')) {
-        grupos.get('ABERTURA')!.push(func);
-      } else if (t.includes('14:0') || t.includes('13:3') || t.includes('15:0')) {
+      // Classificação abrangente de turnos:
+      // FECHAMENTO: Turnos terminando a partir das 20:00 (ex: 21:30, 21:00, 22:00, 20:00) ou contendo os termos de fechamento
+      const eFechamento = t.includes('21:') || t.includes('22:') || t.includes('20:') ||
+                          t.includes('14:0') || t.includes('13:3') || t.includes('15:0') || t.includes('fechamento');
+      const eAbertura = t.includes('07:0') || t.includes('08:0') || t.includes('abertura');
+
+      if (eFechamento && !eAbertura) {
         grupos.get('FECHAMENTO')!.push(func);
+      } else if (eAbertura) {
+        grupos.get('ABERTURA')!.push(func);
       } else {
         grupos.get('INTERMEDIARIO')!.push(func);
       }
@@ -559,6 +594,169 @@ export class EscalaGeneratorService {
   }
 
   /**
+   * Garante cobertura horária mínima (ex: 6 operadores em Frente de Caixa em todas as faixas horárias do funcionamento).
+   */
+  private _ajustarCoberturaHoraria(
+    itens: EscalaItem[],
+    totalDias: number,
+    ano: number,
+    mes: number,
+    feriadosAbertos: Set<number>,
+    feriadosFechados: Set<number>,
+    turnosConfigs: TurnoConfig[] = [],
+    minOperadoresPorHora?: number
+  ): void {
+    if (itens.length === 0) return;
+
+    const setorCleanGlobal = (itens[0]?.setor || '').toLowerCase();
+    const eFrenteDeCaixaGlobal = setorCleanGlobal.includes('caixa') && !setorCleanGlobal.includes('fiscal');
+    const eFiscalGlobal = setorCleanGlobal.includes('fiscal');
+    if (eFiscalGlobal) return;
+
+    const minReqHoraPadrao = minOperadoresPorHora ?? (eFrenteDeCaixaGlobal ? 6 : 0);
+    if (minReqHoraPadrao <= 0) return;
+
+    const tConfigs = (turnosConfigs && turnosConfigs.length > 0) ? turnosConfigs : [
+      { id: 't1', nome: '07:00 às 15:50 (Almoço 11:00 às 12:30)', entrada: '07:00', saida: '15:50', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+      { id: 't2', nome: '09:00 às 17:50 (Almoço 13:00 às 14:30)', entrada: '09:00', saida: '17:50', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+      { id: 't3', nome: '12:40 às 21:30 (Almoço 14:20 às 15:50)', entrada: '12:40', saida: '21:30', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+      { id: 't4', nome: '12:40 às 21:30 (Almoço 15:30 às 17:00)', entrada: '12:40', saida: '21:30', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false }
+    ];
+
+    for (let outer = 0; outer < 3; outer++) {
+      for (let dia = 1; dia <= totalDias; dia++) {
+        if (feriadosFechados.has(dia)) continue;
+
+      const isDomingo = (new Date(ano, mes - 1, dia).getDay() === 0);
+      const eFeriadoAberto = feriadosAbertos.has(dia);
+
+      const horaInicio = isDomingo ? 8 : 7;
+      const horaFim = isDomingo ? 20 : 21;
+
+      const minReqDia = (eFeriadoAberto || isDomingo) ? Math.min(minReqHoraPadrao, 4) : minReqHoraPadrao;
+      if (itens.length < minReqDia) continue;
+
+      for (let iter = 0; iter < 4; iter++) {
+        const presenca = this.calcularPresencaPorFaixaHoraria(itens, tConfigs, dia);
+
+        let faixaDeficit: HorarioPresenca | undefined;
+        for (const p of presenca) {
+          const h = Number.parseInt(p.horaStr.split(':')[0], 10);
+          if (h >= horaInicio && h < horaFim && p.quantidadeTrabalhando < minReqDia) {
+            faixaDeficit = p;
+            break;
+          }
+        }
+
+        if (!faixaDeficit) break;
+
+        const hDeficit = Number.parseInt(faixaDeficit.horaStr.split(':')[0], 10);
+
+        const folgando = itens.filter(i => i.dias[dia] === 'F' || i.dias[dia] === 'FD');
+        if (folgando.length === 0) break;
+
+        const candidatos = folgando.slice().sort((a, b) => {
+          const cobreA = this._itemCobreHoraEmTrabalho(a, hDeficit, tConfigs);
+          const cobreB = this._itemCobreHoraEmTrabalho(b, hDeficit, tConfigs);
+          return (cobreB ? 1 : 0) - (cobreA ? 1 : 0);
+        });
+
+        let ajustado = false;
+        for (const cand of candidatos) {
+          if (!this._itemCobreHoraEmTrabalho(cand, hDeficit, tConfigs)) continue;
+          if (isDomingo && !this._podeTrabalharDomingo(cand, dia, totalDias)) continue;
+
+          const stOrig = cand.dias[dia];
+          const tipoTrabalho = this._getTipoTrabalho(dia, ano, mes, feriadosAbertos);
+          cand.dias[dia] = tipoTrabalho;
+
+          if (this._validarMaxConsecutivos(cand, totalDias) <= 6) {
+            ajustado = true;
+            break;
+          }
+
+          const inicioSemana = Math.max(1, dia - 5);
+          const fimSemana = Math.min(totalDias, dia + 5);
+          let compensado = false;
+
+          for (let dAlt = inicioSemana; dAlt <= fimSemana; dAlt++) {
+            if (dAlt !== dia && (cand.dias[dAlt] === 'T' || cand.dias[dAlt] === 'TF')) {
+              const dAltIsDom = (new Date(ano, mes - 1, dAlt).getDay() === 0);
+              if (dAltIsDom || feriadosFechados.has(dAlt)) continue;
+
+              const stAltOrig = cand.dias[dAlt];
+              cand.dias[dAlt] = 'F';
+
+              const presdAlt = this.calcularPresencaPorFaixaHoraria(itens, tConfigs, dAlt);
+              const inicioAlt = dAltIsDom ? 8 : 7;
+              const fimAlt = dAltIsDom ? 20 : 21;
+              const temDeficitAlt = presdAlt.some(p => {
+                const h = Number.parseInt(p.horaStr.split(':')[0], 10);
+                return h >= inicioAlt && h < fimAlt && p.quantidadeTrabalhando < minReqDia;
+              });
+
+              if (!temDeficitAlt && this._validarMaxConsecutivos(cand, totalDias) <= 6) {
+                compensado = true;
+                break;
+              } else {
+                cand.dias[dAlt] = stAltOrig;
+              }
+            }
+          }
+
+          if (compensado) {
+            ajustado = true;
+            break;
+          } else {
+            cand.dias[dia] = stOrig;
+          }
+        }
+
+        if (!ajustado) break;
+      }
+    }
+  }
+  }
+
+  private _itemCobreHoraEmTrabalho(item: EscalaItem, hora: number, turnosConfigs: TurnoConfig[]): boolean {
+    const itemSim: EscalaItem = { ...item, dias: { 1: 'T' } };
+    const pres = this.calcularPresencaPorFaixaHoraria([itemSim], turnosConfigs, 1);
+    const targetHoraStr = `${String(hora).padStart(2, '0')}:00`;
+    const f = pres.find(p => p.horaStr === targetHoraStr);
+    return (f?.quantidadeTrabalhando ?? 0) > 0;
+  }
+
+  private _validarMaxConsecutivos(item: EscalaItem, totalDias: number): number {
+    let maxConsec = 0;
+    let curConsec = 0;
+    for (let d = 1; d <= totalDias; d++) {
+      const s = item.dias[d];
+      if (s === 'T' || s === 'TD' || s === 'TF') {
+        curConsec++;
+        if (curConsec > maxConsec) maxConsec = curConsec;
+      } else {
+        curConsec = 0;
+      }
+    }
+    return maxConsec;
+  }
+
+  private _podeTrabalharDomingo(item: EscalaItem, dia: number, totalDias: number): boolean {
+    const setorClean = (item.setor || '').toLowerCase();
+    const eExcecaoSetor = setorClean.includes('açougue') || setorClean.includes('acougue') || setorClean.includes('padaria');
+    const permite2Seguidos = eExcecaoSetor && (item.genero !== 'F');
+
+    const domAnteriorTrab = (dia > 7) && (item.dias[dia - 7] === 'TD' || item.dias[dia - 7] === 'TF' || item.dias[dia - 7] === 'T');
+    const domProximoTrab = (dia <= totalDias - 7) && (item.dias[dia + 7] === 'TD' || item.dias[dia + 7] === 'TF' || item.dias[dia + 7] === 'T');
+
+    if (permite2Seguidos) {
+      return !(domAnteriorTrab && domProximoTrab);
+    } else {
+      return !(domAnteriorTrab || domProximoTrab);
+    }
+  }
+
+  /**
    * Garante que na Padaria a quantidade de folgas em dias úteis não ultrapasse a cota proporcional da equipe.
    */
   private _ajustarCoberturaPadaria(itens: EscalaItem[], totalDias: number, ano: number, mes: number, feriadosAbertos: Set<number>, feriadosFechados: Set<number>): void {
@@ -567,7 +765,7 @@ export class EscalaGeneratorService {
 
     for (let dia = 1; dia <= totalDias; dia++) {
       const isDomingo = (new Date(ano, mes - 1, dia).getDay() === 0);
-      if (isDomingo || feriadosFechados.has(dia)) continue;
+      if (isDomingo || feriadosFechados.has(dia) || feriadosAbertos.has(dia)) continue;
 
       const folgando = itens.filter(i => i.dias[dia] === 'F' || i.dias[dia] === 'FE');
       
@@ -577,9 +775,10 @@ export class EscalaGeneratorService {
           
           let diaSemFolga = -1;
           const dAlts: number[] = [];
-          for (let offset = 1; offset <= 6; offset++) {
-            if (dia - offset >= 1) dAlts.push(dia - offset);
-            if (dia + offset <= totalDias) dAlts.push(dia + offset);
+          const offsetsPrioridade = [-2, -3, -1, -4, -5, 1, 2, 3, 4, 5];
+          for (const off of offsetsPrioridade) {
+            const candidate = dia + off;
+            if (candidate >= 1 && candidate <= totalDias) dAlts.push(candidate);
           }
 
           for (const dAlt of dAlts) {
@@ -587,6 +786,9 @@ export class EscalaGeneratorService {
             if (dAlt !== dia && !altIsDomingo && (item.dias[dAlt] === 'T' || item.dias[dAlt] === 'TF')) {
               const folgandoNoDiaAlt = itens.filter(i => i.dias[dAlt] === 'F' || i.dias[dAlt] === 'FE').length;
               if (folgandoNoDiaAlt < maxFolgasDia) {
+                const stDiaOrig = item.dias[dia];
+                const stAltOrig = item.dias[dAlt];
+
                 // Testa se a troca preserva maxConsec <= 6
                 item.dias[dia] = this._getTipoTrabalho(dia, ano, mes, feriadosAbertos);
                 item.dias[dAlt] = 'F';
@@ -606,12 +808,47 @@ export class EscalaGeneratorService {
                   diaSemFolga = dAlt;
                   break;
                 } else {
-                  // Reverte
-                  item.dias[dia] = 'F';
-                  item.dias[dAlt] = this._getTipoTrabalho(dAlt, ano, mes, feriadosAbertos);
+                  item.dias[dia] = stDiaOrig;
+                  item.dias[dAlt] = stAltOrig;
+
+                  // Tenta um SWAP entre item (folgando no dia) e outro colaborador (trabalhando no dia e folgando em dAlt)
+                  for (const otherItem of itens) {
+                    if (otherItem.matricula !== item.matricula && (otherItem.dias[dia] === 'T' || otherItem.dias[dia] === 'TF') && otherItem.dias[dAlt] === 'F') {
+                      const stOtherDiaOrig = otherItem.dias[dia];
+                      const stOtherAltOrig = otherItem.dias[dAlt];
+
+                      item.dias[dia] = this._getTipoTrabalho(dia, ano, mes, feriadosAbertos);
+                      item.dias[dAlt] = 'F';
+                      otherItem.dias[dia] = 'F';
+                      otherItem.dias[dAlt] = this._getTipoTrabalho(dAlt, ano, mes, feriadosAbertos);
+
+                      let c1 = 0, mc1 = 0, c2 = 0, mc2 = 0;
+                      for (let d = 1; d <= totalDias; d++) {
+                        if (item.dias[d] === 'T' || item.dias[d] === 'TD' || item.dias[d] === 'TF') { c1++; if (c1 > mc1) mc1 = c1; } else c1 = 0;
+                        if (otherItem.dias[d] === 'T' || otherItem.dias[d] === 'TD' || otherItem.dias[d] === 'TF') { c2++; if (c2 > mc2) mc2 = c2; } else c2 = 0;
+                      }
+
+                      if (mc1 <= 6 && mc2 <= 6) {
+                        diaSemFolga = dAlt;
+                        break;
+                      } else {
+                        // Reverte o swap
+                        item.dias[dia] = stDiaOrig;
+                        item.dias[dAlt] = stAltOrig;
+                        otherItem.dias[dia] = stOtherDiaOrig;
+                        otherItem.dias[dAlt] = stOtherAltOrig;
+                      }
+                    }
+                  }
+                  if (diaSemFolga !== -1) break;
                 }
               }
             }
+          }
+
+          if (diaSemFolga === -1) {
+            // Se nenhuma movimentação ou swap direto respeitou maxConsec <= 6, preserva 'F' para não violar a CLT Art. 67
+            item.dias[dia] = 'F';
           }
         }
       }
@@ -627,13 +864,15 @@ export class EscalaGeneratorService {
     for (let d = 1; d <= totalDias; d++) {
       if (new Date(ano, mes - 1, d).getDay() === 0) domingosNoMes.push(d);
     }
-    const targetMax = (totalDias >= 31 || domingosNoMes.length === 5) ? 6 : 5;
+    // Em meses de 31 dias na escala 6x1, a base de folgas no mês é 5 (ou 4 para meses de 28/30 dias)
+    const targetBase = (totalDias >= 31 || domingosNoMes.length === 5) ? 5 : 4;
 
     itens.forEach(item => {
       let folgas = Object.entries(item.dias).filter(([_, st]) => st === 'F' || st === 'FD' || st === 'FE');
       const feriadosFolgaCount = folgas.filter(([dStr, st]) => st === 'FE' || (st === 'F' && feriadosAbertos.has(Number(dStr)))).length;
       const domingosFolgaCount = folgas.filter(([_, st]) => st === 'FD').length;
-      const tetoItem = targetMax + (domingosFolgaCount >= 2 ? 1 : 0) + feriadosFolgaCount;
+      // Teto dinâmico: base 5 (máx 5 em Julho), expande para até 7 em meses com feriado fechado + domingos folgados
+      const tetoItem = Math.min(7, targetBase + (domingosFolgaCount >= 2 ? (totalDias >= 31 ? 1 : 0) : 0) + feriadosFolgaCount);
 
       let loopCount = 0;
       while (folgas.length > tetoItem && loopCount < 15) {
@@ -668,7 +907,19 @@ export class EscalaGeneratorService {
                 }
               }
 
-              if (maxConsec <= 6) {
+              let temViolacaoFD = false;
+              domingosNoMes.forEach(dDom => {
+                const domAnt = dDom - 7;
+                if (domAnt >= 1 && (item.dias[domAnt] === 'FD' || item.dias[domAnt] === 'F') && (item.dias[dDom] === 'TD' || item.dias[dDom] === 'TF')) {
+                  let temFolgaEntre = false;
+                  for (let d = domAnt + 1; d < dDom; d++) {
+                    if (item.dias[d] === 'F' || item.dias[d] === 'FE' || item.dias[d] === 'FD') temFolgaEntre = true;
+                  }
+                  if (!temFolgaEntre) temViolacaoFD = true;
+                }
+              });
+
+              if (maxConsec <= 6 && !temViolacaoFD) {
                 removido = true;
                 break;
               } else {
@@ -698,6 +949,8 @@ export class EscalaGeneratorService {
                 .filter(d => d > start && d < end && item.dias[d] === 'F');
 
               if (fNoVao.length > folgasNecessarias) {
+                const backupDias = { ...item.dias };
+
                 fNoVao.forEach(d => {
                   if (!feriadosAbertos.has(d)) {
                     item.dias[d] = this._getTipoTrabalho(d, ano, mes, feriadosAbertos);
@@ -718,14 +971,19 @@ export class EscalaGeneratorService {
                     item.dias[novoDiaF] = 'F';
                   }
                 }
-                removido = true;
-                break;
+
+                if (this._validarMaxConsecutivos(item, totalDias) <= 6) {
+                  removido = true;
+                  break;
+                } else {
+                  item.dias = backupDias;
+                }
               }
             }
           }
         }
 
-        // Passagem 3: Emergência - forçar remoção de folga 'F' excedente se maxConsec <= 6
+        // Passagem 3: Emergência - remoção estritamente VÁLIDA (maxConsec <= 6 e sem violação FD->TD)
         if (!removido) {
           const fIndices = Object.keys(item.dias).map(Number).filter(d => item.dias[d] === 'F' && !feriadosAbertos.has(d));
           for (const diaRem of fIndices.reverse()) {
@@ -740,7 +998,20 @@ export class EscalaGeneratorService {
                 curConsec = 0;
               }
             }
-            if (maxConsec <= 6 || (maxConsec <= 7 && totalDias - diaRem <= 3)) {
+
+            let temViolacaoFD = false;
+            domingosNoMes.forEach(dDom => {
+              const domAnt = dDom - 7;
+              if (domAnt >= 1 && (item.dias[domAnt] === 'FD' || item.dias[domAnt] === 'F') && (item.dias[dDom] === 'TD' || item.dias[dDom] === 'TF')) {
+                let temFolgaEntre = false;
+                for (let d = domAnt + 1; d < dDom; d++) {
+                  if (item.dias[d] === 'F' || item.dias[d] === 'FE' || item.dias[d] === 'FD') temFolgaEntre = true;
+                }
+                if (!temFolgaEntre) temViolacaoFD = true;
+              }
+            });
+
+            if (maxConsec <= 6 && !temViolacaoFD) {
               removido = true;
               break;
             } else {
@@ -758,9 +1029,28 @@ export class EscalaGeneratorService {
    * Sanitização Final Inviolável da CLT Art. 67.
    * Garante matematicamente que NENHUM colaborador trabalhe mais de 6 dias consecutivos em qualquer circunstância.
    */
-  private _sanitizarTravaCLT6Dias(itens: EscalaItem[], totalDias: number, ano: number, mes: number, feriadosAbertos: Set<number>): void {
+  private _sanitizarTravaCLT6Dias(
+    itens: EscalaItem[],
+    totalDias: number,
+    ano: number,
+    mes: number,
+    feriadosAbertos: Set<number>,
+    historicoMesAnterior?: Record<string, TipoDia[]>
+  ): void {
     itens.forEach(item => {
       let consecutivos = 0;
+      if (historicoMesAnterior && historicoMesAnterior[item.matricula]) {
+        const hist = historicoMesAnterior[item.matricula];
+        for (let h = hist.length - 1; h >= 0; h--) {
+          const s = hist[h];
+          if (s === 'T' || s === 'TD' || s === 'TF') {
+            consecutivos++;
+          } else {
+            break;
+          }
+        }
+      }
+
       for (let dia = 1; dia <= totalDias; dia++) {
         const st = item.dias[dia];
         if (st === 'T' || st === 'TD' || st === 'TF') {
@@ -770,33 +1060,42 @@ export class EscalaGeneratorService {
             const setorClean = (item.setor || '').toLowerCase();
             const eFrenteDeCaixa = setorClean.includes('caixa') && !setorClean.includes('fiscal');
 
-            // Se for domingo, preserva o trabalho do Domingo e aloca a folga em um dia útil no meio do bloco
-            if (isDom) {
-              let diaFolgaMeio = dia - 3;
-              if (diaFolgaMeio >= 1 && (item.dias[diaFolgaMeio] === 'T' || item.dias[diaFolgaMeio] === 'TF')) {
+            // Tenta alocar a folga no meio do bloco (dia - 3 ou dia - 2) para preservar trabalho no fim do bloco e evitar acúmulo no mesmo dia
+            let diaFolgaMeio = dia - 3;
+            let diaSemanaMeio = diaFolgaMeio >= 1 ? new Date(ano, mes - 1, diaFolgaMeio).getDay() : -1;
+            if (diaFolgaMeio >= 1 && diaSemanaMeio !== 0 && (item.dias[diaFolgaMeio] === 'T' || item.dias[diaFolgaMeio] === 'TF')) {
+              item.dias[diaFolgaMeio] = 'F';
+              consecutivos = dia - diaFolgaMeio;
+            } else {
+              diaFolgaMeio = dia - 2;
+              diaSemanaMeio = diaFolgaMeio >= 1 ? new Date(ano, mes - 1, diaFolgaMeio).getDay() : -1;
+              if (diaFolgaMeio >= 1 && diaSemanaMeio !== 0 && (item.dias[diaFolgaMeio] === 'T' || item.dias[diaFolgaMeio] === 'TF')) {
                 item.dias[diaFolgaMeio] = 'F';
                 consecutivos = dia - diaFolgaMeio;
-                continue;
+              } else {
+                item.dias[dia] = isDom ? 'FD' : 'F';
+                consecutivos = 0;
               }
             }
-
-            item.dias[dia] = isDom ? 'FD' : 'F';
-            consecutivos = 0;
 
             // Se essa inserção fez o colaborador exceder o teto de folgas no mês, remove uma folga 'F' anterior/posterior
             const folgas = Object.entries(item.dias).filter(([_, s]) => s === 'F' || s === 'FD' || s === 'FE');
             const domingosNoMesCount = Array.from({ length: totalDias }, (_, i) => i + 1).filter(d => new Date(ano, mes - 1, d).getDay() === 0).length;
             const domingosFolgaCount = folgas.filter(([_, s]) => s === 'FD').length;
             const feriadosFolgaCount = folgas.filter(([dStr, s]) => s === 'FE' || (s === 'F' && feriadosAbertos.has(Number(dStr)))).length;
-            const targetBase = (totalDias >= 31 || domingosNoMesCount === 5) ? 6 : 5;
-            const tetoSanitizar = targetBase + (domingosFolgaCount >= 2 ? 1 : 0) + feriadosFolgaCount;
+            const targetBase = (totalDias >= 31 || domingosNoMesCount === 5) ? 5 : 4;
+            const tetoSanitizar = Math.min(7, targetBase + (domingosFolgaCount >= 2 ? (totalDias >= 31 ? 1 : 0) : 0) + feriadosFolgaCount);
 
             if (folgas.length > tetoSanitizar) {
               for (const [fDiaStr, fSt] of folgas) {
                 const fDia = Number(fDiaStr);
-                if (fSt === 'F' && fDia !== dia && !feriadosAbertos.has(fDia)) {
+                if (fSt === 'F' && fDia !== dia && fDia !== diaFolgaMeio && !feriadosAbertos.has(fDia)) {
                   item.dias[fDia] = this._getTipoTrabalho(fDia, ano, mes, feriadosAbertos);
-                  break;
+                  if (this._validarMaxConsecutivos(item, totalDias) <= 6) {
+                    break;
+                  } else {
+                    item.dias[fDia] = 'F';
+                  }
                 }
               }
             }
@@ -1044,23 +1343,34 @@ export class EscalaGeneratorService {
 
       // Regra Padaria: Folgas em dias úteis na Produção limitadas à cota da equipe
       const maxFolgasPadariaPermitido = Math.max(1, Math.ceil(itens.length / 6));
-      if (ePadaria && !isDomingo && !feriadosFechadosVal.has(dia) && emFolga > maxFolgasPadariaPermitido && itens.length > 1) {
-        erros.push({
-          dia,
-          setor: setorNomeOriginal,
-          mensagem: `Dia ${dia}: Padaria possui ${emFolga} colaboradores de folga. Permitido no máximo ${maxFolgasPadariaPermitido} pessoa(s) de folga por dia na produção.`,
-          tipo: 'ERRO_PADARIA_PRODUCAO'
-        });
+      if (ePadaria && !isDomingo && !feriadosFechadosVal.has(dia) && !feriadosAbertos.has(dia) && emFolga > maxFolgasPadariaPermitido && itens.length > 1) {
+        const folgasInviolaveis = itens.filter(i => {
+          if (i.dias[dia] !== 'F') return false;
+          const itemCopy = { ...i, dias: { ...i.dias, [dia]: 'T' } };
+          return this._validarMaxConsecutivos(itemCopy, totalDias) > 6;
+        }).length;
+
+        if (emFolga - folgasInviolaveis > maxFolgasPadariaPermitido) {
+          erros.push({
+            dia,
+            setor: setorNomeOriginal,
+            mensagem: `Dia ${dia}: Padaria possui ${emFolga} colaboradores de folga (${folgasInviolaveis} por trava CLT). Permitido no máximo ${maxFolgasPadariaPermitido} pessoa(s) de folga por dia na produção.`,
+            tipo: 'ERRO_PADARIA_PRODUCAO'
+          });
+        }
       }
 
-      // Regra de Cobertura Horária por Faixa (07:00 às 21:00)
+      // Regra de Cobertura Horária por Faixa (07:00 às 21:00 em dias úteis / 08:00 às 20:00 aos domingos)
       if (!feriadosFechadosVal.has(dia) && itens.length >= 2 && turnosConfigs.length > 0) {
         const curva = this.calcularPresencaPorFaixaHoraria(itens, turnosConfigs, dia);
-        const minReqHora = eFrenteDeCaixa ? 2 : (itens.length >= 4 ? 1 : 0);
-        if (minReqHora > 0) {
+        if (eFrenteDeCaixa) {
+          const hIni = isDomingo ? 8 : 7;
+          const hFim = isDomingo ? 20 : 21;
           for (const faixa of curva) {
             const hNum = Number.parseInt(faixa.horaStr.split(':')[0], 10);
-            if (hNum >= 7 && hNum <= 21) {
+            if (hNum >= hIni && hNum < hFim) {
+              const isJanelaAberturaOuAlmoco = hNum < 9 || hNum === 11 || hNum === 12;
+              const minReqHora = (isDomingo || feriadosAbertos.has(dia)) ? 1 : (isJanelaAberturaOuAlmoco ? 5 : 6);
               if (faixa.quantidadeTrabalhando < minReqHora) {
                 erros.push({
                   dia,
@@ -1226,7 +1536,7 @@ export class EscalaGeneratorService {
 
       // Checagem de limite mensal de folgas (respeitando o mínimo legal do calendário e rotação)
       const domingosFolgaCount = Object.values(item.dias).filter(st => st === 'FD').length;
-      const feriadosFolgaCount = Object.entries(item.dias).filter(([dStr, st]) => st === 'FE' || (st === 'F' && feriadosAbertos.has(Number(dStr)))).length;
+      const feriadosFolgaCount = Object.entries(item.dias).filter(([dStr, st]) => st === 'FE' || (st === 'F' && feriadosAbertos.has(Number(dStr))) || st === 'TF').length;
       const targetMaxVal = (totalDias >= 31 || domingosNoMesVal.length === 5) ? 6 : 5;
       const maxPermitidoItem = targetMaxVal + (domingosFolgaCount >= 2 ? 1 : 0) + feriadosFolgaCount;
 
@@ -1491,6 +1801,22 @@ export class EscalaGeneratorService {
       }
     }
     return { entradaMin, saidaMin };
+  }
+
+  /**
+   * Extrai os últimos 7 dias da escala de um mês para servir de entrada no parâmetro historicoMesAnterior ao gerar o mês seguinte.
+   */
+  extrairHistoricoMesAnterior(itens: EscalaItem[]): Record<string, TipoDia[]> {
+    const res: Record<string, TipoDia[]> = {};
+    if (!itens) return res;
+    itens.forEach(item => {
+      if (item.matricula && item.dias) {
+        const diasKeys = Object.keys(item.dias).map(Number).sort((a, b) => a - b);
+        const ultimosDias = diasKeys.slice(-7).map(d => item.dias[d]);
+        res[item.matricula] = ultimosDias;
+      }
+    });
+    return res;
   }
 }
 
