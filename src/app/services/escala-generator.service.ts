@@ -12,6 +12,7 @@ export interface OpcionesGeracaoEscala {
   estadosTransicao?: Map<string, EstadoTransicao>;
   afastamentos?: EventoAfastamento[];
   regrasConformidade?: RegraConformidade[];
+  historicoMesAnterior?: Record<string, TipoDia[]>;
 }
 
 
@@ -243,8 +244,22 @@ export class EscalaGeneratorService {
       // Offset da turma para rotação semanal (0 a 5)
       const turmaOffset = idx % 6;
       const diff = (turmaOffset - turmaDia1 + 6) % 6;
-      // Inicialização limpa da contagem de dias trabalhados
+
+      // Inicialização da contagem de dias trabalhados seguidos a partir do histórico do mês anterior
       let diasTrabalhadosSeguidos = 0;
+      if (opcoes?.historicoMesAnterior && opcoes.historicoMesAnterior[func.matricula_aleatoria]) {
+        const histAnt = opcoes.historicoMesAnterior[func.matricula_aleatoria];
+        for (let hIdx = histAnt.length - 1; hIdx >= 0; hIdx--) {
+          const sAnt = histAnt[hIdx];
+          if (sAnt === 'T' || sAnt === 'TD' || sAnt === 'TF') {
+            diasTrabalhadosSeguidos++;
+          } else {
+            break;
+          }
+        }
+      }
+
+      const maxDiasConsecutivosPermitidos = config.modeloEscala === '5x1' ? 5 : 6;
 
       // Determina qual par de domingos esta pessoa folga (ex: Domingos ímpares 1 e 3 vs pares 2 e 4)
       const folgaDomingoImpar = (idx % 2 === 0);
@@ -323,11 +338,39 @@ export class EscalaGeneratorService {
         }
       });
 
+      // Pré-calcular mapa de afastamentos e férias para este funcionário
+      const afastamentosFuncMap = new Map<number, TipoDia>();
+      if (opcoes?.afastamentos) {
+        opcoes.afastamentos.forEach(af => {
+          if (af.matricula === func.matricula_aleatoria) {
+            const [sY, sM, sD] = af.data_inicio.split('-').map(Number);
+            const [eY, eM, eD] = af.data_fim.split('-').map(Number);
+            const dInicio = new Date(sY, sM - 1, sD);
+            const dFim = new Date(eY, eM - 1, eD);
+
+            for (let d = 1; d <= totalDias; d++) {
+              const curDate = new Date(ano, mes - 1, d);
+              if (curDate >= dInicio && curDate <= dFim) {
+                afastamentosFuncMap.set(d, af.tipo === 'FERIAS' ? 'FR' : 'AF');
+              }
+            }
+          }
+        });
+      }
+
       for (let dia = 1; dia <= totalDias; dia++) {
         const dateObj = new Date(ano, mes - 1, dia);
         const diaSemana = dateObj.getDay();
         const isDomingo = diaSemana === 0;
-        const diaAnteriorEhFolga = (dia > 1) && (dias[dia - 1] === 'F' || dias[dia - 1] === 'FD' || dias[dia - 1] === 'FE');
+        const diaAnteriorEhFolga = (dia > 1) && (dias[dia - 1] === 'F' || dias[dia - 1] === 'FD' || dias[dia - 1] === 'FE' || dias[dia - 1] === 'AF' || dias[dia - 1] === 'FR');
+
+        // REGRA 0.0: Afastamento ou Férias do Colaborador
+        if (afastamentosFuncMap.has(dia)) {
+          dias[dia] = afastamentosFuncMap.get(dia)!;
+          diasTrabalhadosSeguidos = 0;
+          ultimaFolgaDia = dia;
+          continue;
+        }
 
         // REGRA 0: Feriado Fechado
         if (feriadosFechados.has(dia)) {
@@ -364,8 +407,8 @@ export class EscalaGeneratorService {
           continue;
         }
 
-        // REGRA 1: Trava CLT de 6 dias consecutivos máximo
-        if (diasTrabalhadosSeguidos >= 6) {
+        // REGRA 1: Trava CLT/CCT de dias consecutivos máximo (6 para 6x1 ou 5 para 5x1)
+        if (diasTrabalhadosSeguidos >= maxDiasConsecutivosPermitidos) {
           if (!diaAnteriorEhFolga) {
             dias[dia] = isDomingo ? 'FD' : 'F';
             diasTrabalhadosSeguidos = 0;
@@ -920,7 +963,8 @@ export class EscalaGeneratorService {
     mes: number,
     minRequerido: number = 2,
     turnosConfigs: TurnoConfig[] = [],
-    feriados: Feriado[] = []
+    feriados: Feriado[] = [],
+    historicoMesAnterior?: Record<string, TipoDia[]>
   ): ValidacaoEscalaResultado {
     const totalDias = new Date(ano, mes, 0).getDate();
     const erros: ValidacaoItem[] = [];
@@ -959,7 +1003,7 @@ export class EscalaGeneratorService {
     for (let dia = 1; dia <= totalDias; dia++) {
       const isDomingo = (new Date(ano, mes - 1, dia).getDay() === 0);
       const emTrabalho = itens.filter(i => i.dias[dia] === 'T' || i.dias[dia] === 'TD' || i.dias[dia] === 'TF').length;
-      const emFolga = itens.filter(i => i.dias[dia] === 'F' || i.dias[dia] === 'FE').length;
+      const emFolga = itens.filter(i => i.dias[dia] === 'F' || i.dias[dia] === 'FE' || i.dias[dia] === 'AF' || i.dias[dia] === 'FR').length;
       coberturaPorDia[dia] = emTrabalho;
 
       const minPermitidoDia = (isDomingo && itens.length < 6 && !eFrenteDeCaixa) ? Math.max(1, Math.floor(itens.length / 3)) : (eAdm ? 1 : minEfetivoValida);
@@ -1035,6 +1079,18 @@ export class EscalaGeneratorService {
     // Validação de regras CLT e limite de folgas por funcionário
     itens.forEach(item => {
       let consecutivos = 0;
+      if (historicoMesAnterior && historicoMesAnterior[item.matricula]) {
+        const histAnt = historicoMesAnterior[item.matricula];
+        for (let hIdx = histAnt.length - 1; hIdx >= 0; hIdx--) {
+          const sAnt = histAnt[hIdx];
+          if (sAnt === 'T' || sAnt === 'TD' || sAnt === 'TF') {
+            consecutivos++;
+          } else {
+            break;
+          }
+        }
+      }
+
       let domingosSeguidosFeminino = 0;
       let domingosSeguidosGeral = 0;
       let totalFolgasNoMes = 0;
@@ -1043,7 +1099,7 @@ export class EscalaGeneratorService {
         const st = item.dias[dia];
         const isDom = new Date(ano, mes - 1, dia).getDay() === 0;
 
-        if (st === 'F' || st === 'FD' || st === 'FE') {
+        if (st === 'F' || st === 'FD' || st === 'FE' || st === 'AF' || st === 'FR') {
           totalFolgasNoMes++;
         }
 
@@ -1101,6 +1157,29 @@ export class EscalaGeneratorService {
           if (isDom) {
             domingosSeguidosFeminino = 0;
             domingosSeguidosGeral = 0;
+          }
+        }
+      }
+
+      // Validação de Interjornada de 11 Horas (CLT Art. 66)
+      for (let dia = 1; dia < totalDias; dia++) {
+        const stHoje = item.dias[dia];
+        const stAmanha = item.dias[dia + 1];
+        const ehTrabHoje = stHoje === 'T' || stHoje === 'TD' || stHoje === 'TF';
+        const ehTrabAmanha = stAmanha === 'T' || stAmanha === 'TD' || stAmanha === 'TF';
+
+        if (ehTrabHoje && ehTrabAmanha) {
+          const tHoje = this._getMinutosEntradaSaida(item, turnosConfigs);
+          const tAmanha = this._getMinutosEntradaSaida(item, turnosConfigs);
+          const descansoMin = (24 * 60 - tHoje.saidaMin) + tAmanha.entradaMin;
+
+          if (descansoMin < 11 * 60) {
+            erros.push({
+              dia: dia + 1,
+              setor: item.setor,
+              mensagem: `${item.nome}: Intervalo interjornada entre o dia ${dia} e o dia ${dia + 1} foi de apenas ${(descansoMin / 60).toFixed(1)}h. Mínimo legal exigido (CLT Art. 66): 11h.`,
+              tipo: 'ERRO_CLT_INTERJORNADA_11H'
+            });
           }
         }
       }
@@ -1388,6 +1467,30 @@ export class EscalaGeneratorService {
         alertas
       };
     });
+  }
+
+  private _getMinutosEntradaSaida(item: EscalaItem, turnosConfigs: TurnoConfig[]): { entradaMin: number; saidaMin: number } {
+    let entradaMin = 8 * 60;
+    let saidaMin = 16 * 60 + 20;
+
+    const turnoConf = turnosConfigs.find(tc => tc.nome === item.turno);
+    if (turnoConf) {
+      const [hE, mE] = turnoConf.entrada.split(':').map(Number);
+      const [hS, mS] = turnoConf.saida.split(':').map(Number);
+      entradaMin = hE * 60 + (mE || 0);
+      saidaMin = hS * 60 + (mS || 0);
+      if (saidaMin < entradaMin) saidaMin += 24 * 60;
+    } else if (item.turno) {
+      const matchHoras = item.turno.match(/(\d{2}:\d{2})\s+às\s+(\d{2}:\d{2})/);
+      if (matchHoras) {
+        const [hE, mE] = matchHoras[1].split(':').map(Number);
+        const [hS, mS] = matchHoras[2].split(':').map(Number);
+        entradaMin = hE * 60 + (mE || 0);
+        saidaMin = hS * 60 + (mS || 0);
+        if (saidaMin < entradaMin) saidaMin += 24 * 60;
+      }
+    }
+    return { entradaMin, saidaMin };
   }
 }
 

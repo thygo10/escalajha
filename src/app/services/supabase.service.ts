@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
-import { Loja, Funcionario, Escala, Setor, Cargo, Feriado, RegraEscala } from '../models/types';
+import { Loja, Funcionario, Escala, Setor, Cargo, Feriado, RegraEscala, SaveEscalaResult } from '../models/types';
 import { environment } from '../../environments/environment';
 import {
   INITIAL_FUNCIONARIOS,
@@ -416,13 +416,17 @@ export class SupabaseService {
     return null;
   }
 
-  async saveEscala(escala: Escala): Promise<Escala> {
+  async saveEscala(escala: Escala): Promise<SaveEscalaResult> {
     const storageKey = `jh_escala_${escala.loja_id}_${escala.mes_referencia}_${escala.setor}`;
+    let savedLocal = false;
+    let localError: string | undefined;
 
-    // 1. Sempre persiste no localStorage imediatamente para garantir que o usuário NUNCA perca os dados
+    // 1. Sempre tenta persistir no localStorage imediatamente para garantir cópia local
     try {
       localStorage.setItem(storageKey, JSON.stringify(escala));
-    } catch (e) {
+      savedLocal = true;
+    } catch (e: any) {
+      localError = e?.message || 'Erro ao gravar no localStorage';
       console.error('Erro ao salvar no localStorage:', e);
     }
 
@@ -441,15 +445,63 @@ export class SupabaseService {
         .single();
 
       if (error) {
-        console.warn('Aviso do Supabase ao salvar escala (armazenado localmente):', error.message);
-      } else if (data) {
-        return data as Escala;
+        console.warn('Aviso do Supabase ao salvar escala:', error.message);
+        if (!savedLocal) {
+          return {
+            ok: false,
+            persistedRemotely: false,
+            source: 'supabase',
+            pendingSync: true,
+            error: `Erro ao salvar no Supabase (${error.message}) e no armazenamento local (${localError}).`
+          };
+        }
+        return {
+          ok: true,
+          persistedRemotely: false,
+          source: 'local',
+          pendingSync: true,
+          error: error.message,
+          data: escala
+        };
+      }
+
+      if (data) {
+        return {
+          ok: true,
+          persistedRemotely: true,
+          source: 'supabase',
+          pendingSync: false,
+          data: data as Escala
+        };
       }
     } catch (err: any) {
-      console.warn('Erro ao salvar escala no Supabase (armazenado localmente):', err);
+      console.warn('Exceção ao salvar escala no Supabase:', err);
+      if (!savedLocal) {
+        return {
+          ok: false,
+          persistedRemotely: false,
+          source: 'supabase',
+          pendingSync: true,
+          error: `Falha de conexão com Supabase e falha local (${localError}).`
+        };
+      }
+      return {
+        ok: true,
+        persistedRemotely: false,
+        source: 'local',
+        pendingSync: true,
+        error: err?.message || 'Erro de conexão',
+        data: escala
+      };
     }
 
-    return escala;
+    return {
+      ok: savedLocal,
+      persistedRemotely: false,
+      source: 'local',
+      pendingSync: true,
+      data: escala
+    };
   }
 
   // Feriados CRUD 100% via Supabase

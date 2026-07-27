@@ -357,6 +357,71 @@ export function runEscalaGeneratorSpec(): void {
   }
   console.log('  ✅ Cobertura horária do Dia 2 e de todos os dias do ano validada sem qualquer faixa horária desamparada.\n');
 
+  // --------------------------------------------------------------------------
+  // SUÍTE 12: FASE 2 — MODELO 5x1, INTERJORNADA 11H, VIRADA DE MÊS E AFASTAMENTOS (AF/FR)
+  // --------------------------------------------------------------------------
+  console.log('▶️  SUÍTE 12: Auditoria de Recursos Avançados Fase 2 (5x1, Interjornada 11h, Virada de Mês, AF/FR)');
+
+  // 12.1 Teste do Modelo 5x1
+  const itens5x1 = service.gerarEscalaMensal(funcsCaixa, 2026, 8, {
+    modeloEscala: '5x1',
+    feriados: INITIAL_FERIADOS
+  });
+  assert.strictEqual(itens5x1.length > 0, true, 'Deve gerar escala modelo 5x1');
+  const val5x1 = service.validarEscala(itens5x1, 2026, 8, 2, [], INITIAL_FERIADOS);
+  assert.strictEqual(val5x1.valida, true, 'Escala 5x1 deve passar na validação sem erros de regra');
+
+  // 12.2 Teste de Virada de Mês (Continuidade entre Julho e Agosto)
+  const histJulho6: Record<string, any> = {};
+  funcsCaixa.forEach(f => {
+    histJulho6[f.matricula_aleatoria] = ['T', 'T', 'T', 'T', 'T', 'T'];
+  });
+  const itensAgostoContinuo = service.gerarEscalaMensal(funcsCaixa, 2026, 8, {
+    feriados: INITIAL_FERIADOS,
+    historicoMesAnterior: histJulho6
+  });
+  const funcItem1 = itensAgostoContinuo[0];
+  assert.strictEqual(funcItem1.dias[1] === 'F' || funcItem1.dias[1] === 'FD' || funcItem1.dias[1] === 'FE', true, 'Dia 1 de Agosto DEVE ser folga devido aos 6 dias trabalhados no fim de Julho');
+
+  // 12.3 Teste de Interjornada 11h
+  const turnosConflitantes = [
+    { id: 't1', nome: 'Fechamento Excedente', entrada: '07:00', saida: '22:00', cargaHorariaLiquidaMinutos: 840, intervaloMinutos: 60 }
+  ];
+  const mockEscalaInterjornada = [
+    {
+      matricula: '111111',
+      nome: 'Teste Interjornada',
+      setor: 'Frente de Caixa',
+      turno: 'Fechamento Excedente',
+      genero: 'M' as const,
+      dias: { 1: 'T' as const, 2: 'T' as const } as Record<number, any>
+    }
+  ];
+  const valInter = service.validarEscala(mockEscalaInterjornada, 2026, 8, 1, turnosConflitantes, []);
+  const erroInter = valInter.itensValidados.find(e => e.tipo === 'ERRO_CLT_INTERJORNADA_11H');
+  assert.strictEqual(erroInter !== undefined, true, 'Deve detectar violação de Interjornada de 11h (22h -> 07h = 9h descanso)');
+
+  // 12.4 Teste de Afastamento / Férias (AF e FR)
+  const afastamentosMock = [
+    {
+      id: 'af1',
+      funcionario_id: funcsCaixa[0].id || 'f1',
+      matricula: funcsCaixa[0].matricula_aleatoria,
+      tipo: 'FERIAS' as const,
+      data_inicio: '2026-08-01',
+      data_fim: '2026-08-10'
+    }
+  ];
+  const itensComFerias = service.gerarEscalaMensal(funcsCaixa, 2026, 8, {
+    feriados: INITIAL_FERIADOS,
+    afastamentos: afastamentosMock
+  });
+  const funcFerias = itensComFerias.find(i => i.matricula === funcsCaixa[0].matricula_aleatoria);
+  assert.strictEqual(funcFerias?.dias[1], 'FR', 'Dia 1 do funcionário de férias deve ser marcado como FR');
+  assert.strictEqual(funcFerias?.dias[10], 'FR', 'Dia 10 do funcionário de férias deve ser marcado como FR');
+
+  console.log('  ✅ Recursos avançados da Fase 2 (5x1, Interjornada 11h, Virada de Mês e Férias/AF) validados com sucesso!\n');
+
   console.log('===============================================================');
   console.log('🎉 BATERIA COMPLETA DE TESTES CONCLUÍDA COM SUCESSO ABSOLUTO!');
   console.log('===============================================================');

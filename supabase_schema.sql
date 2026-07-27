@@ -60,10 +60,14 @@ create table if not exists public.funcionarios (
   cargo text not null,
   turno_padrao text default '08:00 às 16:20',
   genero text default 'F' check (genero in ('M', 'F', 'OUTRO')),
+  setores_cobertura text[] default '{}', -- Cobertura de folga / função multisetor
   ativo boolean default true not null, -- Exclusão Lógica para conformidade CLT/LGPD
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- MIGRATION: Garantir coluna setores_cobertura em tabelas existentes
+ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS setores_cobertura text[] DEFAULT '{}';
 
 -- Trigger de Atualização Automática do campo updated_at
 create or replace function public.update_updated_at_column()
@@ -229,8 +233,9 @@ create policy "funcionarios_update_policy" on public.funcionarios
   with check (public.user_has_loja_access(loja_id));
 
 drop policy if exists "funcionarios_delete_policy" on public.funcionarios;
+-- Hard delete revogado para proteger histórico trabalhista e fiscal da escala. Usar UPDATE com ativo = false.
 create policy "funcionarios_delete_policy" on public.funcionarios
-  for delete using (public.user_has_loja_access(loja_id));
+  for delete using (false);
 
 -- RLS: Escalas
 drop policy if exists "escalas_select_policy" on public.escalas;

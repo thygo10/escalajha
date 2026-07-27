@@ -1567,11 +1567,11 @@
               <div class="form-group mb-15">
                 <label for="guiadaModeloSelect" class="font-bold color-navy">Modelo de Jornada de Trabalho:</label>
                 <select id="guiadaModeloSelect" [ngModel]="guiadaModeloEscala()" (ngModelChange)="guiadaModeloEscala.set($event)" class="form-control">
-                  <option value="6x1">Escala 6x1 (6 dias de trabalho por 1 de folga — Giratória Semanal)</option>
-                  <option value="5x1">Escala 5x1 (5 dias de trabalho por 1 de folga — Ciclo Contínuo de 6 dias)</option>
+                  <option value="6x1">Escala 6x1 (Padrão CCT — 6 dias de trabalho por 1 de folga)</option>
+                  <option value="5x1">Escala 5x1 (Ciclo Contínuo — 5 dias de trabalho por 1 de folga)</option>
                 </select>
                 <small class="text-muted mt-5 d-block">
-                  💡 <strong>Modelo 5x1</strong>: O colaborador trabalha 5 dias seguidos e folga no 6º dia. A folga avança 1 dia a cada semana.
+                  💡 <strong>Modelos Suportados</strong>: 6x1 (Giratória Semanal) ou 5x1 (Ciclo Contínuo 5T:1F).
                 </small>
               </div>
 

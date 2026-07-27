@@ -37,7 +37,7 @@ export interface Funcionario {
   setores_cobertura?: string[]; // Setores secundários para cobertura de folga / função multisetor
 }
 
-export type TipoDia = 'T' | 'TD' | 'TF' | 'F' | 'FD' | 'FE';
+export type TipoDia = 'T' | 'TD' | 'TF' | 'F' | 'FD' | 'FE' | 'AF' | 'FR';
 
 export interface EscalaItem {
   matricula: string;
@@ -203,3 +203,13 @@ export interface ValidacaoEscalaResultado {
   coberturaPorDia: Record<number, number>; // dia -> quantidade de pessoas trabalhando
   minimoRequerido: number;
 }
+
+export interface SaveEscalaResult {
+  ok: boolean;
+  persistedRemotely: boolean;
+  source: 'supabase' | 'local';
+  pendingSync: boolean;
+  error?: string;
+  data?: Escala;
+}
+

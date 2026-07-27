@@ -1390,6 +1390,22 @@ th.col-feriado, td.col-feriado {
   border-radius: 4px;
 }
 
+.status-afastado-simple {
+  background-color: #f3e8ff !important;
+  color: #6b21a8 !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  border-radius: 4px;
+}
+
+.status-ferias-simple {
+  background-color: #e0f2fe !important;
+  color: #075985 !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  border-radius: 4px;
+}
+
 .status-trabalho-simple {
   text-align: center !important;
   color: #94a3b8 !important;

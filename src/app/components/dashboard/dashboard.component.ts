@@ -215,7 +215,7 @@ export class DashboardComponent implements OnInit {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
     const minReq = this.minFuncionariosPorDiaSetor();
     const tConfigs = this.turnosConfigs();
-    return this.generator.validarEscala(itens, ano, mes, minReq, tConfigs);
+    return this.generator.validarEscala(itens, ano, mes, minReq, tConfigs, this.feriados());
   });
 
 
@@ -1299,9 +1299,14 @@ export class DashboardComponent implements OnInit {
     };
 
     try {
-      await this.supabase.saveEscala(escalaObj);
+      const res = await this.supabase.saveEscala(escalaObj);
 
-      // Limpa rascunho em memória pois agora está gravado no banco
+      if (!res.ok) {
+        this.toastService.error('Erro ao Salvar', res.error || 'Não foi possível salvar a escala.');
+        return;
+      }
+
+      // Limpa rascunho em memória pois agora está gravado
       const key = `${loja.id}|${this.selectedMonth}|${this.selectedSetor}`;
       this.draftEscalasMap.update((map: Map<string, EscalaItem[]>) => {
         const newMap = new Map(map);
@@ -1309,7 +1314,14 @@ export class DashboardComponent implements OnInit {
         return newMap;
       });
 
-      this.toastService.success('Salvo no Supabase!', `Escala de ${this.selectedSetor} salva com sucesso.`);
+      if (res.persistedRemotely) {
+        this.toastService.success('Salvo no Supabase!', `Escala de ${this.selectedSetor} gravada no banco de dados.`);
+      } else {
+        this.toastService.warning(
+          'Salvo Apenas no Dispositivo',
+          `Escala salva localmente. Pendente de sincronização com o banco (${res.error || 'sem conexão'}).`
+        );
+      }
     } catch (err: any) {
       this.toastService.error('Erro ao Salvar', err.message);
     } finally {
@@ -1746,12 +1758,17 @@ export class DashboardComponent implements OnInit {
 
   // BUG-L5 FIX: métodos separados para TipoDia na tabela de escala
   getDiaClassFromTipoDia(tipo: TipoDia): string {
+    if (tipo === 'AF') return 'status-afastado-simple';
+    if (tipo === 'FR') return 'status-ferias-simple';
     if (tipo === 'F' || tipo === 'FD' || tipo === 'FE') return 'status-folga-simple';
     return 'status-trabalho-simple';
   }
 
   getDiaLabelFromTipoDia(tipo: TipoDia): string {
+    if (tipo === 'AF') return 'AF';
+    if (tipo === 'FR') return 'FR';
     if (tipo === 'F' || tipo === 'FD' || tipo === 'FE') return 'F';
+    if (tipo === 'TF') return 'TF';
     return '-';
   }
 
