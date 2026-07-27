@@ -894,6 +894,7 @@ export class EscalaGeneratorService {
     const setorNomeOriginal = itens[0]?.setor || 'Setor';
     const setorNomeClean = setorNomeOriginal.toLowerCase();
     const eFrenteDeCaixa = setorNomeClean.includes('caixa') && !setorNomeClean.includes('fiscal');
+    const eFiscalDeCaixa = setorNomeClean.includes('fiscal');
     const ePadaria = setorNomeClean.includes('padaria');
     const eAcougue = setorNomeClean.includes('acougue') || setorNomeClean.includes('açougue');
     const eExcecaoDomingo = ePadaria || eAcougue;
@@ -925,6 +926,13 @@ export class EscalaGeneratorService {
           setor: setorNomeOriginal,
           mensagem: `Dia ${dia}: Frente de Caixa possui apenas ${emTrabalho} operador(es) trabalhando. Mínimo OBRIGATÓRIO: 6.`,
           tipo: 'ERRO_COBERTURA_CAIXA'
+        });
+      } else if (eFiscalDeCaixa && isDomingo && emTrabalho !== 2 && itens.length >= 2) {
+        erros.push({
+          dia,
+          setor: setorNomeOriginal,
+          mensagem: `Dia ${dia}: Fiscal de Caixa no domingo exige EXATAMENTE 2 fiscais (1 dupla trabalhando, 2 duplas folgando). Encontrado(s): ${emTrabalho}.`,
+          tipo: 'ERRO_COBERTURA'
         });
       } else if (emTrabalho < minPermitidoDia && itens.length >= minEfetivoValida) {
         erros.push({
