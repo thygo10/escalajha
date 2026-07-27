@@ -13,6 +13,7 @@ export interface OpcionesGeracaoEscala {
   afastamentos?: EventoAfastamento[];
   regrasConformidade?: RegraConformidade[];
   historicoMesAnterior?: Record<string, TipoDia[]>;
+  turnosConfigs?: TurnoConfig[];
 }
 
 
@@ -1346,7 +1347,7 @@ export class EscalaGeneratorService {
       if (ePadaria && !isDomingo && !feriadosFechadosVal.has(dia) && !feriadosAbertos.has(dia) && emFolga > maxFolgasPadariaPermitido && itens.length > 1) {
         const folgasInviolaveis = itens.filter(i => {
           if (i.dias[dia] !== 'F') return false;
-          const itemCopy = { ...i, dias: { ...i.dias, [dia]: 'T' } };
+          const itemCopy: EscalaItem = { ...i, dias: { ...i.dias, [dia]: 'T' as TipoDia } };
           return this._validarMaxConsecutivos(itemCopy, totalDias) > 6;
         }).length;
 
