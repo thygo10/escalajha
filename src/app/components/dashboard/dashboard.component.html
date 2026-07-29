@@ -175,14 +175,14 @@
         <!-- Indicadores Resumidos (KPIs limpos) -->
         @if (activeTab() === 'dashboard') {
           <div class="header-kpi-bar">
-            <div class="kpi-chip clickable" (click)="openSetorDetalhamentoModal('', 'FOLGA')" title="Clique para ver quem está de folga hoje">
+            <button type="button" class="kpi-chip clickable" (click)="openSetorDetalhamentoModal('', 'FOLGA')" title="Clique para ver quem está de folga hoje" style="border: none; font-family: inherit;">
               <span class="kpi-val">{{ folgasHojeInfo().total }}</span>
               <span class="kpi-lbl">Folgas Hoje</span>
-            </div>
-            <div class="kpi-chip clickable" (click)="openSetorDetalhamentoModal('', 'TODOS')" title="Clique para ver toda a equipe por setor">
+            </button>
+            <button type="button" class="kpi-chip clickable" (click)="openSetorDetalhamentoModal('', 'TODOS')" title="Clique para ver toda a equipe por setor" style="border: none; font-family: inherit;">
               <span class="kpi-val">{{ funcionarios().length }}</span>
               <span class="kpi-lbl">Colaboradores</span>
-            </div>
+            </button>
           </div>
         }
 
@@ -267,21 +267,21 @@
                     <div class="flex-1">
                       <div class="flex-between align-center mb-5">
                         <h4 class="setor-title">{{ setor.nome }}</h4>
-                        <span class="setor-badge-total" (click)="openSetorDetalhamentoModal(setor.nome, 'TODOS')" title="Ver equipe inteira">
+                        <button type="button" class="setor-badge-total" (click)="openSetorDetalhamentoModal(setor.nome, 'TODOS')" title="Ver equipe inteira" style="border: none; font-family: inherit;">
                           {{ getFuncionariosPorSetor(setor.nome).length }} Colaboradores
-                        </span>
+                        </button>
                       </div>
 
                       <!-- Sub-métricas do setor -->
                       <div class="setor-metrics-row mb-10">
-                        <span class="metric-chip green" (click)="openSetorDetalhamentoModal(setor.nome, 'TRABALHANDO')" title="Ver quem está trabalhando hoje">
+                        <button type="button" class="metric-chip green" (click)="openSetorDetalhamentoModal(setor.nome, 'TRABALHANDO')" title="Ver quem está trabalhando hoje" style="font-family: inherit;">
                           <span class="dot green"></span>
                           {{ getFuncionariosPorSetor(setor.nome).length - getFolgasPorSetorFiltradas(setor.nome).length }} Trabalhando
-                        </span>
-                        <span class="metric-chip blue" (click)="openSetorDetalhamentoModal(setor.nome, 'FOLGA')" title="Ver quem está de folga hoje">
+                        </button>
+                        <button type="button" class="metric-chip blue" (click)="openSetorDetalhamentoModal(setor.nome, 'FOLGA')" title="Ver quem está de folga hoje" style="font-family: inherit;">
                           <span class="dot blue"></span>
                           {{ getFolgasPorSetorFiltradas(setor.nome).length }} Folgando
-                        </span>
+                        </button>
                       </div>
 
                       <div class="cobertura-bar-wrapper" [title]="getCoberturaPercent(setor.nome) + '% da equipe presente'">
@@ -656,7 +656,7 @@
                   <option [value]="h.nome">{{ h.nome }}</option>
                 }
               </select>
-              <input id="novoTurnoInput" type="text" [(ngModel)]="novoTurno" name="novoTurno" class="form-control" placeholder="07:00 às 15:50 (Almoço 11:00 às 12:30)" required />
+              <input id="novoTurnoInput" type="text" [(ngModel)]="novoTurno" name="novoTurno" class="form-control" placeholder="07:00 às 15:50 (Almoço 11:00 às 12:30)" required aria-label="Turno Padrão Personalizado" />
             </div>
 
             <div class="form-group mb-0">
@@ -665,6 +665,25 @@
                 <option value="M">Masculino</option>
                 <option value="F">Feminino</option>
               </select>
+            </div>
+
+            <div class="form-group mb-0" style="grid-column: span 2;">
+              <span style="display: block; margin-bottom: 6px; font-weight: 600; color: #0b2a52;">Setores de Cobertura (Função Secundária)</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 12px; padding: 10px; background: rgba(255,255,255,0.5); border: 1px solid #d1d5db; border-radius: 6px;">
+                @for (s of setores(); track s.id) {
+                  @if (s.nome !== novoSetor()) {
+                    <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: #1e293b;">
+                      <input
+                        type="checkbox"
+                        [checked]="novoSetoresCobertura().includes(s.nome)"
+                        (change)="toggleNovoSetoresCobertura(s.nome)"
+                        style="width: 16px; height: 16px; accent-color: #0b2a52; cursor: pointer;"
+                      />
+                      <span>{{ s.nome }}</span>
+                    </label>
+                  }
+                }
+              </div>
             </div>
 
             <button type="submit" class="btn-premium btn-primary-solid btn-add-submit">
@@ -697,7 +716,7 @@
                     <td class="font-mono font-bold color-navy">
                       {{ f.matricula_aleatoria }}
                     </td>
-                    <td class="font-bold">{{ f.primeiro_nome }}</td>
+                    <td class="font-bold">{{ f.nomeExibicao || f.primeiro_nome }}</td>
                     <td>
                       <span [style.background-color]="getSetorColor(f.setor)" class="setor-badge-color">
                         {{ f.setor }}
@@ -1362,7 +1381,7 @@
                 <option [value]="h.nome">{{ h.nome }}</option>
               }
             </select>
-            <input id="editTurnoInput" type="text" [(ngModel)]="ef.turno_padrao" class="form-control" placeholder="Ou digite um horário personalizado" required />
+            <input id="editTurnoInput" type="text" [(ngModel)]="ef.turno_padrao" class="form-control" placeholder="Ou digite um horário personalizado" required aria-label="Turno Padrão Personalizado" />
           </div>
 
           <div class="form-group">
@@ -1371,6 +1390,25 @@
               <option value="M">Masculino</option>
               <option value="F">Feminino</option>
             </select>
+          </div>
+
+          <div class="form-group">
+            <span style="display: block; margin-bottom: 6px; font-weight: 600; color: #0b2a52;">Setores de Cobertura (Função Secundária)</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; padding: 10px; background: rgba(255,255,255,0.5); border: 1px solid #d1d5db; border-radius: 6px; max-height: 120px; overflow-y: auto;">
+              @for (s of setores(); track s.id) {
+                @if (s.nome !== ef.setor) {
+                  <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: #1e293b;">
+                    <input
+                      type="checkbox"
+                      [checked]="(ef.setores_cobertura || []).includes(s.nome)"
+                      (change)="toggleEditSetoresCobertura(s.nome)"
+                      style="width: 16px; height: 16px; accent-color: #0b2a52; cursor: pointer;"
+                    />
+                    <span>{{ s.nome }}</span>
+                  </label>
+                }
+              }
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -1766,8 +1804,8 @@
 
   <!-- MODAL DE DETALHAMENTO E INSPEÇÃO DA EQUIPE POR SETOR -->
   @if (setorDetalhamentoModal().visible) {
-    <div class="modal-backdrop no-print" (click)="closeSetorDetalhamentoModal()">
-      <div class="modal-card modal-lg animate-fade-in" (click)="$event.stopPropagation()">
+    <div class="modal-backdrop no-print" (click)="closeSetorDetalhamentoModal()" role="presentation" tabindex="-1">
+      <div class="modal-card modal-lg animate-fade-in" (click)="$event.stopPropagation()" role="presentation">
         <div class="modal-header flex-between" [style.background-color]="getSetorColor(setorDetalhamentoData().setorNome)">
           <div>
             <h3 class="modal-title-white">{{ setorDetalhamentoData().setorNome }}</h3>
@@ -1781,20 +1819,20 @@
         <div class="modal-body">
           <!-- KPI METRICS DO SETOR -->
           <div class="setor-modal-kpi-grid mb-20">
-            <div class="kpi-card-mini green clickable" (click)="setSetorDetalhamentoFilter('TRABALHANDO')" title="Ver quem está trabalhando hoje">
+            <button type="button" class="kpi-card-mini green clickable" (click)="setSetorDetalhamentoFilter('TRABALHANDO')" title="Ver quem está trabalhando hoje" style="border: none; font-family: inherit; text-align: left;">
               <span class="kpi-mini-val">{{ setorDetalhamentoData().trabalhandoCount }}</span>
               <span class="kpi-mini-lbl">Trabalhando Hoje</span>
-            </div>
-
-            <div class="kpi-card-mini blue clickable" (click)="setSetorDetalhamentoFilter('FOLGA')" title="Ver quem está de folga hoje">
+            </button>
+ 
+            <button type="button" class="kpi-card-mini blue clickable" (click)="setSetorDetalhamentoFilter('FOLGA')" title="Ver quem está de folga hoje" style="border: none; font-family: inherit; text-align: left;">
               <span class="kpi-mini-val">{{ setorDetalhamentoData().folgandoCount }}</span>
               <span class="kpi-mini-lbl">Folgando Hoje</span>
-            </div>
-
-            <div class="kpi-card-mini dark clickable" (click)="setSetorDetalhamentoFilter('TODOS')" title="Ver equipe completa">
+            </button>
+ 
+            <button type="button" class="kpi-card-mini dark clickable" (click)="setSetorDetalhamentoFilter('TODOS')" title="Ver equipe completa" style="border: none; font-family: inherit; text-align: left;">
               <span class="kpi-mini-val">{{ setorDetalhamentoData().total }}</span>
               <span class="kpi-mini-lbl">Total no Setor</span>
-            </div>
+            </button>
 
             <div class="kpi-card-mini yellow">
               <span class="kpi-mini-val">{{ setorDetalhamentoData().coberturaPct }}%</span>
@@ -1821,10 +1859,12 @@
                 <app-icon name="search" [size]="16" color="#94a3b8"></app-icon>
               </span>
               <input
+                id="modalSearchInput"
                 type="text"
                 [ngModel]="setorDetalhamentoModal().searchQuery"
                 (ngModelChange)="setSetorDetalhamentoSearch($event)"
                 placeholder="Pesquisar nome ou cargo..."
+                aria-label="Pesquisar colaborador no setor"
               />
             </div>
           </div>

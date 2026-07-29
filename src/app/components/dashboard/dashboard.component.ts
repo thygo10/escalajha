@@ -5,9 +5,11 @@ import { Router } from '@angular/router';
 import { SupabaseService } from '../../services/supabase.service';
 import { EscalaGeneratorService } from '../../services/escala-generator.service';
 import { ToastService } from '../../services/toast.service';
-import { Loja, Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho, TurnoConfig, IntervaloOption, ValidacaoEscalaResultado, ModeloEscala, RegraConformidade, HorarioPresenca, ResumoFuncionarioMetrics, EstadoTransicao } from '../../models/types';
+import { Loja, Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho, TurnoConfig, IntervaloOption, ValidacaoEscalaResultado, ModeloEscala, RegraConformidade, HorarioPresenca, ResumoFuncionarioMetrics } from '../../models/types';
 import { IconComponent } from '../shared/icon.component';
 import { HORARIOS_FIXOS_CAIXA, HORARIOS_FIXOS_FISCAL, INITIAL_REGRAS_CONFORMIDADE } from '../../models/mock-data';
+
+export type DetalhamentoFilterStatus = 'TODOS' | 'TRABALHANDO' | 'FOLGA';
 
 interface ConfirmModalData {
   visible: boolean;
@@ -99,7 +101,8 @@ export class DashboardComponent implements OnInit {
     const raw = this.generator.gerarEscalaMensalCached(funcs, ano, mes, {
       permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
       diasPermitidosFolga: this.diasPermitidosFolga(),
-      feriados
+      feriados,
+      turnosConfigs: this.turnosConfigs()
     });
 
     return raw.map(item => {
@@ -107,7 +110,7 @@ export class DashboardComponent implements OnInit {
       if (!f) return item;
       return {
         ...item,
-        nome: f.primeiro_nome,
+        nome: this.obterNomeExibicao(f, funcs),
         cargo: f.cargo,
         setor: f.setor,
         turno: f.turno_padrao,
@@ -296,6 +299,7 @@ export class DashboardComponent implements OnInit {
   novoCargo = signal<string>('Operadora de Caixa');
   novoTurno = '07:00 às 15:50 (Almoço 11:00 às 12:30)';
   novoGenero: 'M' | 'F' = 'F';
+  novoSetoresCobertura = signal<string[]>([]);
 
   dataAtualFormatted = this._hoje.toLocaleDateString('pt-BR');
 
@@ -303,7 +307,7 @@ export class DashboardComponent implements OnInit {
   setorDetalhamentoModal = signal<{
     visible: boolean;
     setorNome: string;
-    filterStatus: 'TODOS' | 'TRABALHANDO' | 'FOLGA';
+    filterStatus: DetalhamentoFilterStatus;
     searchQuery: string;
   }>({
     visible: false,
@@ -312,7 +316,7 @@ export class DashboardComponent implements OnInit {
     searchQuery: ''
   });
 
-  openSetorDetalhamentoModal(setorNome: string = '', filterStatus: 'TODOS' | 'TRABALHANDO' | 'FOLGA' = 'TODOS') {
+  openSetorDetalhamentoModal(setorNome: string = '', filterStatus: DetalhamentoFilterStatus = 'TODOS') {
     this.setorDetalhamentoModal.set({
       visible: true,
       setorNome,
@@ -428,7 +432,7 @@ export class DashboardComponent implements OnInit {
   readonly funcionariosPorSetorMap = computed(() => {
     const map = new Map<string, Funcionario[]>();
     for (const setor of this.setores()) {
-      map.set(setor.nome, this.funcionarios().filter((f: Funcionario) => f.setor === setor.nome));
+      map.set(setor.nome, this.funcionarios().filter((f: Funcionario) => (f.setor === setor.nome || f.setores_cobertura?.includes(setor.nome))));
     }
     return map;
   });
@@ -577,7 +581,10 @@ export class DashboardComponent implements OnInit {
         f.matricula_aleatoria.includes(sQuery)
       );
     }
-    return list.map((f: Funcionario) => ({ ...f }));
+    return list.map((f: Funcionario) => ({
+      ...f,
+      nomeExibicao: this.obterNomeExibicao(f, this.funcionarios())
+    }));
   });
 
   feriadosFiltrados = computed(() => {
@@ -639,7 +646,7 @@ export class DashboardComponent implements OnInit {
 
     const [ano, mes] = this.selectedMonthHistorico().split('-').map(Number);
     const totalDias = new Date(ano, mes, 0).getDate();
-    const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => f.setor === func.setor && f.ativo);
+    const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => (f.setor === func.setor || f.setores_cobertura?.includes(func.setor)) && f.ativo);
 
     const escalaItem = this.generator.gerarEscalaMensalCached(funcsDoSetor, ano, mes, {
       permitirDoisDiasConsecutivos: untracked(() => this.permitirDoisDiasConsecutivos()),
@@ -921,7 +928,7 @@ export class DashboardComponent implements OnInit {
     // Gerador Dinâmico HSL via Hash para qualquer novo setor cadastrado pelo gestor
     let hash = 0;
     for (let i = 0; i < setorNome.length; i++) {
-      hash = (setorNome.charCodeAt(i) + ((hash << 5) - hash)) & 0xffffffff;
+      hash = ((setorNome.codePointAt(i) ?? 0) + ((hash << 5) - hash)) & 0xffffffff;
     }
     const hue = Math.abs(hash) % 360;
     return `hsl(${hue}, 65%, 35%)`;
@@ -1052,14 +1059,15 @@ export class DashboardComponent implements OnInit {
         });
       } else {
         // Se Supabase não tem escala salva, gera a escala 6x1 giratória automaticamente
-        const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => f.setor === this.selectedSetor && f.ativo);
+        const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => (f.setor === this.selectedSetor || f.setores_cobertura?.includes(this.selectedSetor)) && f.ativo);
         if (funcsDoSetor.length > 0) {
           const [ano, mes] = this.selectedMonth.split('-').map(Number);
           const gerada = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes, {
             permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
             diasPermitidosFolga: this.diasPermitidosFolga(),
             feriados: this.feriados(),
-            minFuncionariosPorDia: this.minFuncionariosPorDiaSetor()
+            minFuncionariosPorDia: this.minFuncionariosPorDiaSetor(),
+            turnosConfigs: this.turnosConfigs()
           });
           this.escalaItens.set(gerada);
           this.draftEscalasMap.update((m: Map<string, EscalaItem[]>) => {
@@ -1105,7 +1113,7 @@ export class DashboardComponent implements OnInit {
   }
 
   gerarNovaEscala() {
-    const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => f.setor === this.selectedSetor && f.ativo);
+    const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => (f.setor === this.selectedSetor || f.setores_cobertura?.includes(this.selectedSetor)) && f.ativo);
     if (funcsDoSetor.length === 0) {
       this.toastService.warning('Sem Colaboradores Ativos', `Nenhum colaborador ativo cadastrado para o setor "${this.selectedSetor}".`);
       return;
@@ -1167,7 +1175,7 @@ export class DashboardComponent implements OnInit {
     this._selectedSetor = setorAlvo;
     this.triggerRecalculoEscala.update((v: number) => v + 1);
 
-    const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => f.setor === setorAlvo && f.ativo);
+    const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => (f.setor === setorAlvo || f.setores_cobertura?.includes(setorAlvo)) && f.ativo);
     if (funcsDoSetor.length === 0) {
       this.toastService.warning('Sem Colaboradores Ativos', `Nenhum colaborador ativo cadastrado para o setor "${setorAlvo}".`);
       return;
@@ -1228,7 +1236,7 @@ export class DashboardComponent implements OnInit {
   }
 
   getFuncsDoSetorCount(setorNome: string): number {
-    return this.funcionarios().filter((f: Funcionario) => f.setor === setorNome && f.ativo).length;
+    return this.funcionarios().filter((f: Funcionario) => (f.setor === setorNome || f.setores_cobertura?.includes(setorNome)) && f.ativo).length;
   }
 
   private _executarGeracaoEscala(funcsDoSetor: Funcionario[], minPorDia?: number) {
@@ -1243,6 +1251,7 @@ export class DashboardComponent implements OnInit {
       feriados: this.feriados(),
       minFuncionariosPorDia: minReq,
       modeloEscala: this.modeloEscalaAtivo(),
+      turnosConfigs: this.turnosConfigs(),
       regrasConformidade: this.regrasConformidade()
     });
     this.escalaItens.set(gerada);
@@ -1351,13 +1360,13 @@ export class DashboardComponent implements OnInit {
       const updatedItens = itens
         .filter((item: EscalaItem) => {
           const f = funcsMap.get(item.matricula);
-          return f && f.ativo && f.setor === this.selectedSetor;
+          return f && f.ativo && (f.setor === this.selectedSetor || f.setores_cobertura?.includes(this.selectedSetor));
         })
         .map((item: EscalaItem) => {
           const f = funcsMap.get(item.matricula)!;
           return {
             ...item,
-            nome: f.primeiro_nome,
+            nome: this.obterNomeExibicao(f, this.funcionarios()),
             cargo: f.cargo,
             turno: f.turno_padrao,
             genero: f.genero
@@ -1389,11 +1398,13 @@ export class DashboardComponent implements OnInit {
         cargo: this.novoCargo(),
         turno_padrao: this.novoTurno,
         genero: this.novoGenero,
-        ativo: true
+        ativo: true,
+        setores_cobertura: this.novoSetoresCobertura()
       });
 
       this.toastService.success('Colaborador Cadastrado!', `${added.primeiro_nome} (Matrícula: ${added.matricula_aleatoria}) adicionado com sucesso.`);
       this.novoNome = '';
+      this.novoSetoresCobertura.set([]);
       await this.refreshAllDataAndCaches();
     } catch (err: any) {
       this.toastService.error('Erro ao Cadastrar', err.message);
@@ -1415,6 +1426,46 @@ export class DashboardComponent implements OnInit {
       ef.cargo = '';
     }
     this.editingFunc.set({ ...ef });
+  }
+
+  toggleNovoSetoresCobertura(setorNome: string) {
+    this.novoSetoresCobertura.update(current => {
+      if (current.includes(setorNome)) {
+        return current.filter(s => s !== setorNome);
+      } else {
+        return [...current, setorNome];
+      }
+    });
+  }
+
+  toggleEditSetoresCobertura(setorNome: string) {
+    const ef = this.editingFunc();
+    if (!ef) return;
+    const current = ef.setores_cobertura || [];
+    if (current.includes(setorNome)) {
+      ef.setores_cobertura = current.filter(s => s !== setorNome);
+    } else {
+      ef.setores_cobertura = [...current, setorNome];
+    }
+    this.editingFunc.set({ ...ef });
+  }
+
+  obterNomeExibicao(func: Funcionario, todos: Funcionario[]): string {
+    if (!func?.primeiro_nome) return '';
+    const parts = func.primeiro_nome.trim().split(/\s+/);
+    const firstName = parts[0];
+    
+    // Verifica se existem outros funcionários ativos com o mesmo primeiro nome
+    const temDuplicado = todos.some(other => {
+      if (!other.ativo || other.matricula_aleatoria === func.matricula_aleatoria) return false;
+      const otherParts = other.primeiro_nome.trim().split(/\s+/);
+      return otherParts[0].toLowerCase() === firstName.toLowerCase();
+    });
+
+    if (temDuplicado && parts.length > 1) {
+      return `${firstName} ${parts[1]}`;
+    }
+    return firstName;
   }
 
   async saveEditFuncionario() {

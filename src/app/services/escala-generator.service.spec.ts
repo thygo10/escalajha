@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import { INITIAL_FUNCIONARIOS, INITIAL_FERIADOS } from '../models/mock-data';
 import { EscalaGeneratorService } from './escala-generator.service';
+import { EscalaValidatorService } from './escala-validator.service'; // 💡 Importando o Validador
 import { EscalaItem, Feriado, Funcionario } from '../models/types';
 
 /**
@@ -8,7 +9,10 @@ import { EscalaItem, Feriado, Funcionario } from '../models/types';
  * Audita a geração de escalas para 100% dos setores, todas as regras CLT/CCT e cenários de exceção.
  */
 export function runEscalaGeneratorSpec(): void {
-  const service = new EscalaGeneratorService();
+  // 💡 Injetando a dependência do validador manualmente no serviço gerador
+  const validator = new EscalaValidatorService();
+  const service = new EscalaGeneratorService(validator);
+
   const ano = 2026;
 
   // Lista de todos os setores ativos no sistema
@@ -36,7 +40,13 @@ export function runEscalaGeneratorSpec(): void {
       const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, {
         feriados: INITIAL_FERIADOS,
         minFuncionariosPorDia: 2,
-        minFuncionariosFeriado: Math.min(funcsSetor.length, 2)
+        minFuncionariosFeriado: Math.min(funcsSetor.length, 2),
+        turnosConfigs: [
+          { id: 't1', nome: '07:00 às 15:50 (Almoço 11:00 às 12:30)', entrada: '07:00', saida: '15:50', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+          { id: 't2', nome: '09:00 às 17:50 (Almoço 13:00 às 14:30)', entrada: '09:00', saida: '17:50', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+          { id: 't3', nome: '12:40 às 21:30 (Almoço 14:20 às 15:50)', entrada: '12:40', saida: '21:30', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
+          { id: 't4', nome: '12:40 às 21:30 (Almoço 15:30 às 17:00)', entrada: '12:40', saida: '21:30', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false }
+        ]
       });
 
       totalEscalasGeradas++;
@@ -154,13 +164,13 @@ export function runEscalaGeneratorSpec(): void {
           // Setores gerais: NENHUM colaborador (homem ou mulher) pode trabalhar 2 domingos consecutivos
           for (let i = 0; i < domingosTrab.length - 1; i++) {
             const diff = domingosTrab[i + 1] - domingosTrab[i];
-            assert.strictEqual(diff > 7, true, `${item.nome} (${item.setor}) trabalhou domingos consecutivos (Dias ${domingosTrab[i]} e ${domingosTrab[i+1]}) em setor de regra 1T:2F!`);
+            assert.strictEqual(diff > 7, true, `${item.nome} (${item.setor}) trabalhou domingos consecutivos (Dias ${domingosTrab[i]} e ${domingosTrab[i + 1]}) em setor de regra 1T:2F!`);
           }
         } else if (item.genero === 'F') {
           // Padaria/Açougue: Mulheres seguem CLT 386 (não podem trabalhar 2 domingos seguidos)
           for (let i = 0; i < domingosTrab.length - 1; i++) {
             const diff = domingosTrab[i + 1] - domingosTrab[i];
-            assert.strictEqual(diff > 7, true, `${item.nome} (Feminino - ${item.setor}) trabalhou domingos consecutivos (Dias ${domingosTrab[i]} e ${domingosTrab[i+1]}) violando CLT Art. 386!`);
+            assert.strictEqual(diff > 7, true, `${item.nome} (Feminino - ${item.setor}) trabalhou domingos consecutivos (Dias ${domingosTrab[i]} e ${domingosTrab[i + 1]}) violando CLT Art. 386!`);
           }
         }
       });
@@ -268,7 +278,7 @@ export function runEscalaGeneratorSpec(): void {
   // SUÍTE 8: TESTE DA ENGINE DE VALIDAÇÃO COM INJEÇÃO DE ERROS (NEGATIVE TESTING)
   // --------------------------------------------------------------------------
   console.log('▶️  SUÍTE 8: Engine Test (Injeção de Falhas e Detecção Proativa de Infração)');
-  
+
   // 8.1 Injeção de Trabalho > 6 dias consecutivos (Art. 67)
   const mockEscalaInvalidaCLT: EscalaItem[] = [{
     matricula: '999001',
@@ -276,11 +286,11 @@ export function runEscalaGeneratorSpec(): void {
     setor: 'Reposição',
     turno: '07:00 às 15:00',
     genero: 'M',
-    dias: { 1:'T', 2:'T', 3:'T', 4:'T', 5:'T', 6:'T', 7:'T', 8:'F', 9:'T', 10:'T', 11:'T', 12:'T', 13:'T', 14:'T', 15:'F', 16:'T', 17:'T', 18:'T', 19:'T', 20:'T', 21:'T', 22:'F', 23:'T', 24:'T', 25:'T', 26:'T', 27:'T', 28:'T', 29:'F', 30:'T', 31:'T' }
+    dias: { 1: 'T', 2: 'T', 3: 'T', 4: 'T', 5: 'T', 6: 'T', 7: 'T', 8: 'F', 9: 'T', 10: 'T', 11: 'T', 12: 'T', 13: 'T', 14: 'T', 15: 'F', 16: 'T', 17: 'T', 18: 'T', 19: 'T', 20: 'T', 21: 'T', 22: 'F', 23: 'T', 24: 'T', 25: 'T', 26: 'T', 27: 'T', 28: 'T', 29: 'F', 30: 'T', 31: 'T' }
   }];
   const resValInvalida = service.validarEscala(mockEscalaInvalidaCLT, 2026, 7, 1, [], []);
   assert.strictEqual(resValInvalida.valida, false, 'Engine de validação deve REPROVAR escala com 7 dias consecutivos de trabalho');
-  assert.strictEqual(resValInvalida.itensValidados.some(e => e.tipo === 'ERRO_CLT'), true, 'Deveria conter mensagem de erro do tipo ERRO_CLT');
+  assert.strictEqual(resValInvalida.itensValidados.some((e: any) => e.tipo === 'ERRO_CLT'), true, 'Deveria conter mensagem de erro do tipo ERRO_CLT');
 
   // 8.2 Injeção de Cobertura Zero na Frente de Caixa
   const mockCaixaInvalido: EscalaItem[] = funcsCaixa.map(f => ({
@@ -289,11 +299,11 @@ export function runEscalaGeneratorSpec(): void {
     setor: f.setor,
     turno: f.turno_padrao,
     genero: f.genero,
-    dias: { 1:'F', 2:'F', 3:'F', 4:'F', 5:'F', 6:'F', 7:'F', 8:'F', 9:'F', 10:'F', 11:'F', 12:'F', 13:'F', 14:'F', 15:'F', 16:'F', 17:'F', 18:'F', 19:'F', 20:'F', 21:'F', 22:'F', 23:'F', 24:'F', 25:'F', 26:'F', 27:'F', 28:'F', 29:'F', 30:'F', 31:'F' }
+    dias: { 1: 'F', 2: 'F', 3: 'F', 4: 'F', 5: 'F', 6: 'F', 7: 'F', 8: 'F', 9: 'F', 10: 'F', 11: 'F', 12: 'F', 13: 'F', 14: 'F', 15: 'F', 16: 'F', 17: 'F', 18: 'F', 19: 'F', 20: 'F', 21: 'F', 22: 'F', 23: 'F', 24: 'F', 25: 'F', 26: 'F', 27: 'F', 28: 'F', 29: 'F', 30: 'F', 31: 'F' }
   }));
   const resValCaixaZero = service.validarEscala(mockCaixaInvalido, 2026, 7, 6, [], []);
   assert.strictEqual(resValCaixaZero.valida, false, 'Engine deve REPROVAR Frente de Caixa com cobertura zerada');
-  assert.strictEqual(resValCaixaZero.itensValidados.some(e => e.tipo === 'ERRO_COBERTURA_CAIXA' || e.tipo === 'ERRO_COBERTURA'), true, 'Deveria registrar falha de cobertura de caixa');
+  assert.strictEqual(resValCaixaZero.itensValidados.some((e: any) => e.tipo === 'ERRO_COBERTURA_CAIXA' || e.tipo === 'ERRO_COBERTURA'), true, 'Deveria registrar falha de cobertura de caixa');
 
   // 8.3 Injeção de Violação de Transição FD -> TD sem folga intermediária
   // Julho/2026: Domingos em 5 e 12. Dia 5 em 'FD', Dia 12 em 'TD', com dias 6 a 11 todos em 'T' (7 dias seguidos entre domingos)
@@ -304,22 +314,22 @@ export function runEscalaGeneratorSpec(): void {
     turno: '07:00 às 15:00',
     genero: 'M',
     dias: {
-      1:'F', 2:'T', 3:'T', 4:'T', 5:'FD', // Dom 5 FD
-      6:'T', 7:'T', 8:'T', 9:'T', 10:'T', 11:'T', 12:'TD', // Dom 12 TD (Trabalhou 6 a 12 = 7 dias)
-      13:'F', 14:'T', 15:'T', 16:'T', 17:'T', 18:'T', 19:'FD',
-      20:'F', 21:'T', 22:'T', 23:'T', 24:'T', 25:'T', 26:'TD',
-      27:'F', 28:'T', 29:'T', 30:'T', 31:'T'
+      1: 'F', 2: 'T', 3: 'T', 4: 'T', 5: 'FD', // Dom 5 FD
+      6: 'T', 7: 'T', 8: 'T', 9: 'T', 10: 'T', 11: 'T', 12: 'TD', // Dom 12 TD (Trabalhou 6 a 12 = 7 dias)
+      13: 'F', 14: 'T', 15: 'T', 16: 'T', 17: 'T', 18: 'T', 19: 'FD',
+      20: 'F', 21: 'T', 22: 'T', 23: 'T', 24: 'T', 25: 'T', 26: 'TD',
+      27: 'F', 28: 'T', 29: 'T', 30: 'T', 31: 'T'
     }
   }];
   const resValFD_TD = service.validarEscala(mockFD_TD_Infraction, 2026, 7, 1, [], INITIAL_FERIADOS);
-  assert.strictEqual(resValFD_TD.itensValidados.some(e => e.tipo === 'ERRO_TRANSICAO_DOMINGO'), true, 'Engine de validação deve detectar ERRO_TRANSICAO_DOMINGO');
+  assert.strictEqual(resValFD_TD.itensValidados.some((e: any) => e.tipo === 'ERRO_TRANSICAO_DOMINGO'), true, 'Engine de validação deve detectar ERRO_TRANSICAO_DOMINGO');
   console.log('  ✅ Engine de Validação testada com injeções de falha: detectou 100% dos erros simulados com precisão.\n');
 
   // --------------------------------------------------------------------------
   // SUÍTE 9: CÁLCULO DE MÉTRICAS, JORNADAS E FAIXAS HORÁRIAS
   // --------------------------------------------------------------------------
   console.log('▶️  SUÍTE 9: Auditoria de Métricas, Presença por Faixa Horária e Jornadas');
-  
+
   // 9.1 Carga Horária Líquida
   const calc1 = service.calcularCargaHorariaLiquida('07:00', '15:50', 90);
   assert.strictEqual(calc1.minutos, 440, '07:00 às 15:50 com 90 min de almoço deve resultar em 440 min líquidos (7h20)');
@@ -333,7 +343,7 @@ export function runEscalaGeneratorSpec(): void {
   const itensMetrics = service.gerarEscalaMensal(funcsCaixa, 2026, 7, { feriados: INITIAL_FERIADOS });
   const metrics = service.calcularResumoMetrics(itensMetrics, funcsCaixa, [], 2026, 7);
   assert.strictEqual(metrics.length, funcsCaixa.length, 'Deveria retornar resumo de métricas para todos os colaboradores');
-  metrics.forEach(m => {
+  metrics.forEach((m: any) => {
     assert.strictEqual(m.totalFolgas >= 4 && m.totalFolgas <= 7, true, `${m.nome} em Julho deve ter entre 4 e 7 folgas nas métricas`);
     assert.strictEqual(typeof m.horasLiquidasFormatted, 'string', 'Horas líquidas deve estar formatada como string');
   });
@@ -348,7 +358,7 @@ export function runEscalaGeneratorSpec(): void {
   // SUÍTE 10: SISTEMA DE CACHE E INVALIDAÇÃO
   // --------------------------------------------------------------------------
   console.log('▶️  SUÍTE 10: Sistema de Cache e Invalidação da Escala');
-  
+
   service.clearAllCache();
   const res1 = service.gerarEscalaMensalCached(funcsCaixa, 2026, 7, { feriados: INITIAL_FERIADOS });
   const res2 = service.gerarEscalaMensalCached(funcsCaixa, 2026, 7, { feriados: INITIAL_FERIADOS });
@@ -370,7 +380,7 @@ export function runEscalaGeneratorSpec(): void {
       const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });
       const valHoraria = service.validarEscala(itens, ano, mes, 2, [], INITIAL_FERIADOS);
 
-      const errosHorariosDia2 = valHoraria.itensValidados.filter(e => e.dia === 2 && e.tipo === 'ERRO_COBERTURA_HORARIA');
+      const errosHorariosDia2 = valHoraria.itensValidados.filter((e: any) => e.dia === 2 && e.tipo === 'ERRO_COBERTURA_HORARIA');
       assert.strictEqual(errosHorariosDia2.length, 0, `No Dia 2 Mês ${mes} setor "${setor}" não deve existir nenhuma faixa horária sem cobertura!`);
     }
   }
@@ -417,7 +427,7 @@ export function runEscalaGeneratorSpec(): void {
     }
   ];
   const valInter = service.validarEscala(mockEscalaInterjornada, 2026, 8, 1, turnosConflitantes, []);
-  const erroInter = valInter.itensValidados.find(e => e.tipo === 'ERRO_CLT_INTERJORNADA_11H');
+  const erroInter = valInter.itensValidados.find((e: any) => e.tipo === 'ERRO_CLT_INTERJORNADA_11H');
   assert.strictEqual(erroInter !== undefined, true, 'Deve detectar violação de Interjornada de 11h (22h -> 07h = 9h descanso)');
 
   // 12.4 Teste de Afastamento / Férias (AF e FR)

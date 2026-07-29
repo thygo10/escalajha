@@ -7,10 +7,14 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "npx tsx src/app/services/escala-generator.service.spec.ts"
+    "test": "npx tsx src/app/services/escala-generator.service.spec.ts",
+    "test:domain": "npx vitest run src/app/domain/",
+    "test:domain:watch": "npx vitest src/app/domain/",
+    "test:all": "npx vitest run"
   },
   "dependencies": {
     "@angular/animations": "^19.0.0",
+    "@angular/cdk": "^19.2.19",
     "@angular/common": "^19.0.0",
     "@angular/compiler": "^19.0.0",
     "@angular/core": "^19.0.0",
@@ -18,8 +22,11 @@
     "@angular/platform-browser": "^19.0.0",
     "@angular/platform-browser-dynamic": "^19.0.0",
     "@angular/router": "^19.0.0",
+    "@primeng/themes": "^19.1.4",
     "@supabase/supabase-js": "^2.48.0",
     "lucide-angular": "^1.0.0",
+    "primeicons": "^7.0.0",
+    "primeng": "^19.1.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
@@ -29,6 +36,7 @@
     "@angular/cli": "^19.0.0",
     "@angular/compiler-cli": "^19.0.0",
     "tsx": "^4.19.2",
-    "typescript": "~5.6.2"
+    "typescript": "~5.6.2",
+    "vitest": "^4.1.10"
   }
 }

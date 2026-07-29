@@ -128,6 +128,80 @@ create table if not exists public.regras_escala (
   created_at timestamptz default now()
 );
 
+-- ==============================================================================
+-- 1.1 ESTADOS DE REGRA (CARRY-OVER INTER-MENSAL) & GOVERNANÇA (PRD v4.0)
+-- ==============================================================================
+
+-- Tabela de Estado de Carry-Over por Regra (Inter-Mensal)
+create table if not exists public.funcionario_estados_regra (
+  id uuid primary key default gen_random_uuid(),
+  loja_id uuid references public.lojas(id) on delete cascade not null,
+  funcionario_id uuid references public.funcionarios(id) on delete cascade not null,
+  ultimo_domingo_trabalhado date,
+  domingos_descanso_restantes int default 0,
+  grupo_ultimo_feriado_trabalhado varchar(1) default 'A',
+  dias_consecutivos_acumulados int default 0,
+  updated_at timestamptz default now(),
+  constraint unique_funcionario_estado unique (funcionario_id)
+);
+
+-- Tabela de Execuções e Telemetria do Solver
+create table if not exists public.solver_runs (
+  id uuid primary key default gen_random_uuid(),
+  loja_id uuid references public.lojas(id) on delete cascade not null,
+  setor text not null,
+  mes int not null,
+  ano int not null,
+  tempo_execucao_ms int not null,
+  nos_explorados int default 0,
+  score_qualidade int not null,
+  status varchar(30) not null, -- 'SUCCESS', 'NO_SOLUTION', 'TIMEOUT', 'PARTIAL', 'CANCELLED'
+  created_at timestamptz default now()
+);
+
+-- Tabela de Falhas de Restrição para Diagnóstico Fino (Modo NO_SOLUTION)
+create table if not exists public.constraint_failures (
+  id uuid primary key default gen_random_uuid(),
+  solver_run_id uuid references public.solver_runs(id) on delete cascade not null,
+  categoria_falha varchar(40) not null, -- 'RESOURCE_SHORTAGE', 'RULE_CONFLICT', 'TENANT_CONFIGURATION'
+  restricao_violada varchar(50) not null,
+  detalhes text not null,
+  created_at timestamptz default now()
+);
+
+-- Tabela de Versionamento Imutável de Escalas com Hash SHA-256
+create table if not exists public.escala_versions (
+  id uuid primary key default gen_random_uuid(),
+  loja_id uuid references public.lojas(id) on delete cascade not null,
+  escala_id uuid references public.escalas(id) on delete cascade not null,
+  versao int not null,
+  hash_sha256 varchar(64) not null,
+  dados_json jsonb not null,
+  criado_por uuid references auth.users(id) on delete set null,
+  created_at timestamptz default now(),
+  constraint unique_escala_versao unique (escala_id, versao)
+);
+
+-- Tabela de Audit Log LGPD e Conformidade Fiscal
+create table if not exists public.audit_log (
+  id uuid primary key default gen_random_uuid(),
+  loja_id uuid references public.lojas(id) on delete cascade not null,
+  usuario_id uuid references auth.users(id) on delete set null,
+  origem varchar(20) default 'MANUAL', -- 'MANUAL', 'SOLVER', 'IA', 'IMPORTACAO'
+  acao varchar(50) not null,
+  recurso varchar(50) not null,
+  detalhes jsonb,
+  ip_address varchar(45),
+  created_at timestamptz default now()
+);
+
+alter table public.funcionario_estados_regra enable row level security;
+alter table public.solver_runs enable row level security;
+alter table public.constraint_failures enable row level security;
+alter table public.escala_versions enable row level security;
+alter table public.audit_log enable row level security;
+
+
 
 
 -- ==============================================================================

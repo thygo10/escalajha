@@ -2,6 +2,7 @@
   "compileOnSave": false,
   "compilerOptions": {
     "outDir": "./dist/out-tsc",
+    "rootDir": "./src",
     "strict": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
@@ -16,6 +17,7 @@
     "target": "ES2022",
     "module": "ES2022"
   },
+  "exclude": ["vitest.config.ts", "src/app/domain/**/*.spec.ts", "src/app/domain/**/__fixtures__/*.ts"],
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
