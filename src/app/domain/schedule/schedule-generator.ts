@@ -502,64 +502,146 @@ function allocateRestOfDays(
 
   // ──────────────────────────────────────────────────
   // Phase 4: Distribute rests on open holidays
-  //   On open holidays (TF), some employees should rest
-  //   to share holiday work fairly among the group.
+  //   On open holidays (TF), distribute holiday work fairly.
+  //   For Operadores de Caixa (isFrontEnd): exactly 50% rest (F) and 50% work (TF).
+  //   If missing candidates, complete randomly.
   // ──────────────────────────────────────────────────
   if (openHolidays.size > 0) {
     for (let d = 1; d <= totalDays; d++) {
-      if (!openHolidays.has(d)) continue;
+      if (!openHolidays.has(d) || isSunday(month, d)) continue;
 
-      let workingCount = items.filter(i => isTrabalho(i.dias[d])).length;
-      if (workingCount <= getMinEffectiveForDay(d) + 1) continue;
+      if (isFrontEnd) {
+        // Operadores de Caixa: metade folga (F), metade trabalha (TF) no feriado aberto
+        const totalTeam = items.length;
+        const targetRestCount = Math.floor(totalTeam / 2);
 
-      // Employees eligible for holiday rest: currently TF,
-      // won't break max consec, not maxed out on rests
-      const candidates: ScheduleEntry[] = [];
-      for (const emp of items) {
-        if (emp.dias[d] !== 'TF') continue;
-        const totalOffs = Object.values(emp.dias).filter(st => isFolgaNormal(st)).length;
-        if (totalOffs >= getMaxFolgas(emp)) continue;
-        // Test: temporarily set to F, check consec
-        emp.dias[d] = 'F';
-        if (getMaxConsecutiveWorkDays(emp, totalDays, prevConsecMap?.get(emp.matricula)) <= 6) {
-          candidates.push(emp);
+        // Prioriza quem tem menos folgas totais acumuladas e não estourou o teto mensal
+        const tfEmployees = items.filter(emp => {
+          if (emp.dias[d] !== 'TF') return false;
+          const totalOffs = Object.values(emp.dias).filter(st => isFolgaNormal(st)).length;
+          return totalOffs < getMaxFolgas(emp);
+        });
+
+        tfEmployees.sort((a, b) => {
+          const offA = Object.values(a.dias).filter(st => isFolgaNormal(st)).length;
+          const offB = Object.values(b.dias).filter(st => isFolgaNormal(st)).length;
+          if (offA !== offB) return offA - offB;
+          return ((items.indexOf(a) * 7 + d * 13) % 17) - ((items.indexOf(b) * 7 + d * 13) % 17);
+        });
+
+        let currentResting = items.filter(emp => emp.dias[d] === 'F' || emp.dias[d] === 'FE').length;
+
+        for (const emp of tfEmployees) {
+          if (currentResting >= targetRestCount) break;
+          emp.dias[d] = 'F';
+          let coberturaOk = true;
+          if (turnosConfigs && turnosConfigs.length > 0) {
+            const curva = calcularPresencaPorFaixaHoraria(items, turnosConfigs, d);
+            for (const faixa of curva) {
+              const hNum = Number(faixa.horaStr.split(':')[0]);
+              if (hNum >= 7 && hNum < 21) {
+                const isCritica = hNum < 9 || hNum === 11 || hNum === 12;
+                const minReq = isCritica ? 5 : 6;
+                if (faixa.quantidadeTrabalhando < minReq) {
+                  coberturaOk = false;
+                  break;
+                }
+              }
+            }
+          }
+          if (coberturaOk) {
+            currentResting++;
+          } else {
+            emp.dias[d] = 'TF';
+          }
         }
-        emp.dias[d] = 'TF';
-      }
 
-      // Sort by total rests (ascending) for fairness
-      candidates.sort((a, b) => {
-        const offA = Object.values(a.dias).filter(st => isFolgaNormal(st)).length;
-        const offB = Object.values(b.dias).filter(st => isFolgaNormal(st)).length;
-        if (offA !== offB) return offA - offB;
-        return items.indexOf(a) - items.indexOf(b);
-      });
-
-      // Grant rest to ~50% of TF employees or as long as coverage permits
-      const maxHolidayRest = Math.max(1, Math.floor(candidates.length * 0.5));
-      let granted = 0;
-      for (const emp of candidates) {
-        if (granted >= maxHolidayRest) break;
-        workingCount = items.filter(i => isTrabalho(i.dias[d])).length;
-        if (workingCount <= getMinEffectiveForDay(d)) break;
-        // Check hourly coverage before granting rest
-        let coberturaOk = true;
-        if (turnosConfigs && turnosConfigs.length > 0) {
-          const isDomingo = isSunday(month, d);
-          const curva = calcularPresencaPorFaixaHoraria(items, turnosConfigs, d);
-          for (const faixa of curva) {
-            const hNum = Number(faixa.horaStr.split(':')[0]);
-            const hIni = isDomingo ? 8 : 7;
-            const hFim = isDomingo ? 20 : 21;
-            if (hNum >= hIni && hNum < hFim) {
-              const minReq = isDomingo || openHolidays.has(d) ? 1 : getMinEffectiveForDay(d);
-              if (faixa.quantidadeTrabalhando - 1 < minReq) { coberturaOk = false; break; }
+        // Se faltar alguém para atingir metade da equipe, completa aleatoriamente entre quem não estourou o teto de folgas
+        if (currentResting < targetRestCount) {
+          const remainingTF = items.filter(emp => {
+            if (emp.dias[d] !== 'TF') return false;
+            const totalOffs = Object.values(emp.dias).filter(st => isFolgaNormal(st)).length;
+            return totalOffs < getMaxFolgas(emp);
+          });
+          const shuffled = [...remainingTF].sort(() => 0.5 - Math.random());
+          for (const emp of shuffled) {
+            if (currentResting >= targetRestCount) break;
+            emp.dias[d] = 'F';
+            let coberturaOk = true;
+            if (turnosConfigs && turnosConfigs.length > 0) {
+              const curva = calcularPresencaPorFaixaHoraria(items, turnosConfigs, d);
+              for (const faixa of curva) {
+                const hNum = Number(faixa.horaStr.split(':')[0]);
+                if (hNum >= 7 && hNum < 21) {
+                  const isCritica = hNum < 9 || hNum === 11 || hNum === 12;
+                  const minReq = isCritica ? 5 : 6;
+                  if (faixa.quantidadeTrabalhando < minReq) {
+                    coberturaOk = false;
+                    break;
+                  }
+                }
+              }
+            }
+            if (coberturaOk) {
+              currentResting++;
+            } else {
+              emp.dias[d] = 'TF';
             }
           }
         }
-        if (!coberturaOk) break;
-        emp.dias[d] = 'F';
-        granted++;
+      } else {
+        let workingCount = items.filter(i => isTrabalho(i.dias[d])).length;
+        if (workingCount <= getMinEffectiveForDay(d) + 1) continue;
+
+        // Employees eligible for holiday rest: currently TF,
+        // won't break max consec, not maxed out on rests
+        const candidates: ScheduleEntry[] = [];
+        for (const emp of items) {
+          if (emp.dias[d] !== 'TF') continue;
+          const totalOffs = Object.values(emp.dias).filter(st => isFolgaNormal(st)).length;
+          if (totalOffs >= getMaxFolgas(emp)) continue;
+          // Test: temporarily set to F, check consec
+          emp.dias[d] = 'F';
+          if (getMaxConsecutiveWorkDays(emp, totalDays, prevConsecMap?.get(emp.matricula)) <= 6) {
+            candidates.push(emp);
+          }
+          emp.dias[d] = 'TF';
+        }
+
+        // Sort by total rests (ascending) for fairness
+        candidates.sort((a, b) => {
+          const offA = Object.values(a.dias).filter(st => isFolgaNormal(st)).length;
+          const offB = Object.values(b.dias).filter(st => isFolgaNormal(st)).length;
+          if (offA !== offB) return offA - offB;
+          return items.indexOf(a) - items.indexOf(b);
+        });
+
+        // Grant rest to ~50% of TF employees or as long as coverage permits
+        const maxHolidayRest = Math.max(1, Math.floor(candidates.length * 0.5));
+        let granted = 0;
+        for (const emp of candidates) {
+          if (granted >= maxHolidayRest) break;
+          workingCount = items.filter(i => isTrabalho(i.dias[d])).length;
+          if (workingCount <= getMinEffectiveForDay(d)) break;
+          // Check hourly coverage before granting rest
+          let coberturaOk = true;
+          if (turnosConfigs && turnosConfigs.length > 0) {
+            const isDomingo = isSunday(month, d);
+            const curva = calcularPresencaPorFaixaHoraria(items, turnosConfigs, d);
+            for (const faixa of curva) {
+              const hNum = Number(faixa.horaStr.split(':')[0]);
+              const hIni = isDomingo ? 8 : 7;
+              const hFim = isDomingo ? 20 : 21;
+              if (hNum >= hIni && hNum < hFim) {
+                const minReq = isDomingo || openHolidays.has(d) ? 1 : getMinEffectiveForDay(d);
+                if (faixa.quantidadeTrabalhando - 1 < minReq) { coberturaOk = false; break; }
+              }
+            }
+          }
+          if (!coberturaOk) break;
+          emp.dias[d] = 'F';
+          granted++;
+        }
       }
     }
   }
@@ -616,14 +698,14 @@ function repairFolgaPicada(
                 if (Math.abs(rd - candidate) === 2) { wouldPicada = true; break; }
               }
               if (wouldPicada) continue;
-              emp.dias[moveDay] = 'T';
+              emp.dias[moveDay] = (openHolidays && openHolidays.has(moveDay)) ? 'TF' : 'T';
               emp.dias[candidate] = 'F';
               if (getMaxConsecutiveWorkDays(emp, totalDays, prevConsecMap?.get(emp.matricula)) <= 6) {
                 found = true;
                 break;
               }
               emp.dias[moveDay] = 'F';
-              emp.dias[candidate] = 'T';
+              emp.dias[candidate] = (openHolidays && openHolidays.has(candidate)) ? 'TF' : 'T';
             }
             if (found) break;
           }
