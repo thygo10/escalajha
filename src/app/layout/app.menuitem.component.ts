@@ -10,6 +10,7 @@ export interface MenuItem {
   label?: string;
   icon?: string;
   routerLink?: any[];
+  queryParams?: { [key: string]: any };
   url?: string[];
   target?: string;
   items?: MenuItem[];
@@ -50,6 +51,7 @@ export interface MenuItem {
         (click)="itemClick($event)"
         [ngClass]="item.badgeClass"
         [routerLink]="item.routerLink"
+        [queryParams]="item.queryParams"
         routerLinkActive="active-route"
         [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored' }"
         [attr.target]="item.target"
@@ -129,7 +131,7 @@ export class AppMenuItemComponent implements OnInit, OnDestroy {
 
   updateActiveStateFromRoute() {
     if (!this.item.routerLink?.[0]) return;
-    
+
     const activeRoute = this.router.isActive(this.item.routerLink[0], {
       paths: 'exact',
       queryParams: 'ignored',

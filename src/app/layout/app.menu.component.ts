@@ -23,29 +23,28 @@ export class AppMenuComponent implements OnInit {
       {
         label: 'VISÃO GERAL',
         items: [
-          { label: 'Dashboard', icon: 'pi pi-fw pi-home', routerLink: ['/dashboard'] }
+          { label: 'Painel Geral', icon: 'pi pi-fw pi-home', routerLink: ['/dashboard'], queryParams: { tab: 'dashboard' } }
         ]
       },
       {
         label: 'GESTÃO DE ESCALAS',
         items: [
-          { label: 'Gerador & Escalas', icon: 'pi pi-fw pi-calendar', routerLink: ['/dashboard'] },
-          { label: 'Auditoria CLT', icon: 'pi pi-fw pi-shield', routerLink: ['/dashboard'] },
-          { label: 'Trocas & Folgas', icon: 'pi pi-fw pi-sync', routerLink: ['/dashboard'] }
+          { label: 'Matriz & Gerador de Escalas', icon: 'pi pi-fw pi-calendar', routerLink: ['/dashboard'], queryParams: { tab: 'escala' } },
+          { label: 'Auditoria CLT & CCT', icon: 'pi pi-fw pi-shield', routerLink: ['/dashboard'], queryParams: { tab: 'regras' } }
         ]
       },
       {
         label: 'CADASTROS & OPERAÇÃO',
         items: [
-          { label: 'Setores & Turnos', icon: 'pi pi-fw pi-building', routerLink: ['/dashboard'] },
-          { label: 'Colaboradores', icon: 'pi pi-fw pi-users', routerLink: ['/dashboard'] }
+          { label: 'Setores & Turnos', icon: 'pi pi-fw pi-building', routerLink: ['/dashboard'], queryParams: { tab: 'setores' } },
+          { label: 'Colaboradores', icon: 'pi pi-fw pi-users', routerLink: ['/dashboard'], queryParams: { tab: 'funcionarios' } },
+          { label: 'Gestão de Feriados', icon: 'pi pi-fw pi-calendar-plus', routerLink: ['/dashboard'], queryParams: { tab: 'feriados' } }
         ]
       },
       {
         label: 'GOVERNANÇA & SISTEMA',
         items: [
-          { label: 'Regras Trabalhistas', icon: 'pi pi-fw pi-sliders-h', routerLink: ['/dashboard'] },
-          { label: 'Logs de Auditoria', icon: 'pi pi-fw pi-list', routerLink: ['/dashboard'] }
+          { label: 'Regras Trabalhistas', icon: 'pi pi-fw pi-sliders-h', routerLink: ['/dashboard'], queryParams: { tab: 'regras' } }
         ]
       }
     ];

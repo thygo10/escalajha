@@ -1,13 +1,28 @@
 import { Component, OnInit, inject, signal, computed, HostListener, ChangeDetectionStrategy, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { SupabaseService } from '../../services/supabase.service';
 import { EscalaGeneratorService } from '../../services/escala-generator.service';
 import { ToastService } from '../../services/toast.service';
 import { Loja, Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho, TurnoConfig, IntervaloOption, ValidacaoEscalaResultado, ModeloEscala, RegraConformidade, HorarioPresenca, ResumoFuncionarioMetrics } from '../../models/types';
 import { IconComponent } from '../shared/icon.component';
 import { HORARIOS_FIXOS_CAIXA, HORARIOS_FIXOS_FISCAL, INITIAL_REGRAS_CONFORMIDADE } from '../../models/mock-data';
+
+import { TableModule } from 'primeng/table';
+import { DialogModule } from 'primeng/dialog';
+import { ButtonModule } from 'primeng/button';
+import { SelectModule } from 'primeng/select';
+import { TagModule } from 'primeng/tag';
+import { InputTextModule } from 'primeng/inputtext';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { TooltipModule } from 'primeng/tooltip';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { CheckboxModule } from 'primeng/checkbox';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { BadgeModule } from 'primeng/badge';
+import { ProgressBarModule } from 'primeng/progressbar';
 
 export type DetalhamentoFilterStatus = 'TODOS' | 'TRABALHANDO' | 'FOLGA';
 
@@ -25,7 +40,25 @@ interface ConfirmModalData {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    IconComponent,
+    TableModule,
+    DialogModule,
+    ButtonModule,
+    SelectModule,
+    TagModule,
+    InputTextModule,
+    ProgressSpinnerModule,
+    ConfirmDialogModule,
+    TooltipModule,
+    SelectButtonModule,
+    CheckboxModule,
+    InputNumberModule,
+    BadgeModule,
+    ProgressBarModule
+  ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -35,6 +68,7 @@ export class DashboardComponent implements OnInit {
   private readonly generator = inject(EscalaGeneratorService);
   public readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   userLojas = this.supabase.userLojas;
   activeLoja = this.supabase.activeLoja;
@@ -755,6 +789,11 @@ export class DashboardComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.route.queryParams.subscribe(params => {
+      if (params['tab'] && ['dashboard', 'escala', 'funcionarios', 'setores', 'feriados', 'regras', 'detalhes-funcionario'].includes(params['tab'])) {
+        this.activeTab.set(params['tab'] as any);
+      }
+    });
     this.loadData();
   }
 
@@ -886,6 +925,10 @@ export class DashboardComponent implements OnInit {
 
   getCoberturaPercent(setorNome: string): number {
     return this.coberturaPercentMap().get(setorNome) ?? 100;
+  }
+
+  closePrintOptionsModal() {
+    this.printModalVisible.set(false);
   }
 
   @HostListener('document:keydown.escape')

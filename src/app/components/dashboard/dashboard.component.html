@@ -1,204 +1,48 @@
-<div class="system-layout">
+<div class="sakai-dashboard-container p-3">
 
-  <!-- Overlay para Mobile -->
-  <button
-    type="button"
-    class="sidebar-overlay"
-    [class.active]="isMobileMenuOpen()"
-    (click)="isMobileMenuOpen.set(false)"
-    aria-label="Fechar menu lateral"
-  ></button>
+  <!-- BREADCRUMB & HEADER PROFISSIONAL SAKAI -->
+  <div class="module-header no-print flex-between align-center mb-4 wrap gap-10">
+    <div class="breadcrumb-container">
+      <span class="breadcrumb-root">Home</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-active">{{ breadcrumbLabel() }}</span>
+    </div>
 
-  <!-- ============================================================================== -->
-  <!-- BARRA LATERAL (SIDEBAR ENTERPRISE) -->
-  <!-- ============================================================================== -->
-  <aside class="sidebar no-print" [class.mobile-open]="isMobileMenuOpen()">
-    <div>
-      <!-- Marca / Logo Oficial -->
-      <div class="sidebar-header">
-        <div class="sidebar-brand">
-          <div class="brand-badge">JH</div>
-          <div class="brand-text">
-            <h2>João Henrique</h2>
-            <span>Atacadista 2.0</span>
-          </div>
-        </div>
-      </div>
+    <div class="flex-items-center-gap">
+      @if (activeTab() === 'escala' || activeTab() === 'dashboard') {
+        <button type="button" (click)="openPrintOptionsModal()" class="p-button p-button-warning p-button-sm font-bold flex-items-center-gap" style="border-radius: 8px; padding: 0.5rem 1rem;">
+          <app-icon name="printer" [size]="16" color="#0b2a52"></app-icon>
+          <span>Imprimir A4</span>
+        </button>
+      }
 
-      <!-- Seletor de Loja (Multi-Tenant) -->
-      @if (userLojas().length > 0) {
-        <div class="loja-selector-wrapper">
-          <label for="selectLoja" class="loja-selector-label">Unidade / Loja</label>
-          <select
-            id="selectLoja"
-            [ngModel]="activeLoja()?.id"
-            (ngModelChange)="onLojaChange($event)"
-            class="form-control select-loja"
-          >
-            @for (l of userLojas(); track l.id) {
-              <option [value]="l.id">{{ l.nome }} ({{ l.codigo }})</option>
-            }
-          </select>
+      @if (activeTab() === 'dashboard') {
+        <div class="header-kpi-bar">
+          <button type="button" class="kpi-chip clickable" (click)="openSetorDetalhamentoModal('', 'FOLGA')" title="Clique para ver quem está de folga hoje" style="border: none; font-family: inherit;">
+            <span class="kpi-val">{{ folgasHojeInfo().total }}</span>
+            <span class="kpi-lbl">Folgas Hoje</span>
+          </button>
+          <button type="button" class="kpi-chip clickable" (click)="openSetorDetalhamentoModal('', 'TODOS')" title="Clique para ver toda a equipe por setor" style="border: none; font-family: inherit;">
+            <span class="kpi-val">{{ funcionarios().length }}</span>
+            <span class="kpi-lbl">Colaboradores</span>
+          </button>
         </div>
       }
 
-      <!-- Menu de Navegação Enterprise -->
-      <nav class="sidebar-menu">
-        <div class="sidebar-label">Módulos</div>
-
-        <button
-          (click)="selectTab('dashboard')"
-          [class.active]="activeTab() === 'dashboard'"
-          class="nav-link-btn"
-        >
-          <div class="nav-btn-content">
-            <app-icon name="bar-chart" [size]="18"></app-icon>
-            <span>Visão Geral</span>
+      @if (activeTab() === 'regras') {
+        <div class="header-kpi-bar">
+          <div class="kpi-chip">
+            <span class="kpi-val">{{ statsRegras().implementadas }}</span>
+            <span class="kpi-lbl">No Algoritmo</span>
           </div>
-        </button>
-
-        <button
-          (click)="selectTab('escala')"
-          [class.active]="activeTab() === 'escala'"
-          class="nav-link-btn"
-        >
-          <div class="nav-btn-content">
-            <app-icon name="calendar" [size]="18"></app-icon>
-            <span>Escala do Mês</span>
+          <div class="kpi-chip">
+            <span class="kpi-val">{{ statsRegras().pendentes }}</span>
+            <span class="kpi-lbl">Pendentes</span>
           </div>
-        </button>
-
-        <button
-          (click)="selectTab('funcionarios')"
-          [class.active]="activeTab() === 'funcionarios' || activeTab() === 'detalhes-funcionario'"
-          class="nav-link-btn"
-        >
-          <div class="nav-btn-content">
-            <app-icon name="users" [size]="18"></app-icon>
-            <span>Colaboradores</span>
-          </div>
-        </button>
-
-        <button
-          (click)="selectTab('setores')"
-          [class.active]="activeTab() === 'setores'"
-          class="nav-link-btn"
-        >
-          <div class="nav-btn-content">
-            <app-icon name="folder" [size]="18"></app-icon>
-            <span>Setores & Cargos</span>
-          </div>
-        </button>
-
-        <button
-          (click)="selectTab('feriados')"
-          [class.active]="activeTab() === 'feriados'"
-          class="nav-link-btn"
-        >
-          <div class="nav-btn-content">
-            <app-icon name="calendar-check" [size]="18"></app-icon>
-            <span>Gestão de Feriados</span>
-          </div>
-        </button>
-
-        <button
-          (click)="selectTab('regras')"
-          [class.active]="activeTab() === 'regras'"
-          class="nav-link-btn"
-        >
-          <div class="nav-btn-content">
-            <app-icon name="book-open" [size]="18"></app-icon>
-            <span>Regras de Escala</span>
-          </div>
-        </button>
-      </nav>
+        </div>
+      }
     </div>
-
-    <!-- Rodapé do Usuário Logado -->
-    <div class="sidebar-footer">
-      <div class="user-card">
-        <div class="user-avatar">{{ userInitials() }}</div>
-        <div class="user-info">
-          <div class="user-name" [title]="currentUser()?.email || 'rhjoaohenriqueatacadista@gmail.com'">
-            {{ currentUser()?.email || 'rhjoaohenriqueatacadista@gmail.com' }}
-          </div>
-          <div class="user-role">Gestão de RH</div>
-        </div>
-        <button (click)="handleLogout()" title="Encerrar Sessão" class="icon-btn-sm danger">
-          <app-icon name="log-out" [size]="16" color="#ef4444"></app-icon>
-        </button>
-      </div>
-    </div>
-  </aside>
-
-  <!-- ============================================================================== -->
-  <!-- CONTEÚDO PRINCIPAL (MAIN WRAPPER & TOPBAR) -->
-  <!-- ============================================================================== -->
-  <div class="main-wrapper">
-
-    <!-- Topbar Superior de Utilidades -->
-    <header class="topbar no-print">
-      <div class="topbar-left">
-        <button (click)="toggleMobileMenu()" class="mobile-menu-btn" title="Abrir Menu">
-          <app-icon name="menu" [size]="20" color="#0b2a52"></app-icon>
-        </button>
-
-        <!-- Loja Ativa Tag -->
-        <div class="active-loja-tag">
-          <app-icon name="building" [size]="18" color="#0b2a52"></app-icon>
-          <span>{{ activeLoja()?.nome || 'Filial - Loja 002' }}</span>
-        </div>
-      </div>
-
-      <div class="topbar-actions">
-        <!-- Botão de Opções de Impressão A4 -->
-        @if (activeTab() === 'escala' || activeTab() === 'dashboard') {
-          <button (click)="openPrintOptionsModal()" class="btn-premium btn-yellow-solid flex-items-center-gap">
-            <app-icon name="printer" [size]="16" color="#0b2a52"></app-icon>
-            <span class="no-mobile-text">Imprimir A4</span>
-          </button>
-        }
-      </div>
-    </header>
-
-    <!-- Conteúdo Interno da Página -->
-    <main class="page-container">
-
-      <!-- BREADCRUMB & HEADER PROFISSIONAL E SECO (SEM POLUIÇÃO DE HERO BANNER) -->
-      <div class="module-header no-print">
-        <div class="breadcrumb-container">
-          <span class="breadcrumb-root">Home</span>
-          <span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-active">{{ breadcrumbLabel() }}</span>
-        </div>
-
-        <!-- Indicadores Resumidos (KPIs limpos) -->
-        @if (activeTab() === 'dashboard') {
-          <div class="header-kpi-bar">
-            <button type="button" class="kpi-chip clickable" (click)="openSetorDetalhamentoModal('', 'FOLGA')" title="Clique para ver quem está de folga hoje" style="border: none; font-family: inherit;">
-              <span class="kpi-val">{{ folgasHojeInfo().total }}</span>
-              <span class="kpi-lbl">Folgas Hoje</span>
-            </button>
-            <button type="button" class="kpi-chip clickable" (click)="openSetorDetalhamentoModal('', 'TODOS')" title="Clique para ver toda a equipe por setor" style="border: none; font-family: inherit;">
-              <span class="kpi-val">{{ funcionarios().length }}</span>
-              <span class="kpi-lbl">Colaboradores</span>
-            </button>
-          </div>
-        }
-
-        @if (activeTab() === 'regras') {
-          <div class="header-kpi-bar">
-            <div class="kpi-chip">
-              <span class="kpi-val">{{ statsRegras().implementadas }}</span>
-              <span class="kpi-lbl">No Algoritmo</span>
-            </div>
-            <div class="kpi-chip">
-              <span class="kpi-val">{{ statsRegras().pendentes }}</span>
-              <span class="kpi-lbl">Pendentes</span>
-            </div>
-          </div>
-        }
-      </div>
+  </div>
 
       <!-- ABA 0: DASHBOARD VISÃO GERAL -->
       @if (activeTab() === 'dashboard') {
@@ -1136,9 +980,6 @@
         }
       }
 
-    </main>
-  </div>
-
   <!-- TOAST SYSTEM -->
   <div class="toast-container">
     @for (t of toastService.toasts(); track t.id) {
@@ -1163,779 +1004,783 @@
   </div>
 
   <!-- MODAIS -->
-  <!-- MODAL DE IMPRESSÃO A4 -->
-  @if (printModalVisible()) {
-    <div class="modal-backdrop">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h4>Opções de Impressão A4</h4>
-          <button (click)="printModalVisible.set(false)" class="icon-btn-sm">
-            <app-icon name="x" [size]="16"></app-icon>
+  <!-- MODAL DE IMPRESSÃO A4 (PrimeNG p-dialog) -->
+  <p-dialog
+    [visible]="printModalVisible()"
+    (onHide)="printModalVisible.set(false)"
+    [modal]="true"
+    header="Opções de Impressão A4"
+    [style]="{ width: '90vw', maxWidth: '520px' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    <div class="p-3 space-y-16">
+      <div class="print-style-box mb-3">
+        <span class="modal-lbl font-bold text-xs d-block mb-2">Estilo Visual do Relatório A4:</span>
+        <div class="flex-gap-12 flex gap-2">
+          <button
+            type="button"
+            (click)="printEstilo.set('mural-folgas')"
+            [class.active]="printEstilo() === 'mural-folgas'"
+            class="btn-style-select"
+          >
+            Mural de Folgas por Setor
           </button>
-        </div>
 
-        <div class="modal-body space-y-16">
-          <div class="print-style-box">
-            <span class="modal-lbl">Estilo Visual do Relatório A4:</span>
-            <div class="flex-gap-12">
-              <button
-                (click)="printEstilo.set('mural-folgas')"
-                [class.active]="printEstilo() === 'mural-folgas'"
-                class="btn-style-select"
-              >
-                Mural de Folgas por Setor
-              </button>
-
-              <button
-                (click)="printEstilo.set('formal')"
-                [class.active]="printEstilo() === 'formal'"
-                class="btn-style-select"
-              >
-                Relatório Oficial RH
-              </button>
-            </div>
-          </div>
-          
-          <div class="form-group flex-items-center-gap mt-16">
-            <input type="checkbox"
-              [ngModel]="mostrarApenasFolgasImpressao()"
-              (ngModelChange)="mostrarApenasFolgasImpressao.set($event)"
-              id="chkFolgasPrint" class="chk-input" />
-            <label for="chkFolgasPrint" class="chk-lbl">Imprimir apenas dias de folga (facilita leitura)</label>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button (click)="printModalVisible.set(false)" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="executePrint()" class="btn-premium btn-yellow-solid">
-            <span>Confirmar e Imprimir</span>
+          <button
+            type="button"
+            (click)="printEstilo.set('formal')"
+            [class.active]="printEstilo() === 'formal'"
+            class="btn-style-select"
+          >
+            Relatório Oficial RH
           </button>
         </div>
       </div>
-    </div>
-  }
-
-  <!-- MODAL DE REGRA -->
-  @if (regraModal().visible) {
-    <div class="modal-backdrop">
-      <div class="modal-card border-top-danger">
-        <div class="modal-header">
-          <h4>{{ regraModal().isEdit ? 'Editar Regra de Escala' : 'Cadastrar Nova Regra' }}</h4>
-          <button (click)="closeRegraModal()" class="icon-btn-sm">
-            <app-icon name="x" [size]="16"></app-icon>
-          </button>
-        </div>
-        <div class="modal-body space-y-14">
-          <div class="form-group">
-            <label for="regraTituloInput">Título da Regra</label>
-            <input id="regraTituloInput" type="text" [(ngModel)]="regraModalForm.titulo" class="form-control" placeholder="Ex: Preferência de folga aos sábados" required />
-          </div>
-
-          <div class="form-group">
-            <label for="regraDescricaoInput">Descrição Detalhada</label>
-            <textarea id="regraDescricaoInput" [(ngModel)]="regraModalForm.descricao" class="form-control" rows="3" placeholder="Explique como o algoritmo deve se comportar..." required></textarea>
-          </div>
-
-          <div class="form-group">
-            <label for="regraCategoriaSelect">Categoria</label>
-            <select id="regraCategoriaSelect" [(ngModel)]="regraModalForm.categoria" class="form-control">
-              <option value="CLT">CLT</option>
-              <option value="Acordo Coletivo">Acordo Coletivo</option>
-              <option value="Interna RH">Interna RH</option>
-              <option value="Solicitação RH">Solicitação RH</option>
-            </select>
-          </div>
-
-          <div class="form-group flex-items-center-gap">
-            <input type="checkbox" [(ngModel)]="regraModalForm.obrigatoria" id="chkObrigatoria" class="chk-input" />
-            <label for="chkObrigatoria" class="chk-lbl">
-              Regra Obrigatória / Rígida
-              <span class="custom-tooltip" data-tooltip="O algoritmo nunca poderá quebrar esta regra">
-                <app-icon name="info" [size]="14" color="#64748b"></app-icon>
-              </span>
-            </label>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button (click)="closeRegraModal()" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="saveRegraModal()" class="btn-premium btn-danger-solid">
-            {{ regraModal().isEdit ? 'Salvar Alterações' : 'Cadastrar Regra' }}
-          </button>
-        </div>
+      
+      <div class="form-group flex-items-center-gap mt-3 flex align-center gap-2">
+        <input type="checkbox"
+          [ngModel]="mostrarApenasFolgasImpressao()"
+          (ngModelChange)="mostrarApenasFolgasImpressao.set($event)"
+          id="chkFolgasPrint" class="chk-input" />
+        <label for="chkFolgasPrint" class="chk-lbl text-sm">Imprimir apenas dias de folga (facilita leitura)</label>
       </div>
     </div>
-  }
 
-  <!-- MODAL QUICK BLUR -->
+    <ng-template pTemplate="footer">
+      <div class="flex-end gap-2">
+        <button type="button" (click)="printModalVisible.set(false)" class="p-button p-button-secondary p-button-outlined p-button-sm">Cancelar</button>
+        <button type="button" (click)="executePrint()" class="p-button p-button-warning p-button-sm font-bold">
+          <span>Confirmar e Imprimir</span>
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- MODAL DE REGRA (PrimeNG p-dialog) -->
+  <p-dialog
+    [visible]="regraModal().visible"
+    (onHide)="closeRegraModal()"
+    [modal]="true"
+    [header]="regraModal().isEdit ? 'Editar Regra de Escala' : 'Cadastrar Nova Regra'"
+    [style]="{ width: '90vw', maxWidth: '560px' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    <div class="p-3 space-y-14">
+      <div class="form-group mb-3">
+        <label for="regraTituloInput" class="font-bold text-xs d-block mb-1">Título da Regra</label>
+        <input id="regraTituloInput" type="text" [(ngModel)]="regraModalForm.titulo" class="p-inputtext p-component w-full" placeholder="Ex: Preferência de folga aos sábados" required />
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="regraDescricaoInput" class="font-bold text-xs d-block mb-1">Descrição Detalhada</label>
+        <textarea id="regraDescricaoInput" [(ngModel)]="regraModalForm.descricao" class="p-inputtext p-component w-full" rows="3" placeholder="Explique como o algoritmo deve se comportar..." required></textarea>
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="regraCategoriaSelect" class="font-bold text-xs d-block mb-1">Categoria</label>
+        <select id="regraCategoriaSelect" [(ngModel)]="regraModalForm.categoria" class="p-inputtext p-component w-full">
+          <option value="CLT">CLT</option>
+          <option value="Acordo Coletivo">Acordo Coletivo</option>
+          <option value="Interna RH">Interna RH</option>
+          <option value="Solicitação RH">Solicitação RH</option>
+        </select>
+      </div>
+
+      <div class="form-group flex-items-center-gap flex align-center gap-2">
+        <input type="checkbox" [(ngModel)]="regraModalForm.obrigatoria" id="chkObrigatoria" class="chk-input" />
+        <label for="chkObrigatoria" class="chk-lbl text-sm">
+          Regra Obrigatória / Rígida
+          <span class="custom-tooltip" data-tooltip="O algoritmo nunca poderá quebrar esta regra">
+            <app-icon name="info" [size]="14" color="#64748b"></app-icon>
+          </span>
+        </label>
+      </div>
+    </div>
+    <ng-template pTemplate="footer">
+      <div class="flex-end gap-2">
+        <button type="button" (click)="closeRegraModal()" class="p-button p-button-secondary p-button-outlined p-button-sm">Cancelar</button>
+        <button type="button" (click)="saveRegraModal()" class="p-button p-button-danger p-button-sm font-bold">
+          {{ regraModal().isEdit ? 'Salvar Alterações' : 'Cadastrar Regra' }}
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- MODAL QUICK BLUR (PrimeNG p-dialog) -->
   @if (quickBlurModal().visible && quickBlurModal().func) {
     @let f = quickBlurModal().func!;
-
-    <div class="blur-backdrop">
-      <div class="modal-card max-w-520">
-        <div class="modal-header bg-white">
-          <div class="profile-avatar-group">
-            <div class="profile-avatar-circle sm">
-              {{ f.primeiro_nome.substring(0, 2).toUpperCase() }}
-            </div>
-            <div>
-              <h4 class="modal-title-bold">{{ f.primeiro_nome }}</h4>
-              <span class="modal-sub-text">Matrícula: {{ f.matricula_aleatoria }} | {{ f.setor }}</span>
-            </div>
+    <p-dialog
+      [visible]="quickBlurModal().visible"
+      (onHide)="closeQuickBlurModal()"
+      [modal]="true"
+      [header]="'Perfil Rápido — ' + f.primeiro_nome"
+      [style]="{ width: '90vw', maxWidth: '520px' }"
+      [draggable]="false"
+      [resizable]="false"
+    >
+      <div class="p-3 space-y-16">
+        <div class="profile-avatar-group flex align-center gap-3 mb-3">
+          <div class="profile-avatar-circle sm">
+            {{ f.primeiro_nome.substring(0, 2).toUpperCase() }}
           </div>
-          <button (click)="closeQuickBlurModal()" class="icon-btn-sm">
-            <app-icon name="x" [size]="16"></app-icon>
-          </button>
-        </div>
-
-        <div class="modal-body space-y-16">
-          <div class="quick-blur-info-box">
-            <h5 class="quick-blur-title">Resumo de Atividade</h5>
-            @if (quickBlurModal().ultimosDomingos.length > 0) {
-              <div class="quick-blur-list">
-                @for (d of quickBlurModal().ultimosDomingos; track $index) {
-                  <div class="quick-blur-item">
-                    <span>{{ d.dataStr }} - {{ d.descricao }}</span>
-                  </div>
-                }
-              </div>
-            } @else {
-              <div class="text-sm color-slate">Nenhum domingo em escala no mês selecionado.</div>
-            }
+          <div>
+            <h4 class="modal-title-bold font-bold color-navy m-0">{{ f.primeiro_nome }}</h4>
+            <span class="modal-sub-text text-xs color-slate">Matrícula: {{ f.matricula_aleatoria }} | Setor: {{ f.setor }}</span>
           </div>
         </div>
 
-        <div class="modal-footer">
-          <button (click)="closeQuickBlurModal()" class="btn-premium btn-ghost">Fechar</button>
-          <button (click)="navigateToFuncProfile(f)" class="btn-premium btn-yellow-solid">
+        <div class="quick-blur-info-box border p-3 rounded surface-card">
+          <h5 class="quick-blur-title font-bold color-navy mb-2">Resumo de Atividade</h5>
+          @if (quickBlurModal().ultimosDomingos.length > 0) {
+            <div class="quick-blur-list">
+              @for (d of quickBlurModal().ultimosDomingos; track $index) {
+                <div class="quick-blur-item py-1 border-bottom text-xs">
+                  <span>{{ d.dataStr }} - {{ d.descricao }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="text-sm color-slate">Nenhum domingo em escala no mês selecionado.</div>
+          }
+        </div>
+      </div>
+
+      <ng-template pTemplate="footer">
+        <div class="flex-end gap-2">
+          <button type="button" (click)="closeQuickBlurModal()" class="p-button p-button-secondary p-button-outlined p-button-sm">Fechar</button>
+          <button type="button" (click)="navigateToFuncProfile(f)" class="p-button p-button-warning p-button-sm font-bold">
             <span>Ver Perfil Detalhado</span>
           </button>
         </div>
-      </div>
-    </div>
+      </ng-template>
+    </p-dialog>
   }
 
-  <!-- MODAL DE CONFIRMAÇÃO -->
-  @if (confirmModal().visible) {
-    <div class="modal-backdrop">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h4 class="text-red-600 flex-items-center-gap">
-            <app-icon name="alert-triangle" [size]="18" color="#dc2626"></app-icon>
-            <span>{{ confirmModal().title }}</span>
-          </h4>
-        </div>
-        <div class="modal-body">
-          <p class="confirm-modal-msg">{{ confirmModal().message }}</p>
-        </div>
-        <div class="modal-footer">
-          <button (click)="closeConfirmModal()" class="btn-premium btn-ghost">
-            {{ confirmModal().cancelText || 'Cancelar' }}
-          </button>
-          <button (click)="executeConfirmModal()" class="btn-premium btn-danger-solid">
-            {{ confirmModal().confirmText || 'Confirmar' }}
-          </button>
-        </div>
-      </div>
+  <!-- MODAL DE CONFIRMAÇÃO (PrimeNG p-dialog) -->
+  <p-dialog
+    [visible]="confirmModal().visible"
+    (onHide)="closeConfirmModal()"
+    [modal]="true"
+    [header]="confirmModal().title || 'Confirmação'"
+    [style]="{ width: '90vw', maxWidth: '480px' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    <div class="p-3">
+      <p class="confirm-modal-msg text-sm color-navy m-0">{{ confirmModal().message }}</p>
     </div>
-  }
+    <ng-template pTemplate="footer">
+      <div class="flex-end gap-2">
+        <button type="button" (click)="closeConfirmModal()" class="p-button p-button-secondary p-button-outlined p-button-sm">
+          {{ confirmModal().cancelText || 'Cancelar' }}
+        </button>
+        <button type="button" (click)="executeConfirmModal()" class="p-button p-button-danger p-button-sm font-bold">
+          {{ confirmModal().confirmText || 'Confirmar' }}
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
 
-  <!-- MODAL DE EDITAR FUNCIONÁRIO (BUG-P6 FIX: usa @let para segurança) -->
+  <!-- MODAL DE EDITAR FUNCIONÁRIO (PrimeNG p-dialog) -->
   @if (editingFunc()) {
     @let ef = editingFunc()!;
-    <div class="modal-backdrop">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h4>Editar Colaborador</h4>
-          <button (click)="editingFunc.set(null)" class="icon-btn-sm">
-            <app-icon name="x" [size]="16"></app-icon>
-          </button>
+    <p-dialog
+      [visible]="!!editingFunc()"
+      (onHide)="editingFunc.set(null)"
+      [modal]="true"
+      [header]="'Editar Colaborador — ' + ef.primeiro_nome"
+      [style]="{ width: '90vw', maxWidth: '560px' }"
+      [draggable]="false"
+      [resizable]="false"
+    >
+      <div class="p-3 space-y-14">
+        <div class="form-group mb-3">
+          <label for="editPrimeiroNomeInput" class="font-bold text-xs d-block mb-1">Primeiro Nome</label>
+          <input id="editPrimeiroNomeInput" type="text" [(ngModel)]="ef.primeiro_nome" class="p-inputtext p-component w-full" required />
         </div>
-        <div class="modal-body space-y-14">
-          <div class="form-group">
-            <label for="editPrimeiroNomeInput">Primeiro Nome</label>
-            <input id="editPrimeiroNomeInput" type="text" [(ngModel)]="ef.primeiro_nome" class="form-control" required />
-          </div>
 
-          <div class="form-group">
-            <label for="editSetorSelect">Setor Operacional</label>
-            <select id="editSetorSelect" [ngModel]="ef.setor" (ngModelChange)="onEditFuncSetorChange($event)" class="form-control">
-              @for (s of setores(); track s.id) {
-                <option [value]="s.nome">{{ s.nome }}</option>
+        <div class="form-group mb-3">
+          <label for="editSetorSelect" class="font-bold text-xs d-block mb-1">Setor Operacional</label>
+          <select id="editSetorSelect" [ngModel]="ef.setor" (ngModelChange)="onEditFuncSetorChange($event)" class="p-inputtext p-component w-full">
+            @for (s of setores(); track s.id) {
+              <option [value]="s.nome">{{ s.nome }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="editCargoSelect" class="font-bold text-xs d-block mb-1">Função / Cargo</label>
+          <select id="editCargoSelect" [(ngModel)]="ef.cargo" class="p-inputtext p-component w-full">
+            @for (c of cargosDoEditSetor(); track c.id) {
+              <option [value]="c.nome">{{ c.nome }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="editTurnoSelect" class="font-bold text-xs d-block mb-1">Horário Padrão / Turno Fixo</label>
+          <select id="editTurnoSelect" [ngModel]="ef.turno_padrao" (ngModelChange)="ef.turno_padrao = $event" class="p-inputtext p-component w-full mb-2">
+            @for (h of horariosFixosCaixa; track h.id) {
+              <option [value]="h.nome">{{ h.nome }}</option>
+            }
+          </select>
+          <input id="editTurnoInput" type="text" [(ngModel)]="ef.turno_padrao" class="p-inputtext p-component w-full" placeholder="Ou digite um horário personalizado" required aria-label="Turno Padrão Personalizado" />
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="editGeneroSelect" class="font-bold text-xs d-block mb-1">Gênero (Regras CLT/CCT)</label>
+          <select id="editGeneroSelect" [(ngModel)]="ef.genero" class="p-inputtext p-component w-full" required>
+            <option value="M">Masculino</option>
+            <option value="F">Feminino</option>
+          </select>
+        </div>
+
+        <div class="form-group mb-3">
+          <span style="display: block; margin-bottom: 6px; font-weight: 600; color: #0b2a52;">Setores de Cobertura (Função Secundária)</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; padding: 10px; background: rgba(255,255,255,0.5); border: 1px solid #d1d5db; border-radius: 6px; max-height: 120px; overflow-y: auto;">
+            @for (s of setores(); track s.id) {
+              @if (s.nome !== ef.setor) {
+                <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: #1e293b;">
+                  <input
+                    type="checkbox"
+                    [checked]="(ef.setores_cobertura || []).includes(s.nome)"
+                    (change)="toggleEditSetoresCobertura(s.nome)"
+                    style="width: 16px; height: 16px; accent-color: #0b2a52; cursor: pointer;"
+                  />
+                  <span>{{ s.nome }}</span>
+                </label>
               }
-            </select>
+            }
           </div>
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <div class="flex-end gap-2">
+          <button type="button" (click)="editingFunc.set(null)" class="p-button p-button-secondary p-button-outlined p-button-sm">Cancelar</button>
+          <button type="button" (click)="saveEditFuncionario()" class="p-button p-button-primary p-button-sm font-bold">Salvar Alterações</button>
+        </div>
+      </ng-template>
+    </p-dialog>
+  }
 
-          <div class="form-group">
-            <label for="editCargoSelect">Função / Cargo</label>
-            <select id="editCargoSelect" [(ngModel)]="ef.cargo" class="form-control">
-              @for (c of cargosDoEditSetor(); track c.id) {
-                <option [value]="c.nome">{{ c.nome }}</option>
-              }
-            </select>
-          </div>
+  <!-- MODAL DE SETOR (PrimeNG p-dialog) -->
+  <p-dialog
+    [visible]="sectorModal().visible"
+    (onHide)="closeSectorModal()"
+    [modal]="true"
+    [header]="sectorModal().isEdit ? 'Editar Setor' : 'Adicionar Setor'"
+    [style]="{ width: '90vw', maxWidth: '520px' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    <div class="p-3 space-y-14">
+      <div class="form-group mb-3">
+        <label for="setorNomeInput" class="font-bold text-xs d-block mb-1">Nome do Setor</label>
+        <input id="setorNomeInput" type="text" [(ngModel)]="sectorModalForm.nome" class="p-inputtext p-component w-full" placeholder="Ex: Recebimento" required />
+      </div>
+      <div class="form-group mb-3">
+        <label for="setorDescricaoInput" class="font-bold text-xs d-block mb-1">Descrição (Opcional)</label>
+        <input id="setorDescricaoInput" type="text" [(ngModel)]="sectorModalForm.descricao" class="p-inputtext p-component w-full" placeholder="Ex: Recebimento de mercadorias" />
+      </div>
+    </div>
+    <ng-template pTemplate="footer">
+      <div class="flex-end gap-2">
+        <button type="button" (click)="closeSectorModal()" class="p-button p-button-secondary p-button-outlined p-button-sm">Cancelar</button>
+        <button type="button" (click)="saveSectorModal()" class="p-button p-button-warning p-button-sm font-bold">
+          {{ sectorModal().isEdit ? 'Salvar Alterações' : 'Criar Setor' }}
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
 
-          <div class="form-group">
-            <label for="editTurnoSelect">Horário Padrão / Turno Fixo</label>
-            <select id="editTurnoSelect" [ngModel]="ef.turno_padrao" (ngModelChange)="ef.turno_padrao = $event" class="form-control mb-8">
-              @for (h of horariosFixosCaixa; track h.id) {
-                <option [value]="h.nome">{{ h.nome }}</option>
-              }
-            </select>
-            <input id="editTurnoInput" type="text" [(ngModel)]="ef.turno_padrao" class="form-control" placeholder="Ou digite um horário personalizado" required aria-label="Turno Padrão Personalizado" />
-          </div>
+  <!-- MODAL DE CARGO (PrimeNG p-dialog) -->
+  <p-dialog
+    [visible]="cargoModal().visible"
+    (onHide)="closeCargoModal()"
+    [modal]="true"
+    [header]="cargoModal().isEdit ? 'Editar Cargo' : 'Adicionar Cargo'"
+    [style]="{ width: '90vw', maxWidth: '520px' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    <div class="p-3 space-y-14">
+      <div class="form-group mb-3">
+        <label for="cargoSetorSelect" class="font-bold text-xs d-block mb-1">Setor Vinculado</label>
+        <select id="cargoSetorSelect" [(ngModel)]="cargoModalForm.setor_nome" class="p-inputtext p-component w-full" [disabled]="cargoModal().isEdit">
+          @for (s of setores(); track s.id) {
+            <option [value]="s.nome">{{ s.nome }}</option>
+          }
+        </select>
+      </div>
 
-          <div class="form-group">
-            <label for="editGeneroSelect">Gênero (Regras CLT/CCT)</label>
-            <select id="editGeneroSelect" [(ngModel)]="ef.genero" class="form-control" required>
-              <option value="M">Masculino</option>
-              <option value="F">Feminino</option>
-            </select>
-          </div>
+      <div class="form-group mb-3">
+        <label for="cargoNomeInput" class="font-bold text-xs d-block mb-1">Nome da Função / Cargo</label>
+        <input id="cargoNomeInput" type="text" [(ngModel)]="cargoModalForm.nome" class="p-inputtext p-component w-full" placeholder="Ex: Operador de Caixa Senior" required />
+      </div>
 
-          <div class="form-group">
-            <span style="display: block; margin-bottom: 6px; font-weight: 600; color: #0b2a52;">Setores de Cobertura (Função Secundária)</span>
-            <div style="display: flex; flex-wrap: wrap; gap: 12px; padding: 10px; background: rgba(255,255,255,0.5); border: 1px solid #d1d5db; border-radius: 6px; max-height: 120px; overflow-y: auto;">
-              @for (s of setores(); track s.id) {
-                @if (s.nome !== ef.setor) {
-                  <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: #1e293b;">
-                    <input
-                      type="checkbox"
-                      [checked]="(ef.setores_cobertura || []).includes(s.nome)"
-                      (change)="toggleEditSetoresCobertura(s.nome)"
-                      style="width: 16px; height: 16px; accent-color: #0b2a52; cursor: pointer;"
-                    />
-                    <span>{{ s.nome }}</span>
-                  </label>
+      <div class="form-group mb-3">
+        <label for="cargoDescricaoInput" class="font-bold text-xs d-block mb-1">Descrição (Opcional)</label>
+        <input id="cargoDescricaoInput" type="text" [(ngModel)]="cargoModalForm.descricao" class="p-inputtext p-component w-full" placeholder="Ex: Operação nos caixas rápidos" />
+      </div>
+    </div>
+    <ng-template pTemplate="footer">
+      <div class="flex-end gap-2">
+        <button type="button" (click)="closeCargoModal()" class="p-button p-button-secondary p-button-outlined p-button-sm">Cancelar</button>
+        <button type="button" (click)="saveCargoModal()" class="p-button p-button-primary p-button-sm font-bold">
+          {{ cargoModal().isEdit ? 'Salvar Alterações' : 'Criar Cargo' }}
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- MODAL DE FERIADO (PrimeNG p-dialog) -->
+  <p-dialog
+    [visible]="feriadoModal().visible"
+    (onHide)="closeFeriadoModal()"
+    [modal]="true"
+    [header]="feriadoModal().isEdit ? 'Editar Feriado' : 'Cadastrar Feriado'"
+    [style]="{ width: '90vw', maxWidth: '520px' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    <div class="p-3 space-y-14">
+      <div class="form-group mb-3">
+        <label for="feriadoNomeInput" class="font-bold text-xs d-block mb-1">Nome do Feriado</label>
+        <input id="feriadoNomeInput" type="text" [(ngModel)]="feriadoModalForm.nome" class="p-inputtext p-component w-full" placeholder="Ex: Emancipação de Poções" required />
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="feriadoDataInput" class="font-bold text-xs d-block mb-1">Data</label>
+        <input id="feriadoDataInput" type="date" [(ngModel)]="feriadoModalForm.data" class="p-inputtext p-component w-full" required />
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="feriadoTipoSelect" class="font-bold text-xs d-block mb-1">Âmbito / Tipo</label>
+        <select id="feriadoTipoSelect" [(ngModel)]="feriadoModalForm.tipo" (ngModelChange)="onFeriadoTipoChange($event)" class="p-inputtext p-component w-full">
+          <option value="Nacional">Nacional (Brasil)</option>
+          <option value="Estadual">Estadual (Bahia)</option>
+          <option value="Municipal">Municipal (Poções - BA)</option>
+          <option value="Ponto Facultativo">Ponto Facultativo</option>
+        </select>
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="feriadoAbrangenciaInput" class="font-bold text-xs d-block mb-1">Abrangência</label>
+        <input id="feriadoAbrangenciaInput" type="text" [(ngModel)]="feriadoModalForm.abrangencia" class="p-inputtext p-component w-full" placeholder="Ex: Poções - BA" required />
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="feriadoDescricaoInput" class="font-bold text-xs d-block mb-1">Descrição / Observação</label>
+        <input id="feriadoDescricaoInput" type="text" [(ngModel)]="feriadoModalForm.descricao" class="p-inputtext p-component w-full" placeholder="Ex: Feriado municipal comemorativo" />
+      </div>
+
+      <div class="form-group flex-items-center-gap flex align-center gap-2">
+        <input type="checkbox" [(ngModel)]="feriadoModalForm.funcionamento_proibido" id="chkFeriadoProibido" class="chk-input" />
+        <label for="chkFeriadoProibido" class="chk-lbl text-sm">
+          Funcionamento Proibido
+          <span class="custom-tooltip" data-tooltip="Gera folga obrigatória para todos os colaboradores">
+            <app-icon name="info" [size]="14" color="#64748b"></app-icon>
+          </span>
+        </label>
+      </div>
+    </div>
+    <ng-template pTemplate="footer">
+      <div class="flex-end gap-2">
+        <button type="button" (click)="closeFeriadoModal()" class="p-button p-button-secondary p-button-outlined p-button-sm">Cancelar</button>
+        <button type="button" (click)="saveFeriadoModal()" class="p-button p-button-warning p-button-sm font-bold">
+          {{ feriadoModal().isEdit ? 'Salvar Alterações' : 'Cadastrar Feriado' }}
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- MODAL: ESCALA GUIADA INTELIGENTE (PrimeNG p-dialog) -->
+  <p-dialog
+    [visible]="isEscalaGuiadaModalOpen()"
+    (onHide)="isEscalaGuiadaModalOpen.set(false)"
+    [modal]="true"
+    header="Assistente de Configuração de Escala Guiada ✨"
+    [style]="{ width: '90vw', maxWidth: '820px' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    <div class="p-3">
+      <div class="wizard-steps-bar mb-4 flex-between align-center">
+        <div class="wizard-step-item" [class.active]="guiadaStep() >= 1">
+          <span class="step-num">1</span>
+          <span class="step-lbl">Setor & Mês</span>
+        </div>
+        <div class="wizard-step-line" [class.active]="guiadaStep() >= 2"></div>
+        <div class="wizard-step-item" [class.active]="guiadaStep() >= 2">
+          <span class="step-num">2</span>
+          <span class="step-lbl">Cobertura Mínima</span>
+        </div>
+        <div class="wizard-step-line" [class.active]="guiadaStep() >= 3"></div>
+        <div class="wizard-step-item" [class.active]="guiadaStep() >= 3">
+          <span class="step-num">3</span>
+          <span class="step-lbl">Turnos & Intervalos</span>
+        </div>
+        <div class="wizard-step-line" [class.active]="guiadaStep() >= 4"></div>
+        <div class="wizard-step-item" [class.active]="guiadaStep() >= 4">
+          <span class="step-num">4</span>
+          <span class="step-lbl">Validação & Gerar</span>
+        </div>
+      </div>
+
+      <div class="wizard-body">
+        <!-- PASSO 1 -->
+        @if (guiadaStep() === 1) {
+          <div class="wizard-step-content">
+            <h4 class="color-navy font-bold mb-2">Passo 1: Selecione o Setor, Mês e Modelo de Jornada</h4>
+            <p class="text-sm text-muted mb-4">Escolha entre a escala 6x1 tradicional ou a escala 5x1 com ciclo contínuo.</p>
+
+            <div class="form-group mb-3">
+              <label for="guiadaSetorSelect" class="font-bold color-navy d-block mb-1">Setor Operacional:</label>
+              <select id="guiadaSetorSelect" [ngModel]="guiadaSetor()" (ngModelChange)="guiadaSetor.set($event)" class="p-inputtext p-component w-full">
+                @for (s of setores(); track s.id) {
+                  <option [value]="s.nome">{{ s.nome }}</option>
                 }
-              }
+              </select>
+            </div>
+
+            <div class="form-group mb-3">
+              <label for="guiadaModeloSelect" class="font-bold color-navy d-block mb-1">Modelo de Jornada de Trabalho:</label>
+              <select id="guiadaModeloSelect" [ngModel]="guiadaModeloEscala()" (ngModelChange)="guiadaModeloEscala.set($event)" class="p-inputtext p-component w-full">
+                <option value="6x1">Escala 6x1 (Padrão CCT — 6 dias de trabalho por 1 de folga)</option>
+                <option value="5x1">Escala 5x1 (Ciclo Contínuo — 5 dias de trabalho por 1 de folga)</option>
+              </select>
+              <small class="text-muted mt-1 d-block">
+                💡 <strong>Modelos Suportados</strong>: 6x1 (Giratória Semanal) ou 5x1 (Ciclo Contínuo 5T:1F).
+              </small>
+            </div>
+
+            <div class="form-group mb-3">
+              <label for="guiadaMesInput" class="font-bold color-navy d-block mb-1">Mês de Referência:</label>
+              <input id="guiadaMesInput" type="month" [(ngModel)]="selectedMonth" class="p-inputtext p-component w-full" />
             </div>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button (click)="editingFunc.set(null)" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="saveEditFuncionario()" class="btn-premium btn-primary-solid">Salvar Alterações</button>
-        </div>
-      </div>
-    </div>
-  }
+        }
 
-  <!-- MODAL DE SETOR -->
-  @if (sectorModal().visible) {
-    <div class="modal-backdrop">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h4>{{ sectorModal().isEdit ? 'Editar Setor' : 'Adicionar Setor' }}</h4>
-          <button (click)="closeSectorModal()" class="icon-btn-sm">
-            <app-icon name="x" [size]="16"></app-icon>
-          </button>
-        </div>
-        <div class="modal-body space-y-14">
-          <div class="form-group">
-            <label for="setorNomeInput">Nome do Setor</label>
-            <input id="setorNomeInput" type="text" [(ngModel)]="sectorModalForm.nome" class="form-control" placeholder="Ex: Recebimento" required />
-          </div>
-          <div class="form-group">
-            <label for="setorDescricaoInput">Descrição (Opcional)</label>
-            <input id="setorDescricaoInput" type="text" [(ngModel)]="sectorModalForm.descricao" class="form-control" placeholder="Ex: Recebimento de mercadorias" />
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button (click)="closeSectorModal()" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="saveSectorModal()" class="btn-premium btn-yellow-solid">
-            {{ sectorModal().isEdit ? 'Salvar Alterações' : 'Criar Setor' }}
-          </button>
-        </div>
-      </div>
-    </div>
-  }
+        <!-- PASSO 2 -->
+        @if (guiadaStep() === 2) {
+          <div class="wizard-step-content">
+            <h4 class="color-navy font-bold mb-2">Passo 2: Cobertura Mínima e Biblioteca de Regras</h4>
+            <p class="text-sm text-muted mb-4">Defina o headcount mínimo por dia e selecione regras inter-setoriais adicionais.</p>
 
-  <!-- MODAL DE CARGO -->
-  @if (cargoModal().visible) {
-    <div class="modal-backdrop">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h4>{{ cargoModal().isEdit ? 'Editar Cargo' : 'Adicionar Cargo' }}</h4>
-          <button (click)="closeCargoModal()" class="icon-btn-sm">
-            <app-icon name="x" [size]="16"></app-icon>
-          </button>
-        </div>
-        <div class="modal-body space-y-14">
-          <div class="form-group">
-            <label for="cargoSetorSelect">Setor Vinculado</label>
-            <select id="cargoSetorSelect" [(ngModel)]="cargoModalForm.setor_nome" class="form-control" [disabled]="cargoModal().isEdit">
-              @for (s of setores(); track s.id) {
-                <option [value]="s.nome">{{ s.nome }}</option>
-              }
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="cargoNomeInput">Nome da Função / Cargo</label>
-            <input id="cargoNomeInput" type="text" [(ngModel)]="cargoModalForm.nome" class="form-control" placeholder="Ex: Operador de Caixa Senior" required />
-          </div>
-
-          <div class="form-group">
-            <label for="cargoDescricaoInput">Descrição (Opcional)</label>
-            <input id="cargoDescricaoInput" type="text" [(ngModel)]="cargoModalForm.descricao" class="form-control" placeholder="Ex: Operação nos caixas rápidos" />
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button (click)="closeCargoModal()" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="saveCargoModal()" class="btn-premium btn-primary-solid">
-            {{ cargoModal().isEdit ? 'Salvar Alterações' : 'Criar Cargo' }}
-          </button>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- MODAL DE FERIADO -->
-  @if (feriadoModal().visible) {
-    <div class="modal-backdrop">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h4>{{ feriadoModal().isEdit ? 'Editar Feriado' : 'Cadastrar Feriado' }}</h4>
-          <button (click)="closeFeriadoModal()" class="icon-btn-sm">
-            <app-icon name="x" [size]="16"></app-icon>
-          </button>
-        </div>
-        <div class="modal-body space-y-14">
-          <div class="form-group">
-            <label for="feriadoNomeInput">Nome do Feriado</label>
-            <input id="feriadoNomeInput" type="text" [(ngModel)]="feriadoModalForm.nome" class="form-control" placeholder="Ex: Emancipação de Poções" required />
-          </div>
-
-          <div class="form-group">
-            <label for="feriadoDataInput">Data</label>
-            <input id="feriadoDataInput" type="date" [(ngModel)]="feriadoModalForm.data" class="form-control" required />
-          </div>
-
-          <div class="form-group">
-            <label for="feriadoTipoSelect">Âmbito / Tipo</label>
-            <select id="feriadoTipoSelect" [(ngModel)]="feriadoModalForm.tipo" (ngModelChange)="onFeriadoTipoChange($event)" class="form-control">
-              <option value="Nacional">Nacional (Brasil)</option>
-              <option value="Estadual">Estadual (Bahia)</option>
-              <option value="Municipal">Municipal (Poções - BA)</option>
-              <option value="Ponto Facultativo">Ponto Facultativo</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="feriadoAbrangenciaInput">Abrangência</label>
-            <input id="feriadoAbrangenciaInput" type="text" [(ngModel)]="feriadoModalForm.abrangencia" class="form-control" placeholder="Ex: Poções - BA" required />
-          </div>
-
-          <div class="form-group">
-            <label for="feriadoDescricaoInput">Descrição / Observação</label>
-            <input id="feriadoDescricaoInput" type="text" [(ngModel)]="feriadoModalForm.descricao" class="form-control" placeholder="Ex: Feriado municipal comemorativo" />
-          </div>
-
-          <div class="form-group flex-items-center-gap">
-            <input type="checkbox" [(ngModel)]="feriadoModalForm.funcionamento_proibido" id="chkFeriadoProibido" class="chk-input" />
-            <label for="chkFeriadoProibido" class="chk-lbl">
-              Funcionamento Proibido
-              <span class="custom-tooltip" data-tooltip="Gera folga obrigatória para todos os colaboradores">
-                <app-icon name="info" [size]="14" color="#64748b"></app-icon>
-              </span>
-            </label>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button (click)="closeFeriadoModal()" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="saveFeriadoModal()" class="btn-premium btn-yellow-solid">
-            {{ feriadoModal().isEdit ? 'Salvar Alterações' : 'Cadastrar Feriado' }}
-          </button>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- MODAL: ESCALA GUIADA (WIZARD 4 PASSOS) -->
-  @if (isEscalaGuiadaModalOpen()) {
-    <div class="modal-backdrop">
-      <div class="modal-card modal-lg animate-fade-in">
-        <div class="modal-header wizard-header">
-          <div>
-            <span class="wizard-badge">Escala Guiada Inteligente ✨</span>
-            <h3 class="m-0 color-navy">Assistente de Configuração de Escala 6x1</h3>
-          </div>
-          <button (click)="isEscalaGuiadaModalOpen.set(false)" class="btn-icon-ghost" aria-label="Fechar modal">
-            <app-icon name="x" [size]="20"></app-icon>
-          </button>
-        </div>
-
-        <div class="wizard-steps-bar">
-          <div class="wizard-step-item" [class.active]="guiadaStep() >= 1">
-            <span class="step-num">1</span>
-            <span class="step-lbl">Setor & Mês</span>
-          </div>
-          <div class="wizard-step-line" [class.active]="guiadaStep() >= 2"></div>
-          <div class="wizard-step-item" [class.active]="guiadaStep() >= 2">
-            <span class="step-num">2</span>
-            <span class="step-lbl">Cobertura Mínima</span>
-          </div>
-          <div class="wizard-step-line" [class.active]="guiadaStep() >= 3"></div>
-          <div class="wizard-step-item" [class.active]="guiadaStep() >= 3">
-            <span class="step-num">3</span>
-            <span class="step-lbl">Turnos & Intervalos</span>
-          </div>
-          <div class="wizard-step-line" [class.active]="guiadaStep() >= 4"></div>
-          <div class="wizard-step-item" [class.active]="guiadaStep() >= 4">
-            <span class="step-num">4</span>
-            <span class="step-lbl">Validação & Gerar</span>
-          </div>
-        </div>
-
-        <div class="modal-body wizard-body">
-          <!-- PASSO 1 -->
-          @if (guiadaStep() === 1) {
-            <div class="wizard-step-content">
-              <h4 class="color-navy font-bold mb-5">Passo 1: Selecione o Setor, Mês e Modelo de Jornada</h4>
-              <p class="text-sm text-muted mb-20">Escolha entre a escala 6x1 tradicional ou a escala 5x1 com ciclo contínuo.</p>
-
-              <div class="form-group mb-15">
-                <label for="guiadaSetorSelect" class="font-bold color-navy">Setor Operacional:</label>
-                <select id="guiadaSetorSelect" [ngModel]="guiadaSetor()" (ngModelChange)="guiadaSetor.set($event)" class="form-control">
-                  @for (s of setores(); track s.id) {
-                    <option [value]="s.nome">{{ s.nome }}</option>
-                  }
-                </select>
+            <div class="form-group mb-4">
+              <label for="guiadaMinInput" class="font-bold color-navy d-block mb-1">Mínimo de Colaboradores em Trabalho Diário:</label>
+              <div class="input-counter-wrapper flex align-center gap-2">
+                <button type="button" (click)="diminuirGuiadaMin()" class="p-button p-button-secondary p-button-outlined p-button-sm">-</button>
+                <input id="guiadaMinInput" type="number" min="1" [ngModel]="guiadaMinFuncionarios()" (ngModelChange)="guiadaMinFuncionarios.set($event)" class="p-inputtext p-component text-center font-bold" style="width: 80px;" />
+                <button type="button" (click)="aumentarGuiadaMin()" class="p-button p-button-secondary p-button-outlined p-button-sm">+</button>
               </div>
-
-              <div class="form-group mb-15">
-                <label for="guiadaModeloSelect" class="font-bold color-navy">Modelo de Jornada de Trabalho:</label>
-                <select id="guiadaModeloSelect" [ngModel]="guiadaModeloEscala()" (ngModelChange)="guiadaModeloEscala.set($event)" class="form-control">
-                  <option value="6x1">Escala 6x1 (Padrão CCT — 6 dias de trabalho por 1 de folga)</option>
-                  <option value="5x1">Escala 5x1 (Ciclo Contínuo — 5 dias de trabalho por 1 de folga)</option>
-                </select>
-                <small class="text-muted mt-5 d-block">
-                  💡 <strong>Modelos Suportados</strong>: 6x1 (Giratória Semanal) ou 5x1 (Ciclo Contínuo 5T:1F).
-                </small>
-              </div>
-
-              <div class="form-group mb-15">
-                <label for="guiadaMesInput" class="font-bold color-navy">Mês de Referência:</label>
-                <input id="guiadaMesInput" type="month" [(ngModel)]="selectedMonth" class="form-control" />
-              </div>
+              <small class="text-muted mt-1 d-block">
+                📌 Recomendação para <strong>{{ guiadaSetor() }}</strong>: Mínimo {{ guiadaSetor() === 'Fiscal de Caixa' ? '2 fiscais' : '1 colaborador' }} trabalhando todos os dias.
+              </small>
             </div>
-          }
 
-          <!-- PASSO 2 -->
-          @if (guiadaStep() === 2) {
-            <div class="wizard-step-content">
-              <h4 class="color-navy font-bold mb-5">Passo 2: Cobertura Mínima e Biblioteca de Regras</h4>
-              <p class="text-sm text-muted mb-20">Defina o headcount mínimo por dia e selecione regras inter-setoriais adicionais.</p>
-
-              <div class="form-group mb-20">
-                <label for="guiadaMinInput" class="font-bold color-navy">Mínimo de Colaboradores em Trabalho Diário:</label>
-                <div class="input-counter-wrapper">
-                  <button type="button" (click)="diminuirGuiadaMin()" class="btn-counter">-</button>
-                  <input id="guiadaMinInput" type="number" min="1" [ngModel]="guiadaMinFuncionarios()" (ngModelChange)="guiadaMinFuncionarios.set($event)" class="form-control text-center font-bold" />
-                  <button type="button" (click)="aumentarGuiadaMin()" class="btn-counter">+</button>
-                </div>
-                <small class="text-muted mt-5 d-block">
-                  📌 Recomendação para <strong>{{ guiadaSetor() }}</strong>: Mínimo {{ guiadaSetor() === 'Fiscal de Caixa' ? '2 fiscais' : '1 colaborador' }} trabalhando todos os dias.
-                </small>
-              </div>
-
-              <!-- BIBLIOTECA DE REGRAS INTER-SETORIAIS -->
-              <div class="regras-intersetoriais-box mt-20 p-15 border rounded bg-light">
-                <h5 class="color-navy font-bold mb-10">📋 Biblioteca Cruzada de Regras (Selecione as Regras Aplicáveis):</h5>
-                <div class="regras-checklist-grid">
-                  @for (regra of regrasConformidade(); track regra.id) {
-                    <div class="chk-rule-item mb-10 p-10 border rounded bg-white">
-                      <div class="flex-between align-center">
-                        <label [for]="'chk_rule_' + regra.id" class="font-bold text-sm color-navy m-0 cursor-pointer">
-                          <span class="badge-nivel-sm">Nível {{ regra.nivel_hierarquia }}</span>
-                          {{ regra.titulo }}
-                        </label>
-                        <span class="badge-categoria-sm">{{ regra.categoria }}</span>
-                      </div>
-                      <p class="text-xs text-muted m-0 mt-5">{{ regra.descricao }}</p>
-                      @if (regra.fonte) {
-                        <small class="text-xs color-navy font-bold mt-5 d-block">Fonte: {{ regra.fonte }}</small>
-                      }
+            <!-- BIBLIOTECA DE REGRAS INTER-SETORIAIS -->
+            <div class="regras-intersetoriais-box mt-3 p-3 border rounded surface-card">
+              <h5 class="color-navy font-bold mb-2">📋 Biblioteca Cruzada de Regras (Selecione as Regras Aplicáveis):</h5>
+              <div class="regras-checklist-grid">
+                @for (regra of regrasConformidade(); track regra.id) {
+                  <div class="chk-rule-item mb-2 p-2 border rounded bg-white">
+                    <div class="flex-between align-center">
+                      <label [for]="'chk_rule_' + regra.id" class="font-bold text-sm color-navy m-0 cursor-pointer">
+                        <span class="badge-nivel-sm">Nível {{ regra.nivel_hierarquia }}</span>
+                        {{ regra.titulo }}
+                      </label>
+                      <span class="badge-categoria-sm">{{ regra.categoria }}</span>
                     </div>
-                  }
-                </div>
-              </div>
-
-              <div class="chk-consecutivos-wrapper mt-15">
-                <input type="checkbox" id="guiadaConsecutivos" [ngModel]="guiadaPermitirDoisConsecutivos()" (ngModelChange)="guiadaPermitirDoisConsecutivos.set($event)" class="chk-input" />
-                <label for="guiadaConsecutivos" class="chk-lbl">Permitir 2 folgas consecutivas quando necessário para fechar a escala</label>
-              </div>
-            </div>
-          }
-
-          <!-- PASSO 3 -->
-          @if (guiadaStep() === 3) {
-            <div class="wizard-step-content">
-              <div class="flex-header-between mb-10">
-                <div>
-                  <h4 class="color-navy font-bold m-0">Passo 3: Turnos e Intervalos Intrajornada</h4>
-                  <p class="text-sm text-muted m-0">Os intervalos intrajornada são computados e abatidos da jornada total para conformidade CLT.</p>
-                </div>
-                <button (click)="carregarHorariosFixosCaixa()" class="btn-action-sm btn-yellow" title="Carregar os 4 Horários Fixos do Caixa">
-                  🔄 Recarregar Horários Fixos do Caixa
-                </button>
-              </div>
-
-              <div class="turnos-list-grid mb-15">
-                @for (tc of turnosConfigs(); track tc.id) {
-                  <div class="turno-card-item">
-                    <div class="turno-header">
-                      <strong class="color-navy">{{ tc.nome }}</strong>
-                      <span class="badge-intervalo">{{ formatarMinutosIntervalo(tc.intervaloMinutos) }} intervalo</span>
-                    </div>
-                    <div class="turno-details text-xs">
-                      <span>Entrada: {{ tc.entrada }} | Saída: {{ tc.saida }}</span>
-                      <strong [class.text-danger]="tc.excedeLimiteDiario" [class.text-success]="!tc.excedeLimiteDiario">
-                        Jornada Líquida: {{ formatarCargaHoraria(tc.cargaHorariaLiquidaMinutos) }}
-                      </strong>
-                    </div>
+                    <p class="text-xs text-muted m-0 mt-1">{{ regra.descricao }}</p>
+                    @if (regra.fonte) {
+                      <small class="text-xs color-navy font-bold mt-1 d-block">Fonte: {{ regra.fonte }}</small>
+                    }
                   </div>
                 }
               </div>
-
-              <button (click)="abrirModalTurnos()" class="btn-secondary-save w-100">
-                <app-icon name="plus" [size]="16"></app-icon>
-                <span>Cadastrar Novo Horário ou Intervalo</span>
-              </button>
             </div>
-          }
 
-          <!-- PASSO 4 -->
-          @if (guiadaStep() === 4) {
-            <div class="wizard-step-content">
-              <h4 class="color-navy font-bold mb-5">Passo 4: Confirmar e Gerar Escala Guiada</h4>
-              <p class="text-sm text-muted mb-20">Resumo dos parâmetros configurados para o setor <strong>{{ guiadaSetor() }}</strong> ({{ selectedMonth }}):</p>
-
-              <div class="wizard-summary-box">
-                <div class="summary-row">
-                  <span>Setor Operacional:</span>
-                  <strong>{{ guiadaSetor() }}</strong>
-                </div>
-                <div class="summary-row">
-                  <span>Modelo de Jornada:</span>
-                  <strong class="color-navy">Escala {{ guiadaModeloEscala() }}</strong>
-                </div>
-                <div class="summary-row">
-                  <span>Mínimo por dia / domingo:</span>
-                  <strong class="color-navy">{{ guiadaMinFuncionarios() }} colaboradores em trabalho</strong>
-                </div>
-                <div class="summary-row">
-                  <span>Colaboradores Ativos no Setor:</span>
-                  <strong>{{ getFuncsDoSetorCount(guiadaSetor()) }} pessoa(s)</strong>
-                </div>
-                <div class="summary-row">
-                  <span>Revezamento e Travas Legais:</span>
-                  <strong class="color-green">Ativado (Hierarquia Nível 0 a 6)</strong>
-                </div>
-              </div>
-            </div>
-          }
-        </div>
-
-        <div class="modal-footer wizard-footer">
-          @if (guiadaStep() > 1) {
-            <button (click)="passoAnteriorGuiada()" class="btn-premium btn-ghost">Voltar</button>
-          }
-          <div class="flex-grow"></div>
-          @if (guiadaStep() < 4) {
-            <button (click)="proximoPassoGuiada()" class="btn-premium btn-primary-solid">Próximo Passo →</button>
-          } @else {
-            <button (click)="concluirEscalaGuiada()" class="btn-premium btn-accent-gold">✨ Gerar Escala Guiada</button>
-          }
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- MODAL: GERENCIAR TURNOS E INTERVALOS -->
-  @if (isTurnosModalOpen()) {
-    <div class="modal-backdrop">
-      <div class="modal-card modal-md animate-fade-in">
-        <div class="modal-header">
-          <h3 class="m-0 color-navy">Cadastrar Turno e Intervalo Intrajornada</h3>
-          <button (click)="fecharModalTurnos()" class="btn-icon-ghost" aria-label="Fechar modal">
-            <app-icon name="x" [size]="20"></app-icon>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="form-row gap-10 mb-15">
-            <div class="form-group flex-1">
-              <label for="novoEntradaInput" class="font-bold text-xs">Entrada:</label>
-              <input id="novoEntradaInput" type="time" [ngModel]="novoTurnoEntrada()" (ngModelChange)="novoTurnoEntrada.set($event)" class="form-control" />
-            </div>
-            <div class="form-group flex-1">
-              <label for="novoSaidaInput" class="font-bold text-xs">Saída:</label>
-              <input id="novoSaidaInput" type="time" [ngModel]="novoTurnoSaida()" (ngModelChange)="novoTurnoSaida.set($event)" class="form-control" />
+            <div class="chk-consecutivos-wrapper mt-3 flex align-center gap-2">
+              <input type="checkbox" id="guiadaConsecutivos" [ngModel]="guiadaPermitirDoisConsecutivos()" (ngModelChange)="guiadaPermitirDoisConsecutivos.set($event)" class="chk-input" />
+              <label for="guiadaConsecutivos" class="chk-lbl text-sm">Permitir 2 folgas consecutivas quando necessário para fechar a escala</label>
             </div>
           </div>
+        }
 
-          <div class="form-group mb-15">
-            <span class="font-bold text-xs d-block mb-5">Intervalo Intrajornada (Computado na Carga Horária):</span>
-            <div class="dias-pills-row">
-              @for (preset of intervalosPresets; track preset.minutos) {
-                <button
-                  type="button"
-                  (click)="novoTurnoIntervalo.set(preset.minutos); novoTurnoCustomIntervalo.set(null)"
-                  [class.active]="novoTurnoIntervalo() === preset.minutos && !novoTurnoCustomIntervalo()"
-                  class="pill-btn-sm"
-                >
-                  {{ preset.label }}
-                </button>
+        <!-- PASSO 3 -->
+        @if (guiadaStep() === 3) {
+          <div class="wizard-step-content">
+            <div class="flex-header-between mb-3 flex-between align-center">
+              <div>
+                <h4 class="color-navy font-bold m-0">Passo 3: Turnos e Intervalos Intrajornada</h4>
+                <p class="text-sm text-muted m-0">Os intervalos intrajornada são computados e abatidos da jornada total para conformidade CLT.</p>
+              </div>
+              <button (click)="carregarHorariosFixosCaixa()" class="p-button p-button-warning p-button-outlined p-button-sm" title="Carregar os 4 Horários Fixos do Caixa">
+                🔄 Recarregar Horários Fixos do Caixa
+              </button>
+            </div>
+
+            <div class="turnos-list-grid mb-3">
+              @for (tc of turnosConfigs(); track tc.id) {
+                <div class="turno-card-item border p-2 rounded mb-2">
+                  <div class="turno-header flex-between">
+                    <strong class="color-navy">{{ tc.nome }}</strong>
+                    <span class="badge-intervalo font-semibold text-xs">{{ formatarMinutosIntervalo(tc.intervaloMinutos) }} intervalo</span>
+                  </div>
+                  <div class="turno-details text-xs mt-1">
+                    <span>Entrada: {{ tc.entrada }} | Saída: {{ tc.saida }}</span>
+                    <strong [class.text-danger]="tc.excedeLimiteDiario" [class.text-success]="!tc.excedeLimiteDiario" class="ml-2">
+                      Jornada Líquida: {{ formatarCargaHoraria(tc.cargaHorariaLiquidaMinutos) }}
+                    </strong>
+                  </div>
+                </div>
               }
             </div>
-          </div>
 
-          <div class="form-group mb-15">
-            <label for="customIntervaloInput" class="text-xs color-navy">Ou digite um intervalo personalizado (em minutos):</label>
-            <input id="customIntervaloInput" type="number" placeholder="Ex: 45 para 45 minutos" [ngModel]="novoTurnoCustomIntervalo()" (ngModelChange)="novoTurnoCustomIntervalo.set($event)" class="form-control" />
+            <button (click)="abrirModalTurnos()" class="p-button p-button-secondary p-button-outlined p-button-sm w-full">
+              <app-icon name="plus" [size]="16"></app-icon>
+              <span class="ml-1">Cadastrar Novo Horário ou Intervalo</span>
+            </button>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button (click)="fecharModalTurnos()" class="btn-premium btn-ghost">Cancelar</button>
-          <button (click)="adicionarNovoTurno(); fecharModalTurnos()" class="btn-premium btn-primary-solid">Salvar Turno</button>
-        </div>
+        }
+
+        <!-- PASSO 4 -->
+        @if (guiadaStep() === 4) {
+          <div class="wizard-step-content">
+            <h4 class="color-navy font-bold mb-1">Passo 4: Confirmar e Gerar Escala Guiada</h4>
+            <p class="text-sm text-muted mb-4">Resumo dos parâmetros configurados para o setor <strong>{{ guiadaSetor() }}</strong> ({{ selectedMonth }}):</p>
+
+            <div class="wizard-summary-box p-3 border rounded surface-card">
+              <div class="summary-row flex-between py-1 border-bottom">
+                <span>Setor Operacional:</span>
+                <strong>{{ guiadaSetor() }}</strong>
+              </div>
+              <div class="summary-row flex-between py-1 border-bottom">
+                <span>Modelo de Jornada:</span>
+                <strong class="color-navy">Escala {{ guiadaModeloEscala() }}</strong>
+              </div>
+              <div class="summary-row flex-between py-1 border-bottom">
+                <span>Mínimo por dia / domingo:</span>
+                <strong class="color-navy">{{ guiadaMinFuncionarios() }} colaboradores em trabalho</strong>
+              </div>
+              <div class="summary-row flex-between py-1 border-bottom">
+                <span>Colaboradores Ativos no Setor:</span>
+                <strong>{{ getFuncsDoSetorCount(guiadaSetor()) }} pessoa(s)</strong>
+              </div>
+              <div class="summary-row flex-between py-1">
+                <span>Revezamento e Travas Legais:</span>
+                <strong class="text-success">Ativado (Hierarquia Nível 0 a 6)</strong>
+              </div>
+            </div>
+          </div>
+        }
       </div>
     </div>
-  }
 
-  <!-- MODAL DE DETALHAMENTO E INSPEÇÃO DA EQUIPE POR SETOR -->
-  @if (setorDetalhamentoModal().visible) {
-    <div class="modal-backdrop no-print" (click)="closeSetorDetalhamentoModal()" role="presentation" tabindex="-1">
-      <div class="modal-card modal-lg animate-fade-in" (click)="$event.stopPropagation()" role="presentation">
-        <div class="modal-header flex-between" [style.background-color]="getSetorColor(setorDetalhamentoData().setorNome)">
-          <div>
-            <h3 class="modal-title-white">{{ setorDetalhamentoData().setorNome }}</h3>
-            <p class="modal-subtitle-white">Detalhamento de Colaboradores e Cobertura (Hoje: {{ dataAtualFormatted }})</p>
-          </div>
-          <button (click)="closeSetorDetalhamentoModal()" class="icon-btn-white" aria-label="Fechar modal">
-            <app-icon name="x" [size]="20" color="#ffffff"></app-icon>
+    <ng-template pTemplate="footer">
+      <div class="flex-between align-center w-full">
+        @if (guiadaStep() > 1) {
+          <button type="button" (click)="passoAnteriorGuiada()" class="p-button p-button-secondary p-button-outlined p-button-sm">Voltar</button>
+        } @else {
+          <div></div>
+        }
+
+        <div class="flex gap-2">
+          @if (guiadaStep() < 4) {
+            <button type="button" (click)="proximoPassoGuiada()" class="p-button p-button-primary p-button-sm font-bold">Próximo Passo →</button>
+          } @else {
+            <button type="button" (click)="concluirEscalaGuiada()" class="p-button p-button-warning p-button-sm font-bold">✨ Gerar Escala Guiada</button>
+          }
+        </div>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- MODAL: GERENCIAR TURNOS E INTERVALOS (PrimeNG p-dialog) -->
+  <p-dialog
+    [visible]="isTurnosModalOpen()"
+    (onHide)="fecharModalTurnos()"
+    [modal]="true"
+    header="Cadastrar Turno e Intervalo Intrajornada"
+    [style]="{ width: '90vw', maxWidth: '560px' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    <div class="p-3">
+      <div class="form-row gap-10 mb-3 flex">
+        <div class="form-group flex-1">
+          <label for="novoEntradaInput" class="font-bold text-xs d-block mb-1">Entrada:</label>
+          <input id="novoEntradaInput" type="time" [ngModel]="novoTurnoEntrada()" (ngModelChange)="novoTurnoEntrada.set($event)" class="p-inputtext p-component w-full" />
+        </div>
+        <div class="form-group flex-1">
+          <label for="novoSaidaInput" class="font-bold text-xs d-block mb-1">Saída:</label>
+          <input id="novoSaidaInput" type="time" [ngModel]="novoTurnoSaida()" (ngModelChange)="novoTurnoSaida.set($event)" class="p-inputtext p-component w-full" />
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <span class="font-bold text-xs d-block mb-2">Intervalo Intrajornada (Computado na Carga Horária):</span>
+        <div class="dias-pills-row flex wrap gap-2">
+          @for (preset of intervalosPresets; track preset.minutos) {
+            <button
+              type="button"
+              (click)="novoTurnoIntervalo.set(preset.minutos); novoTurnoCustomIntervalo.set(null)"
+              [class.active]="novoTurnoIntervalo() === preset.minutos && !novoTurnoCustomIntervalo()"
+              class="pill-btn-sm"
+            >
+              {{ preset.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="customIntervaloInput" class="text-xs color-navy d-block mb-1">Ou digite um intervalo personalizado (em minutos):</label>
+        <input id="customIntervaloInput" type="number" placeholder="Ex: 45 para 45 minutos" [ngModel]="novoTurnoCustomIntervalo()" (ngModelChange)="novoTurnoCustomIntervalo.set($event)" class="p-inputtext p-component w-full" />
+      </div>
+    </div>
+    <ng-template pTemplate="footer">
+      <div class="flex-end gap-2">
+        <button type="button" (click)="fecharModalTurnos()" class="p-button p-button-secondary p-button-outlined p-button-sm">Cancelar</button>
+        <button type="button" (click)="adicionarNovoTurno(); fecharModalTurnos()" class="p-button p-button-primary p-button-sm font-bold">Salvar Turno</button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- MODAL DE DETALHAMENTO E INSPEÇÃO DA EQUIPE POR SETOR (PrimeNG p-dialog) -->
+  <p-dialog
+    [visible]="setorDetalhamentoModal().visible"
+    (onHide)="closeSetorDetalhamentoModal()"
+    [modal]="true"
+    [header]="setorDetalhamentoData().setorNome + ' — Inspeção da Equipe (' + dataAtualFormatted + ')'"
+    [style]="{ width: '90vw', maxWidth: '880px' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    <div class="p-3">
+      <!-- KPI METRICS DO SETOR -->
+      <div class="setor-modal-kpi-grid mb-4">
+        <button type="button" class="kpi-card-mini green clickable" (click)="setSetorDetalhamentoFilter('TRABALHANDO')" title="Ver quem está trabalhando hoje" style="border: none; font-family: inherit; text-align: left;">
+          <span class="kpi-mini-val">{{ setorDetalhamentoData().trabalhandoCount }}</span>
+          <span class="kpi-mini-lbl">Trabalhando Hoje</span>
+        </button>
+
+        <button type="button" class="kpi-card-mini blue clickable" (click)="setSetorDetalhamentoFilter('FOLGA')" title="Ver quem está de folga hoje" style="border: none; font-family: inherit; text-align: left;">
+          <span class="kpi-mini-val">{{ setorDetalhamentoData().folgandoCount }}</span>
+          <span class="kpi-mini-lbl">Folgando Hoje</span>
+        </button>
+
+        <button type="button" class="kpi-card-mini dark clickable" (click)="setSetorDetalhamentoFilter('TODOS')" title="Ver equipe completa" style="border: none; font-family: inherit; text-align: left;">
+          <span class="kpi-mini-val">{{ setorDetalhamentoData().total }}</span>
+          <span class="kpi-mini-lbl">Total no Setor</span>
+        </button>
+
+        <div class="kpi-card-mini yellow">
+          <span class="kpi-mini-val">{{ setorDetalhamentoData().coberturaPct }}%</span>
+          <span class="kpi-mini-lbl">Taxa de Presença</span>
+        </div>
+      </div>
+
+      <!-- FILTROS & BUSCA DENTRO DO MODAL -->
+      <div class="modal-filter-toolbar mb-3 flex-between gap-15 wrap">
+        <div class="pill-group">
+          <button (click)="setSetorDetalhamentoFilter('TODOS')" [class.active]="setorDetalhamentoModal().filterStatus === 'TODOS'" class="pill-btn">
+            Todos ({{ setorDetalhamentoData().total }})
+          </button>
+          <button (click)="setSetorDetalhamentoFilter('TRABALHANDO')" [class.active]="setorDetalhamentoModal().filterStatus === 'TRABALHANDO'" class="pill-btn green">
+            Trabalhando ({{ setorDetalhamentoData().trabalhandoCount }})
+          </button>
+          <button (click)="setSetorDetalhamentoFilter('FOLGA')" [class.active]="setorDetalhamentoModal().filterStatus === 'FOLGA'" class="pill-btn blue">
+            Folgando ({{ setorDetalhamentoData().folgandoCount }})
           </button>
         </div>
 
-        <div class="modal-body">
-          <!-- KPI METRICS DO SETOR -->
-          <div class="setor-modal-kpi-grid mb-20">
-            <button type="button" class="kpi-card-mini green clickable" (click)="setSetorDetalhamentoFilter('TRABALHANDO')" title="Ver quem está trabalhando hoje" style="border: none; font-family: inherit; text-align: left;">
-              <span class="kpi-mini-val">{{ setorDetalhamentoData().trabalhandoCount }}</span>
-              <span class="kpi-mini-lbl">Trabalhando Hoje</span>
-            </button>
- 
-            <button type="button" class="kpi-card-mini blue clickable" (click)="setSetorDetalhamentoFilter('FOLGA')" title="Ver quem está de folga hoje" style="border: none; font-family: inherit; text-align: left;">
-              <span class="kpi-mini-val">{{ setorDetalhamentoData().folgandoCount }}</span>
-              <span class="kpi-mini-lbl">Folgando Hoje</span>
-            </button>
- 
-            <button type="button" class="kpi-card-mini dark clickable" (click)="setSetorDetalhamentoFilter('TODOS')" title="Ver equipe completa" style="border: none; font-family: inherit; text-align: left;">
-              <span class="kpi-mini-val">{{ setorDetalhamentoData().total }}</span>
-              <span class="kpi-mini-lbl">Total no Setor</span>
-            </button>
-
-            <div class="kpi-card-mini yellow">
-              <span class="kpi-mini-val">{{ setorDetalhamentoData().coberturaPct }}%</span>
-              <span class="kpi-mini-lbl">Taxa de Presença</span>
-            </div>
-          </div>
-
-          <!-- FILTROS & BUSCA DENTRO DO MODAL -->
-          <div class="modal-filter-toolbar mb-15 flex-between gap-15 wrap">
-            <div class="pill-group">
-              <button (click)="setSetorDetalhamentoFilter('TODOS')" [class.active]="setorDetalhamentoModal().filterStatus === 'TODOS'" class="pill-btn">
-                Todos ({{ setorDetalhamentoData().total }})
-              </button>
-              <button (click)="setSetorDetalhamentoFilter('TRABALHANDO')" [class.active]="setorDetalhamentoModal().filterStatus === 'TRABALHANDO'" class="pill-btn green">
-                Trabalhando ({{ setorDetalhamentoData().trabalhandoCount }})
-              </button>
-              <button (click)="setSetorDetalhamentoFilter('FOLGA')" [class.active]="setorDetalhamentoModal().filterStatus === 'FOLGA'" class="pill-btn blue">
-                Folgando ({{ setorDetalhamentoData().folgandoCount }})
-              </button>
-            </div>
-
-            <div class="search-input-wrapper flex-1 max-w-320">
-              <span class="search-icon-left">
-                <app-icon name="search" [size]="16" color="#94a3b8"></app-icon>
-              </span>
-              <input
-                id="modalSearchInput"
-                type="text"
-                [ngModel]="setorDetalhamentoModal().searchQuery"
-                (ngModelChange)="setSetorDetalhamentoSearch($event)"
-                placeholder="Pesquisar nome ou cargo..."
-                aria-label="Pesquisar colaborador no setor"
-              />
-            </div>
-          </div>
-
-          <!-- LISTA DE COLABORADORES DO SETOR -->
-          <div class="table-responsive setor-table-container">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Colaborador</th>
-                  <th>Cargo / Função</th>
-                  <th>Turno Padrão</th>
-                  <th>Gênero</th>
-                  <th>Status Hoje</th>
-                  <th class="text-right">Ação</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (item of setorDetalhamentoData().colaboradores; track item.funcionario.id) {
-                  <tr>
-                    <td>
-                      <div class="func-name-mat">
-                        <span class="func-nome font-bold color-navy">{{ item.funcionario.primeiro_nome }}</span>
-                        <span class="func-mat text-xs color-slate">Matrícula: {{ item.funcionario.matricula_aleatoria }}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span class="text-xs font-semibold color-navy">{{ item.funcionario.cargo }}</span>
-                    </td>
-                    <td>
-                      <span class="turno-badge-pill">{{ item.funcionario.turno_padrao }}</span>
-                    </td>
-                    <td>
-                      <span class="genero-chip" [class.m]="item.funcionario.genero === 'M'" [class.f]="item.funcionario.genero === 'F'">
-                        {{ item.funcionario.genero === 'F' ? 'Feminino' : 'Masculino' }}
-                      </span>
-                    </td>
-                    <td>
-                      <span class="status-chip" [ngClass]="item.statusClass">
-                        <span class="status-dot"></span>
-                        {{ item.statusLabel }}
-                      </span>
-                    </td>
-                    <td class="text-right">
-                      <button (click)="closeSetorDetalhamentoModal(); openQuickBlurModal(item.funcionario)" class="btn-link-sm">
-                        Ver Perfil
-                      </button>
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr>
-                    <td colspan="6" class="text-center py-25 text-muted font-medium">
-                      Nenhum colaborador encontrado para o filtro selecionado.
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="modal-footer flex-between">
-          <span class="text-xs color-slate">
-            Exibindo {{ setorDetalhamentoData().colaboradores.length }} colaborador(es) de {{ setorDetalhamentoData().total }}
+        <div class="search-input-wrapper flex-1 max-w-320">
+          <span class="search-icon-left">
+            <app-icon name="search" [size]="16" color="#94a3b8"></app-icon>
           </span>
-          <button (click)="closeSetorDetalhamentoModal()" class="btn-premium btn-secondary-solid">
-            Fechar
-          </button>
+          <input
+            id="modalSearchInput"
+            type="text"
+            [ngModel]="setorDetalhamentoModal().searchQuery"
+            (ngModelChange)="setSetorDetalhamentoSearch($event)"
+            placeholder="Pesquisar nome ou cargo..."
+            aria-label="Pesquisar colaborador no setor"
+            class="p-inputtext p-component"
+          />
         </div>
       </div>
+
+      <!-- LISTA DE COLABORADORES DO SETOR -->
+      <div class="table-responsive setor-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Cargo / Função</th>
+              <th>Turno Padrão</th>
+              <th>Gênero</th>
+              <th>Status Hoje</th>
+              <th class="text-right">Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of setorDetalhamentoData().colaboradores; track item.funcionario.id) {
+              <tr>
+                <td>
+                  <div class="func-name-mat">
+                    <span class="func-nome font-bold color-navy">{{ item.funcionario.primeiro_nome }}</span>
+                    <span class="func-mat text-xs color-slate">Matrícula: {{ item.funcionario.matricula_aleatoria }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="text-xs font-semibold color-navy">{{ item.funcionario.cargo }}</span>
+                </td>
+                <td>
+                  <span class="turno-badge-pill">{{ item.funcionario.turno_padrao }}</span>
+                </td>
+                <td>
+                  <span class="genero-chip" [class.m]="item.funcionario.genero === 'M'" [class.f]="item.funcionario.genero === 'F'">
+                    {{ item.funcionario.genero === 'F' ? 'Feminino' : 'Masculino' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="status-chip" [ngClass]="item.statusClass">
+                    <span class="status-dot"></span>
+                    {{ item.statusLabel }}
+                  </span>
+                </td>
+                <td class="text-right">
+                  <button (click)="closeSetorDetalhamentoModal(); openQuickBlurModal(item.funcionario)" class="btn-link-sm">
+                    Ver Perfil
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="text-center py-4 text-muted font-medium">
+                  Nenhum colaborador encontrado para o filtro selecionado.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     </div>
-  }
+
+    <ng-template pTemplate="footer">
+      <div class="flex-between align-center w-full">
+        <span class="text-xs color-slate">
+          Exibindo {{ setorDetalhamentoData().colaboradores.length }} colaborador(es) de {{ setorDetalhamentoData().total }}
+        </span>
+        <button type="button" (click)="closeSetorDetalhamentoModal()" class="p-button p-button-secondary p-button-outlined p-button-sm">
+          Fechar
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
 
 </div>

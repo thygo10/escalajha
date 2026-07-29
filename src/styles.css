@@ -1610,4 +1610,111 @@ body {
   color: #f8fafc !important;
 }
 
+/* Sakai NG Card & Utilities */
+.card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.p-dark .card, .dark-mode .card {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.2) !important;
+}
+
+.p-dark .p-datatable, .dark-mode .p-datatable {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+
+.p-dark .p-datatable .p-datatable-thead > tr > th,
+.dark-mode .p-datatable .p-datatable-thead > tr > th {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+.p-dark .p-datatable .p-datatable-tbody > tr,
+.dark-mode .p-datatable .p-datatable-tbody > tr {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #1e293b !important;
+}
+
+.p-dark .p-datatable .p-datatable-tbody > tr > td,
+.dark-mode .p-datatable .p-datatable-tbody > tr > td {
+  border-color: #1e293b !important;
+}
+
+.p-dark .p-dialog .p-dialog-header,
+.p-dark .p-dialog .p-dialog-content,
+.p-dark .p-dialog .p-dialog-footer,
+.dark-mode .p-dialog .p-dialog-header,
+.dark-mode .p-dialog .p-dialog-content,
+.dark-mode .p-dialog .p-dialog-footer {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #1e293b !important;
+}
+
+/* Badges de Escala com Suporte a Tema */
+.badge-trabalho {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+}
+.p-dark .badge-trabalho, .dark-mode .badge-trabalho {
+  background-color: rgba(22, 163, 74, 0.2) !important;
+  color: #4ade80 !important;
+}
+
+.badge-folga-domingo {
+  background-color: #e0e7ff !important;
+  color: #4338ca !important;
+}
+.p-dark .badge-folga-domingo, .dark-mode .badge-folga-domingo {
+  background-color: rgba(99, 102, 241, 0.2) !important;
+  color: #a5b4fc !important;
+}
+
+.badge-folga-semanal {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+}
+.p-dark .badge-folga-semanal, .dark-mode .badge-folga-semanal {
+  background-color: rgba(148, 163, 184, 0.2) !important;
+  color: #cbd5e1 !important;
+}
+
+.badge-feriado {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+}
+.p-dark .badge-feriado, .dark-mode .badge-feriado {
+  background-color: rgba(217, 119, 6, 0.2) !important;
+  color: #fcd34d !important;
+}
+
+.badge-trabalho-feriado {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+.p-dark .badge-trabalho-feriado, .dark-mode .badge-trabalho-feriado {
+  background-color: rgba(220, 38, 38, 0.2) !important;
+  color: #fca5a5 !important;
+}
+
+.badge-trabalho-domingo {
+  background-color: #e0f2fe !important;
+  color: #0369a1 !important;
+}
+.p-dark .badge-trabalho-domingo, .dark-mode .badge-trabalho-domingo {
+  background-color: rgba(14, 165, 233, 0.2) !important;
+  color: #7dd3fc !important;
+}
+
+
 
