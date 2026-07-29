@@ -13,6 +13,7 @@ export interface OpcionesGeracaoEscala {
   diasPermitidosFolga?: number[];
   feriados?: Feriado[];
   minFuncionariosPorDia?: number;
+  minFuncionariosDomingo?: number;
   minFuncionariosFeriado?: number;
   minOperadoresPorHora?: number;
   modeloEscala?: string;
@@ -21,6 +22,7 @@ export interface OpcionesGeracaoEscala {
   regrasConformidade?: RegraConformidade[];
   historicoMesAnterior?: Record<string, TipoDia[]>;
   turnosConfigs?: TurnoConfig[];
+  horarioFuncionamento?: import('../models/types').HorarioFuncionamento;
 }
 
 @Injectable({
@@ -132,6 +134,9 @@ export class EscalaGeneratorService {
       holidays: (options?.feriados || []) as Holiday[],
       turnosConfigs: (options?.turnosConfigs || []) as any,
       minFuncionariosPorDia: options?.minFuncionariosPorDia,
+      minFuncionariosDomingo: options?.minFuncionariosDomingo,
+      minFuncionariosFeriado: options?.minFuncionariosFeriado,
+      horarioFuncionamento: options?.horarioFuncionamento,
       modeloEscala: options?.modeloEscala,
       leaveEvents: (options?.afastamentos || []) as LeaveEvent[],
       historicoMesAnterior: options?.historicoMesAnterior,
@@ -150,9 +155,10 @@ export class EscalaGeneratorService {
     minRequerido: number = 2,
     turnosConfigs: TurnoConfig[] = [],
     feriados: Feriado[] = [],
-    historicoMesAnterior?: Record<string, TipoDia[]>
+    historicoMesAnterior?: Record<string, TipoDia[]>,
+    minDomingo?: number
   ): ValidacaoEscalaResultado {
-    return this.validatorService.validarEscala(itens, ano, mes, minRequerido, turnosConfigs, feriados, historicoMesAnterior);
+    return this.validatorService.validarEscala(itens, ano, mes, minRequerido, turnosConfigs, feriados, historicoMesAnterior, minDomingo);
   }
 
   calcularCargaHorariaLiquida(entrada: string, saida: string, intervaloMinutos: number) {

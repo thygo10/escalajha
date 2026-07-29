@@ -120,6 +120,25 @@ export interface TurnoConfig {
   excedeLimiteDiario?: boolean;
 }
 
+export interface HorarioFuncionamentoPeriodo {
+  abertura: string; // Ex: '07:00' ou '08:00'
+  fechamento: string; // Ex: '21:30' ou '20:00'
+}
+
+export interface HorarioFuncionamento {
+  segundaASabado: HorarioFuncionamentoPeriodo;
+  domingoEFeriado: HorarioFuncionamentoPeriodo;
+}
+
+export interface ConfiguracaoCoberturaSetor {
+  minimoDiasUteis: number;
+  minimoDomingos: number;
+  minimoFeriados: number;
+  horarioFuncionamento?: HorarioFuncionamento;
+  espacamentoMinimoFolgasDias?: number; // Padrão: 4
+  espacamentoMaximoFolgasDias?: number; // Padrão: 6
+}
+
 export type ModeloEscala = '6x1' | '5x1';
 
 export interface EstadoTransicao {

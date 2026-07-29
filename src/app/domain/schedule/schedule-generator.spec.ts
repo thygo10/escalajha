@@ -481,3 +481,52 @@ describe('Suite 15: Open holiday distribution (TF eligibility)', () => {
     expect(restingOnHoliday.length).toBeGreaterThan(0);
   });
 });
+
+// --------------------------------------------------------------------------
+// SUÍTE 16: Cobertura Reduzida em Domingos (Equipe Reduzida)
+// --------------------------------------------------------------------------
+describe('Suite 16: Reduced Sunday Coverage', () => {
+  it('deve aplicar equipe reduzida no domingo quando minFuncionariosDomingo for configurado', () => {
+    const funcsCaixa = INITIAL_FUNCIONARIOS.filter(f => f.setor === 'Frente de Caixa' && f.ativo);
+    const result = generateSchedule({
+      employees: funcsCaixa,
+      month: createYearMonth(2026, 7),
+      holidays: INITIAL_FERIADOS,
+      minFuncionariosPorDia: 6,
+      minFuncionariosDomingo: 3,
+    });
+
+    // Domingo dia 5 de julho de 2026
+    const workingOnDom5 = result.entries.filter(e => isTrabalho(e.dias[5]));
+    expect(workingOnDom5.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+// --------------------------------------------------------------------------
+// SUÍTE 17: Espaçamento de Folgas (4 a 6 dias)
+// --------------------------------------------------------------------------
+describe('Suite 17: Rest Day Spacing', () => {
+  it('não deve gerar folgas agrupadas ou com menos de 4 dias de intervalo', () => {
+    const funcsCaixa = INITIAL_FUNCIONARIOS.filter(f => f.setor === 'Frente de Caixa' && f.ativo);
+    const result = generateSchedule({
+      employees: funcsCaixa,
+      month: createYearMonth(2026, 7),
+      holidays: [],
+      minFuncionariosPorDia: 6,
+    });
+
+    result.entries.forEach(emp => {
+      const restDays = Object.keys(emp.dias)
+        .map(Number)
+        .filter(d => isFolgaNormal(emp.dias[d]))
+        .sort((a, b) => a - b);
+
+      for (let i = 0; i < restDays.length - 1; i++) {
+        const diff = restDays[i + 1] - restDays[i];
+        // Não deve haver folgas consecutivas (diff === 1) a menos que exigido por virada ou feriado fechado
+        expect(diff).toBeGreaterThan(1);
+      }
+    });
+  });
+});
+

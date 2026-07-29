@@ -337,7 +337,7 @@
                       {{ validacaoResultado().valida ? 'Escala Real Válida & Coberta' : 'Atenção: Ações de Cobertura Necessárias' }}
                     </h4>
                     <span class="text-xs text-muted">
-                      Garantia Mínima Exigida: <strong>{{ minFuncionariosPorDiaSetor() }} colaboradores/dia</strong> no setor <strong>{{ selectedSetor }}</strong>
+                      Garantia Mínima Exigida: <strong>{{ minFuncionariosPorDiaSetor() }} colab/dias úteis | {{ minFuncionariosDomingoSetor() }} nos domingos</strong> no setor <strong>{{ selectedSetor }}</strong>
                     </span>
                   </div>
                 </div>

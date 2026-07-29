@@ -13,7 +13,8 @@ export class EscalaValidatorService {
         minRequerido: number = 2,
         turnosConfigs: TurnoConfig[] = [],
         feriados: Feriado[] = [],
-        historicoMesAnterior?: Record<string, TipoDia[]>
+        historicoMesAnterior?: Record<string, TipoDia[]>,
+        minDomingo?: number
     ): ValidacaoEscalaResultado {
         const totalDias = new Date(ano, mes, 0).getDate();
         const erros: ValidacaoItem[] = [];
@@ -58,8 +59,8 @@ export class EscalaValidatorService {
             coberturaPorDia[dia] = emTrabalho;
 
             let minPermitidoDia = minEfetivoValida;
-            if (isDomingo && itens.length < 6 && !eFrenteDeCaixa) {
-                minPermitidoDia = Math.max(1, Math.floor(itens.length / 3));
+            if (isDomingo) {
+                minPermitidoDia = minDomingo ?? (eFrenteDeCaixa ? 3 : Math.max(1, Math.floor(itens.length / 3)));
             } else if (eAdm || itens.length <= 4) {
                 minPermitidoDia = 1;
             }
@@ -297,9 +298,9 @@ export class EscalaValidatorService {
         dia: number
     ): HorarioPresenca[] {
         const horasFaixas = [
-            '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-            '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
-            '19:00', '20:00', '21:00', '22:00'
+            '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+            '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
+            '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'
         ];
 
         const resultado: HorarioPresenca[] = horasFaixas.map(hStr => ({

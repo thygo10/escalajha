@@ -26,6 +26,7 @@
     "@primeng/themes": "^19.1.4",
     "@supabase/supabase-js": "^2.48.0",
     "lucide-angular": "^1.0.0",
+    "primeflex": "^4.0.0",
     "primeicons": "^7.0.0",
     "primeng": "^19.1.4",
     "rxjs": "~7.8.0",

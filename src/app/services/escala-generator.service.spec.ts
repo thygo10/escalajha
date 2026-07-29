@@ -349,9 +349,9 @@ export function runEscalaGeneratorSpec(): void {
     assert.strictEqual(typeof m.horasLiquidasFormatted, 'string', 'Horas líquidas deve estar formatada como string');
   });
 
-  // 9.3 Presença por Faixa Horária
+  // 9.3 Presença por Faixa Horária (slots de 30 min)
   const presenca = service.calcularPresencaPorFaixaHoraria(itensMetrics, [], 10);
-  assert.strictEqual(presenca.length, 16, 'Deveria conter 16 faixas horárias (07:00 às 22:00)');
+  assert.strictEqual(presenca.length, 31, 'Deveria conter 31 faixas horárias de 30 min (07:00 às 22:00)');
   assert.strictEqual(presenca[0].horaStr, '07:00', 'Primeira faixa horária deve ser 07:00');
   console.log('  ✅ Funções auxiliares de métricas, carga horária e presença horária validadas sem inconsistências.\n');
 

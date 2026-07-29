@@ -2,13 +2,17 @@ import { type ScheduleEntry, type Employee, type Holiday, type TipoDia, type Tur
 import { type YearMonth, totalDaysInMonth, getSundays, isSunday } from '../shared/year-month';
 import { extractLunchInterval } from '../shared/shift-window';
 
+import type { HorarioFuncionamento } from '../../models/types';
+
 export interface GenerateScheduleInput {
   employees: Employee[];
   month: YearMonth;
   holidays: Holiday[];
   turnosConfigs?: TurnoConfig[];
   minFuncionariosPorDia?: number;
+  minFuncionariosDomingo?: number;
   minFuncionariosFeriado?: number;
+  horarioFuncionamento?: HorarioFuncionamento;
   modeloEscala?: string;
   historicoMesAnterior?: Record<string, TipoDia[]>;
   leaveEvents?: Array<{ tipo: string; matricula: string; data_inicio: string; data_fim: string }>;
@@ -62,7 +66,7 @@ export function generateSchedule(input: GenerateScheduleInput): GenerateSchedule
   entries = applyFixedAnchors(entries, month, totalDays, closedHolidays, openHolidays, input.modeloEscala);
 
   // Pass 2: Constraint-based allocation
-  allocateRestOfDays(entries, totalDays, month, closedHolidays, openHolidays, input.minFuncionariosPorDia, turnosConfigs, input.modeloEscala, prevConsecMap);
+  allocateRestOfDays(entries, totalDays, month, closedHolidays, openHolidays, input.minFuncionariosPorDia, input.minFuncionariosDomingo, input.minFuncionariosFeriado, turnosConfigs, input.modeloEscala, prevConsecMap);
 
   // Single repair pass for folga picada spacing violations
   repairFolgaPicada(entries, totalDays, month, turnosConfigs, openHolidays, prevConsecMap);
@@ -178,13 +182,22 @@ function allocateRestOfDays(
   closedHolidays: Set<number>,
   openHolidays: Set<number>,
   minFuncionariosPorDia?: number,
+  minFuncionariosDomingo?: number,
+  minFuncionariosFeriado?: number,
   turnosConfigs?: TurnoConfig[],
   modeloEscala?: string,
   prevConsecMap?: Map<string, number>,
 ): void {
   const sectorName = items[0]?.setor?.toLowerCase() || '';
   const isFrontEnd = sectorName.includes('caixa') && !sectorName.includes('fiscal');
-  const minEffective = isFrontEnd ? Math.max(minFuncionariosPorDia ?? 2, 6) : (minFuncionariosPorDia ?? 2);
+  const getMinEffectiveForDay = (d: number): number => {
+    const isDom = isSunday(month, d);
+    const isOpenHol = openHolidays.has(d);
+    if (isOpenHol && minFuncionariosFeriado !== undefined) return minFuncionariosFeriado;
+    if (isDom && minFuncionariosDomingo !== undefined) return minFuncionariosDomingo;
+    if (isDom && isFrontEnd) return Math.max(minFuncionariosDomingo ?? 3, 3);
+    return isFrontEnd ? Math.max(minFuncionariosPorDia ?? 2, 6) : (minFuncionariosPorDia ?? 2);
+  };
   const sundayCount = getSundays(month).length;
   const isExceptionSector = sectorName.includes('padaria') || sectorName.includes('acougue') || sectorName.includes('açougue');
   // Exception sectors (bakery/açougue) keep min=4 even with 5 Sundays
@@ -304,7 +317,7 @@ function allocateRestOfDays(
     let activeCount = items.filter(i => isTrabalho(i.dias[d])).length;
     let safety = 0;
 
-    while (activeCount < minEffective && safety < 50) {
+    while (activeCount < getMinEffectiveForDay(d) && safety < 50) {
       safety++;
 
       const resting = items
@@ -397,8 +410,19 @@ function allocateRestOfDays(
     while (offDays.length < minFolgas) {
       let added = false;
 
-      // Prefer days where hourly coverage is least impacted
+      // Prefer days where rest spacing is ideal (4 to 6 work days from existing rests)
+      // and hourly coverage is least impacted
       const dayScore = (d: number): number => {
+        let distancePenalty = 0;
+        for (const rd of offDays) {
+          const dist = Math.abs(rd - d);
+          if (dist <= 1) {
+            distancePenalty += 2000; // Penalidade gravíssima para folgas grudadas (ex: Sab e Dom)
+          } else if (dist < 4) {
+            distancePenalty += (4 - dist) * 200; // Penalidade para folgas muito próximas (<4 dias)
+          }
+        }
+
         if (isFrontEnd && turnosConfigs && turnosConfigs.length > 0) {
           const isDomingo = isSunday(month, d);
           const curva = calcularPresencaPorFaixaHoraria(items, turnosConfigs, d);
@@ -411,11 +435,11 @@ function allocateRestOfDays(
               const isSundayWindow = isDomingo && (hNum === 8 || hNum === 11 || hNum === 12);
               const minReq = isSundayWindow ? 3 : (isCritica ? 5 : 6);
               const surplus = faixa.quantidadeTrabalhando - minReq;
-              if (surplus <= 1) return 999; // avoid days with tight coverage
+              if (surplus <= 1) return distancePenalty + 999; // avoid days with tight coverage
             }
           }
         }
-        return 0;
+        return distancePenalty;
       };
 
       const sortedDays = Array.from({ length: totalDays }, (_, i) => i + 1)
@@ -432,7 +456,7 @@ function allocateRestOfDays(
 
       for (const d of sortedDays) {
         const workingCount = items.filter(i => isTrabalho(i.dias[d])).length;
-        if (workingCount <= minEffective) continue;
+        if (workingCount <= getMinEffectiveForDay(d)) continue;
 
         // Bakery: max 1 rest per day
         const isBakery = emp.setor?.toLowerCase().includes('padaria');
@@ -486,7 +510,7 @@ function allocateRestOfDays(
       if (!openHolidays.has(d)) continue;
 
       let workingCount = items.filter(i => isTrabalho(i.dias[d])).length;
-      if (workingCount <= minEffective + 1) continue;
+      if (workingCount <= getMinEffectiveForDay(d) + 1) continue;
 
       // Employees eligible for holiday rest: currently TF,
       // won't break max consec, not maxed out on rests
@@ -517,7 +541,7 @@ function allocateRestOfDays(
       for (const emp of candidates) {
         if (granted >= maxHolidayRest) break;
         workingCount = items.filter(i => isTrabalho(i.dias[d])).length;
-        if (workingCount <= minEffective) break;
+        if (workingCount <= getMinEffectiveForDay(d)) break;
         // Check hourly coverage before granting rest
         let coberturaOk = true;
         if (turnosConfigs && turnosConfigs.length > 0) {
@@ -528,7 +552,7 @@ function allocateRestOfDays(
             const hIni = isDomingo ? 8 : 7;
             const hFim = isDomingo ? 20 : 21;
             if (hNum >= hIni && hNum < hFim) {
-              const minReq = isDomingo || openHolidays.has(d) ? 1 : minEffective;
+              const minReq = isDomingo || openHolidays.has(d) ? 1 : getMinEffectiveForDay(d);
               if (faixa.quantidadeTrabalhando - 1 < minReq) { coberturaOk = false; break; }
             }
           }

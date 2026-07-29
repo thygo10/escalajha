@@ -181,9 +181,14 @@ export class DashboardComponent implements OnInit {
   guiadaStep = signal<number>(1);
   guiadaSetor = signal<string>('Fiscal de Caixa');
   guiadaMinFuncionarios = signal<number>(2);
+  guiadaMinFuncionariosDomingo = signal<number>(3);
   guiadaPermitirDoisConsecutivos = signal<boolean>(false);
   guiadaModeloEscala = signal<ModeloEscala>('6x1');
   guiadaRegrasSelecionadas = signal<string[]>(['rc_1_clt67', 'rc_2_clt386', 'rc_3_cct_caixa']);
+
+  // Horário de Funcionamento Cadastrável da Loja
+  horarioFuncionamentoSegSab = signal<{ abertura: string; fechamento: string }>({ abertura: '07:00', fechamento: '21:30' });
+  horarioFuncionamentoDomingo = signal<{ abertura: string; fechamento: string }>({ abertura: '08:00', fechamento: '20:00' });
 
   // Modelo de Escala Ativo (6x1 ou 5x1)
   modeloEscalaAtivo = signal<ModeloEscala>('6x1');
@@ -194,8 +199,9 @@ export class DashboardComponent implements OnInit {
   // Dia Selecionado para Curva de Presença Horária
   diaSelecionadoPresenca = signal<number>(1);
 
-  // Mínimo por dia no setor ativo (Frente de Caixa exige 6)
+  // Mínimo por dia no setor ativo (Frente de Caixa exige 6 em dias úteis, 3 nos domingos)
   minFuncionariosPorDiaSetor = signal<number>(6);
+  minFuncionariosDomingoSetor = signal<number>(3);
 
   // Turnos & Intervalos Intrajornada
   isTurnosModalOpen = signal<boolean>(false);
@@ -251,8 +257,9 @@ export class DashboardComponent implements OnInit {
     const itens = this.escalaItens();
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
     const minReq = this.minFuncionariosPorDiaSetor();
+    const minDom = this.minFuncionariosDomingoSetor();
     const tConfigs = this.turnosConfigs();
-    return this.generator.validarEscala(itens, ano, mes, minReq, tConfigs, this.feriados());
+    return this.generator.validarEscala(itens, ano, mes, minReq, tConfigs, this.feriados(), undefined, minDom);
   });
 
 
@@ -1293,6 +1300,11 @@ export class DashboardComponent implements OnInit {
       diasPermitidosFolga: this.diasPermitidosFolga(),
       feriados: this.feriados(),
       minFuncionariosPorDia: minReq,
+      minFuncionariosDomingo: this.minFuncionariosDomingoSetor(),
+      horarioFuncionamento: {
+        segundaASabado: this.horarioFuncionamentoSegSab(),
+        domingoEFeriado: this.horarioFuncionamentoDomingo()
+      },
       modeloEscala: this.modeloEscalaAtivo(),
       turnosConfigs: this.turnosConfigs(),
       regrasConformidade: this.regrasConformidade()
