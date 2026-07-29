@@ -33,7 +33,7 @@ export interface MenuItem {
       <div *ngIf="root && item.visible !== false" class="layout-menuitem-root-text">{{ item.label }}</div>
       
       <a
-        *ngIf="(!item.routerLink || item.items) && item.visible !== false"
+        *ngIf="(!item.routerLink || item.items) && !root && item.visible !== false"
         [attr.href]="item.url"
         (click)="itemClick($event)"
         [ngClass]="item.badgeClass"
@@ -62,7 +62,7 @@ export interface MenuItem {
         <span class="p-badge p-badge-info" *ngIf="item.badge">{{ item.badge }}</span>
       </a>
 
-      <ul *ngIf="item.items && item.visible !== false" [@children]="submenuState">
+      <ul *ngIf="item.items && item.visible !== false" [@children]="root ? 'expanded' : submenuState">
         <ng-template ngFor let-child let-i="index" [ngForOf]="item.items">
           <li app-menuitem [item]="child" [index]="i" [parentKey]="key" [class]="child.badgeClass"></li>
         </ng-template>
@@ -97,7 +97,7 @@ export class AppMenuItemComponent implements OnInit, OnDestroy {
   key: string = '';
 
   get submenuState() {
-    return this.active ? 'expanded' : 'collapsed';
+    return this.root || this.active ? 'expanded' : 'collapsed';
   }
 
   @HostBinding('class.active-menuitem')

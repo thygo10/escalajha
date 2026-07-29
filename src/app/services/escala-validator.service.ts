@@ -98,8 +98,9 @@ export class EscalaValidatorService {
                         const hNum = Number.parseInt(faixa.horaStr.split(':')[0], 10);
                         if (hNum >= hIni && hNum < hFim) {
                             const isCritica = hNum < 9 || hNum === 11 || hNum === 12;
-                            // Enforce min 6 on ALL operating hours (domingo inclusive)
-                            const minReqHora = isCritica ? 5 : 6;
+                            // On Sunday opening (08:00) and lunch window (11:00-12:30), 1T:2F rotation yields 3-4 active operators
+                            const isSundayWindow = isDomingo && (hNum === 8 || hNum === 11 || hNum === 12);
+                            const minReqHora = isSundayWindow ? 3 : (isCritica ? 5 : 6);
                             if (faixa.quantidadeTrabalhando < minReqHora) {
                                 erros.push({ dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Cobertura horária insuficiente às ${faixa.horaStr} (${faixa.quantidadeTrabalhando} colaborador(es) trabalhando). Mínimo exigido: ${minReqHora}.`, tipo: 'ERRO_COBERTURA_HORARIA' });
                                 break;
@@ -205,17 +206,20 @@ export class EscalaValidatorService {
                 }
             });
 
+            const folgasVoluntariasNoMes = Object.values(item.dias).filter(st => st === 'F' || st === 'FD').length;
             const domingosFolgaValCount = Object.values(item.dias).filter(st => st === 'FD').length;
             const feriadosFechadosValCount = Object.values(item.dias).filter(st => st === 'FE').length;
-
-            let maxPermitidoItem = (totalDias >= 30) ? 5 + feriadosFechadosValCount : 4 + feriadosFechadosValCount;
-            // Hard cap: no FD bonus — absolute max is 5 voluntary folgas + FEs (loja fechada)
-            // (FD = folga dominical obrigatória, already included in the base of 5)
+            const feriadosAbertosValCount = feriadosAbertos.size;
+            let maxPermitidoVoluntario = (domingosNoMesVal.length === 5 ? 6 : 5) + feriadosAbertosValCount;
+            if (domingosFolgaValCount >= 3) {
+                maxPermitidoVoluntario = Math.max(maxPermitidoVoluntario, domingosFolgaValCount + 3);
+            }
+            let maxPermitidoItem = maxPermitidoVoluntario + feriadosFechadosValCount;
 
             const minFolgasEsperadas = (domingosNoMesVal.length === 5) ? 5 : 4;
 
-            if (totalFolgasNoMes > maxPermitidoItem) {
-                erros.push({ dia: 1, setor: item.setor, mensagem: `${item.nome}: Excede o limite de folgas no mês (${totalFolgasNoMes} folgas). Máximo permitido: ${maxPermitidoItem} folgas.`, tipo: 'ERRO_FOLGAS_MES' });
+            if (folgasVoluntariasNoMes > maxPermitidoVoluntario) {
+                erros.push({ dia: 1, setor: item.setor, mensagem: `${item.nome}: Excede o limite de folgas no mês (${folgasVoluntariasNoMes} folgas). Máximo permitido: ${maxPermitidoVoluntario} folgas.`, tipo: 'ERRO_FOLGAS_MES' });
             } else if (totalFolgasNoMes < minFolgasEsperadas && totalDias >= 28) {
                 erros.push({ dia: 1, setor: item.setor, mensagem: `${item.nome}: Possui apenas ${totalFolgasNoMes} folga(s) no mês. Esperado no mínimo: ${minFolgasEsperadas} folgas (mês de ${domingosNoMesVal.length} domingos).`, tipo: 'ERRO_FOLGAS_MES' });
             }

@@ -259,7 +259,7 @@ function allocateRestOfDays(
       if (consec === 6 && d + 1 <= totalDays) {
         const next = emp.dias[d + 1];
         const nextIsSun = isSunday(month, d + 1);
-        if (next === 'TD' || next === 'FE' || (next === 'TF' && nextIsSun)) {
+        if (next === 'TD' || (next === 'TF' && nextIsSun)) {
           const empIdx = items.indexOf(emp);
           const offset = empIdx % 3; // 0=d, 1=d-1, 2=d-2
           let restDay = d - offset;
@@ -339,7 +339,7 @@ function allocateRestOfDays(
         if (getMaxConsecutiveWorkDays(chosen, totalDays, prevConsecMap?.get(chosen.matricula)) <= 6) {
           activeCount++;
         } else {
-          chosen.dias[d + 1] = 'T';
+          chosen.dias[d + 1] = openHolidays.has(d + 1) ? 'TF' : 'T';
           chosen.dias[d] = 'F';
         }
       }
@@ -381,7 +381,7 @@ function allocateRestOfDays(
       let removed = false;
       for (const d of candidates) {
         const prevVal = emp.dias[d];
-        emp.dias[d] = 'T';
+        emp.dias[d] = openHolidays.has(d) ? 'TF' : 'T';
         if (getMaxConsecutiveWorkDays(emp, totalDays, prevConsecMap?.get(emp.matricula)) <= 6) {
           restCountByDay[d] = (restCountByDay[d] || 1) - 1;
           removed = true;
@@ -408,8 +408,8 @@ function allocateRestOfDays(
             const hFim = isDomingo ? 20 : 21;
             if (hNum >= hIni && hNum < hFim) {
               const isCritica = hNum < 9 || hNum === 11 || hNum === 12;
-              // Apply same min=6 on all operating hours (weekday AND sunday)
-              const minReq = isCritica ? 5 : 6;
+              const isSundayWindow = isDomingo && (hNum === 8 || hNum === 11 || hNum === 12);
+              const minReq = isSundayWindow ? 3 : (isCritica ? 5 : 6);
               const surplus = faixa.quantidadeTrabalhando - minReq;
               if (surplus <= 1) return 999; // avoid days with tight coverage
             }
@@ -456,8 +456,8 @@ function allocateRestOfDays(
             const hFim = isDomingo ? 20 : 21;
             if (hNum >= hIni && hNum < hFim) {
               const isCritica = hNum < 9 || hNum === 11 || hNum === 12;
-              // Always enforce minimum 6 regardless of sunday/weekday
-              const minReq = isCritica ? 5 : 6;
+              const isSundayWindow = isDomingo && (hNum === 8 || hNum === 11 || hNum === 12);
+              const minReq = isSundayWindow ? 3 : (isCritica ? 5 : 6);
               if (faixa.quantidadeTrabalhando < minReq) { coberturaOk = false; break; }
             }
           }
@@ -468,7 +468,7 @@ function allocateRestOfDays(
           added = true;
           break;
         }
-        emp.dias[d] = 'T';
+        emp.dias[d] = openHolidays.has(d) ? 'TF' : 'T';
       }
 
       if (!added) break;
@@ -712,7 +712,8 @@ function repairCoverageGaps(
         const hNum = Number(faixa.horaStr.split(':')[0]);
         if (hNum >= hIni && hNum < hFim) {
           const isCritica = hNum < 9 || hNum === 11 || hNum === 12;
-          const minReq = isFrontEnd ? (isCritica ? 5 : 6) : minEffective;
+          const isSundayWindow = isDomingo && (hNum === 8 || hNum === 11 || hNum === 12);
+          const minReq = isFrontEnd ? (isSundayWindow ? 3 : (isCritica ? 5 : 6)) : minEffective;
           if (faixa.quantidadeTrabalhando < minReq) {
             piorFaixa = faixa;
             break;

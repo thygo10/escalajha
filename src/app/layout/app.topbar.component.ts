@@ -16,9 +16,9 @@ import { SupabaseService } from '../services/supabase.service';
           <i class="pi pi-bars"></i>
         </button>
         <a class="layout-topbar-logo" routerLink="/">
-          <div class="brand-badge">
-            <span class="brand-icon">JHA</span>
-            <div class="brand-text">
+          <div class="brand-badge-box">
+            <span class="brand-badge-icon">JH</span>
+            <div class="brand-badge-text">
               <span class="brand-title">EscalaJHA</span>
               <span class="brand-sub">João Henrique Atacadista</span>
             </div>

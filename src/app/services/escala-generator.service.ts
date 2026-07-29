@@ -111,22 +111,32 @@ export class EscalaGeneratorService {
 
     const solverResult = solverEngine.solve(funcEntrada, solverOpts);
 
-    if (solverResult.status === 'NO_SOLUTION' || solverResult.itens.length === 0) {
-      // Fallback para o gerador legado de segurança caso haja incompatibilidade de tipos
-      const result = generateSchedule({
-        employees: employees as Employee[],
-        month: { year, month } as YearMonth,
-        holidays: (options?.feriados || []) as Holiday[],
-        turnosConfigs: (options?.turnosConfigs || []) as any,
-        minFuncionariosPorDia: options?.minFuncionariosPorDia,
-        modeloEscala: options?.modeloEscala,
-        leaveEvents: (options?.afastamentos || []) as LeaveEvent[],
-        historicoMesAnterior: options?.historicoMesAnterior,
-      });
-      return result.entries as EscalaItem[];
+    if (solverResult.status !== 'NO_SOLUTION' && solverResult.itens.length > 0) {
+      const val = this.validatorService.validarEscala(
+        solverResult.itens as EscalaItem[],
+        year,
+        month,
+        options?.minFuncionariosPorDia ?? 2,
+        options?.turnosConfigs || [],
+        options?.feriados || []
+      );
+      if (val.valida && val.totalErros === 0) {
+        return solverResult.itens as EscalaItem[];
+      }
     }
 
-    return solverResult.itens as EscalaItem[];
+    // Fallback para o gerador de segurança comprovado generateSchedule
+    const result = generateSchedule({
+      employees: employees as Employee[],
+      month: { year, month } as YearMonth,
+      holidays: (options?.feriados || []) as Holiday[],
+      turnosConfigs: (options?.turnosConfigs || []) as any,
+      minFuncionariosPorDia: options?.minFuncionariosPorDia,
+      modeloEscala: options?.modeloEscala,
+      leaveEvents: (options?.afastamentos || []) as LeaveEvent[],
+      historicoMesAnterior: options?.historicoMesAnterior,
+    });
+    return result.entries as EscalaItem[];
   }
 
   // -------------------------------------------------------------------------

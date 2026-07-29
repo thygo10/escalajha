@@ -1,3 +1,4 @@
+import { describe, it } from 'vitest';
 import assert from 'node:assert';
 import { INITIAL_FUNCIONARIOS, INITIAL_FERIADOS } from '../models/mock-data';
 import { EscalaGeneratorService } from './escala-generator.service';
@@ -456,4 +457,8 @@ export function runEscalaGeneratorSpec(): void {
   console.log('===============================================================');
 }
 
-runEscalaGeneratorSpec();
+describe('EscalaGeneratorService Test Suite', () => {
+  it('deve executar e passar em todas as 12 suítes de validação de escala', () => {
+    runEscalaGeneratorSpec();
+  });
+});
