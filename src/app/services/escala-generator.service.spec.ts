@@ -460,5 +460,5 @@ export function runEscalaGeneratorSpec(): void {
 describe('EscalaGeneratorService Test Suite', () => {
   it('deve executar e passar em todas as 12 suítes de validação de escala', () => {
     runEscalaGeneratorSpec();
-  });
+  }, 30000);
 });

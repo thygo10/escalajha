@@ -7,7 +7,8 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "npx tsx src/app/services/escala-generator.service.spec.ts",
+    "test": "vitest run",
+    "test:spec": "npx tsx src/app/services/escala-generator.service.spec.ts",
     "test:domain": "npx vitest run src/app/domain/",
     "test:domain:watch": "npx vitest src/app/domain/",
     "test:all": "npx vitest run"
