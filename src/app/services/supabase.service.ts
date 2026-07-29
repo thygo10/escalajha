@@ -504,6 +504,49 @@ export class SupabaseService {
     };
   }
 
+  async deleteEscala(lojaId: string, mesRef: string, setor: string): Promise<boolean> {
+    const storageKey = `jh_escala_${lojaId}_${mesRef}_${setor}`;
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {}
+
+    try {
+      await this.client
+        .from('escalas')
+        .delete()
+        .eq('loja_id', lojaId)
+        .eq('mes_referencia', mesRef)
+        .eq('setor', setor);
+      return true;
+    } catch (err) {
+      console.warn('Erro ao deletar escala do Supabase:', err);
+      return false;
+    }
+  }
+
+  async clearAllEscalas(): Promise<void> {
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('jh_escala_')) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch {}
+
+    try {
+      await this.client
+        .from('escalas')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+    } catch (err) {
+      console.warn('Erro ao limpar escalas do Supabase:', err);
+    }
+  }
+
+
   // Feriados CRUD 100% via Supabase
   async getFeriados(): Promise<Feriado[]> {
     try {
