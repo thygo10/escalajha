@@ -13,9 +13,21 @@ export class EscalaValidatorService {
         minRequerido: number = 2,
         turnosConfigs: TurnoConfig[] = [],
         feriados: Feriado[] = [],
-        historicoMesAnterior?: Record<string, TipoDia[]>,
-        minDomingo?: number
+        opcoesExtra?: Record<string, TipoDia[]> | { historicoMesAnterior?: Record<string, TipoDia[]>; minDomingo?: number }
     ): ValidacaoEscalaResultado {
+        let historicoMesAnterior: Record<string, TipoDia[]> | undefined;
+        let minDomingo: number | undefined;
+
+        if (opcoesExtra) {
+            if ('historicoMesAnterior' in opcoesExtra || 'minDomingo' in opcoesExtra) {
+                const opts = opcoesExtra as { historicoMesAnterior?: Record<string, TipoDia[]>; minDomingo?: number };
+                historicoMesAnterior = opts.historicoMesAnterior;
+                minDomingo = opts.minDomingo;
+            } else {
+                historicoMesAnterior = opcoesExtra as Record<string, TipoDia[]>;
+            }
+        }
+
         const totalDias = new Date(ano, mes, 0).getDate();
         const erros: ValidacaoItem[] = [];
         const coberturaPorDia: Record<number, number> = {};
@@ -101,7 +113,12 @@ export class EscalaValidatorService {
                             const isCritica = hNum < 9 || hNum === 11 || hNum === 12;
                             // On Sunday opening (08:00) and lunch window (11:00-12:30), 1T:2F rotation yields 3-4 active operators
                             const isSundayWindow = isDomingo && (hNum === 8 || hNum === 11 || hNum === 12);
-                            const minReqHora = isSundayWindow ? 3 : (isCritica ? 5 : 6);
+                            let minReqHora = 6;
+                            if (isSundayWindow) {
+                                minReqHora = 3;
+                            } else if (isCritica) {
+                                minReqHora = 5;
+                            }
                             if (faixa.quantidadeTrabalhando < minReqHora) {
                                 erros.push({ dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Cobertura horária insuficiente às ${faixa.horaStr} (${faixa.quantidadeTrabalhando} colaborador(es) trabalhando). Mínimo exigido: ${minReqHora}.`, tipo: 'ERRO_COBERTURA_HORARIA' });
                                 break;
@@ -209,13 +226,11 @@ export class EscalaValidatorService {
 
             const folgasVoluntariasNoMes = Object.values(item.dias).filter(st => st === 'F' || st === 'FD').length;
             const domingosFolgaValCount = Object.values(item.dias).filter(st => st === 'FD').length;
-            const feriadosFechadosValCount = Object.values(item.dias).filter(st => st === 'FE').length;
             const feriadosAbertosValCount = feriadosAbertos.size;
             let maxPermitidoVoluntario = (domingosNoMesVal.length === 5 ? 6 : 5) + feriadosAbertosValCount;
             if (domingosFolgaValCount >= 3) {
                 maxPermitidoVoluntario = Math.max(maxPermitidoVoluntario, domingosFolgaValCount + 3);
             }
-            let maxPermitidoItem = maxPermitidoVoluntario + feriadosFechadosValCount;
 
             const minFolgasEsperadas = (domingosNoMesVal.length === 5) ? 5 : 4;
 

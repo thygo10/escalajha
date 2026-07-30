@@ -14,11 +14,22 @@ export class RuleCarryOverManager {
     }
   }
 
+  temHistorico(funcionarioId: string): boolean {
+    return this.estados.has(funcionarioId);
+  }
+
+  exportarEstados(): Map<string, FuncionarioEstadoRegra> {
+    const copia = new Map<string, FuncionarioEstadoRegra>();
+    this.estados.forEach((val, key) => copia.set(key, { ...val }));
+    return copia;
+  }
+
   getEstado(funcionarioId: string): FuncionarioEstadoRegra {
     if (!this.estados.has(funcionarioId)) {
       return {
         funcionarioId,
         domingosDescansoRestantes: 0,
+        domingosConsecutivosTrabalhados: 0,
         grupoUltimoFeriadoTrabalhado: 'A',
         diasConsecutivosAcumulados: 0
       };

@@ -44,10 +44,10 @@ export class LayoutService {
     menuHoverActive: false
   });
 
-  private configUpdate = new Subject<LayoutConfig>();
-  private overlayOpen = new Subject<any>();
-  private menuSource = new Subject<MenuChangeEvent>();
-  private resetSource = new Subject<void>();
+  private readonly configUpdate = new Subject<LayoutConfig>();
+  private readonly overlayOpen = new Subject<any>();
+  private readonly menuSource = new Subject<MenuChangeEvent>();
+  private readonly resetSource = new Subject<void>();
 
   menuSource$ = this.menuSource.asObservable();
   resetSource$ = this.resetSource.asObservable();
@@ -56,7 +56,7 @@ export class LayoutService {
 
   isDarkTheme = computed(() => this.layoutConfig().darkTheme);
 
-  isSidebarActive = computed(() => 
+  isSidebarActive = computed(() =>
     this.layoutState().overlayMenuActive || this.layoutState().staticMenuMobileActive
   );
 
@@ -64,11 +64,9 @@ export class LayoutService {
     effect(() => {
       const config = this.layoutConfig();
       if (config.darkTheme) {
-        document.documentElement.classList.add('p-dark');
-        document.documentElement.classList.add('dark-mode');
+        document.documentElement.classList.add('p-dark', 'dark-mode');
       } else {
-        document.documentElement.classList.remove('p-dark');
-        document.documentElement.classList.remove('dark-mode');
+        document.documentElement.classList.remove('p-dark', 'dark-mode');
       }
     });
   }

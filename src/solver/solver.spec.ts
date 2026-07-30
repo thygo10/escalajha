@@ -67,7 +67,7 @@ describe('CSPSolverEngine & Core Solver (PRD v4.0)', () => {
       });
 
       expect(res.status).toBe('SUCCESS');
-      expect(res.itens.length).toBe(3);
+      expect(res.itens).toHaveLength(3);
       expect(res.scoreQualidade).toBeGreaterThanOrEqual(90);
 
       // Verificar que nenhum funcionário trabalhou 7 dias seguidos
@@ -83,6 +83,53 @@ describe('CSPSolverEngine & Core Solver (PRD v4.0)', () => {
           }
         });
         expect(maxConsecutivos).toBeLessThanOrEqual(6);
+      });
+    });
+
+    it('deve respeitar o carry-over de dias consecutivos e domingos através das viradas de mês', () => {
+      const funcs: FuncionarioEntrada[] = [
+        { id: '1', matricula: '100001', nome: 'João', setor: 'Caixa', cargo: 'Caixa', turno: '08:00 às 16:20', genero: 'M', ativo: true },
+        { id: '2', matricula: '100002', nome: 'Maria', setor: 'Caixa', cargo: 'Caixa', turno: '08:00 às 16:20', genero: 'F', ativo: true },
+        { id: '3', matricula: '100003', nome: 'Carlos', setor: 'Caixa', cargo: 'Caixa', turno: '08:00 às 16:20', genero: 'M', ativo: true }
+      ];
+
+      const solver = new CSPSolverEngine();
+      // Mês 1: Junho 2026
+      const resJun = solver.solve(funcs, { year: 2026, month: 6 });
+      expect(resJun.status).toBe('SUCCESS');
+      expect(resJun.estadosSaida).toBeDefined();
+
+      // Mês 2: Julho 2026 (Passando o estado de saída de Junho)
+      const resJul = solver.solve(funcs, {
+        year: 2026,
+        month: 7,
+        estadosTransicao: resJun.estadosSaida
+      });
+      expect(resJul.status).toBe('SUCCESS');
+
+      // Validar transição de consecutivos de Junho para Julho
+      funcs.forEach(f => {
+        const itemJun = resJun.itens.find(i => i.matricula === f.matricula)!;
+        const itemJul = resJul.itens.find(i => i.matricula === f.matricula)!;
+
+        // Contar quantos dias seguidos trabalhou no fim de Junho (dias 25-30)
+        let consecFimJun = 0;
+        for (let d = 30; d >= 24; d--) {
+          const st = itemJun.dias[d];
+          if (st === 'T' || st === 'TD' || st === 'TF') consecFimJun++;
+          else break;
+        }
+
+        // Contar quantos trabalhou no inicio de Julho (dias 1-7)
+        let consecIniJul = 0;
+        for (let d = 1; d <= 7; d++) {
+          const st = itemJul.dias[d];
+          if (st === 'T' || st === 'TD' || st === 'TF') consecIniJul++;
+          else break;
+        }
+
+        // A soma contínua na virada NÃO pode exceder 6 dias
+        expect(consecFimJun + consecIniJul).toBeLessThanOrEqual(6);
       });
     });
   });

@@ -529,7 +529,7 @@ export class SupabaseService {
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k && k.startsWith('jh_escala_')) {
+        if (k?.startsWith('jh_escala_')) {
           keysToRemove.push(k);
         }
       }

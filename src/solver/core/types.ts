@@ -22,6 +22,7 @@ export interface FuncionarioEstadoRegra {
   funcionarioId: string;
   ultimoDomingoTrabalhado?: string; // YYYY-MM-DD
   domingosDescansoRestantes: number; // 0, 1 ou 2
+  domingosConsecutivosTrabalhados?: number; // Para regra 3x1 (Homens)
   grupoUltimoFeriadoTrabalhado: 'A' | 'B';
   diasConsecutivosAcumulados: number; // Carry-over do mês anterior
 }
@@ -60,4 +61,5 @@ export interface SolverResult {
   itens: SolverEscalaItem[];
   falhas: ConstraintFailure[];
   explicacoes?: Record<string, Record<number, string>>; // [matricula][dia] => motivo
+  estadosSaida?: Map<string, FuncionarioEstadoRegra>;
 }

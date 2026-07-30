@@ -259,7 +259,7 @@ export class DashboardComponent implements OnInit {
     const minReq = this.minFuncionariosPorDiaSetor();
     const minDom = this.minFuncionariosDomingoSetor();
     const tConfigs = this.turnosConfigs();
-    return this.generator.validarEscala(itens, ano, mes, minReq, tConfigs, this.feriados(), undefined, minDom);
+    return this.generator.validarEscala(itens, ano, mes, minReq, tConfigs, this.feriados(), { minDomingo: minDom });
   });
 
 

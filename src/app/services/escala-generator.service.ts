@@ -155,10 +155,9 @@ export class EscalaGeneratorService {
     minRequerido: number = 2,
     turnosConfigs: TurnoConfig[] = [],
     feriados: Feriado[] = [],
-    historicoMesAnterior?: Record<string, TipoDia[]>,
-    minDomingo?: number
+    opcoesExtra?: Record<string, TipoDia[]> | { historicoMesAnterior?: Record<string, TipoDia[]>; minDomingo?: number }
   ): ValidacaoEscalaResultado {
-    return this.validatorService.validarEscala(itens, ano, mes, minRequerido, turnosConfigs, feriados, historicoMesAnterior, minDomingo);
+    return this.validatorService.validarEscala(itens, ano, mes, minRequerido, turnosConfigs, feriados, opcoesExtra);
   }
 
   calcularCargaHorariaLiquida(entrada: string, saida: string, intervaloMinutos: number) {
