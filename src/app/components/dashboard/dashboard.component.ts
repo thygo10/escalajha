@@ -4,9 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { SupabaseService } from '../../services/supabase.service';
 import { EscalaGeneratorService } from '../../services/escala-generator.service';
-import { ToastService } from '../../services/toast.service';
+import { DsToastService } from '../../../design-system/components/toast/toast.service';
 import { Loja, Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho, TurnoConfig, IntervaloOption, ValidacaoEscalaResultado, ModeloEscala, RegraConformidade, HorarioPresenca, ResumoFuncionarioMetrics } from '../../models/types';
-import { IconComponent } from '../shared/icon.component';
+import { DsIconComponent } from '../../../design-system/components/icon/icon.component';
 import { HORARIOS_FIXOS_CAIXA, HORARIOS_FIXOS_FISCAL, INITIAL_REGRAS_CONFORMIDADE } from '../../models/mock-data';
 
 import { TableModule } from 'primeng/table';
@@ -43,7 +43,8 @@ interface ConfirmModalData {
   imports: [
     CommonModule,
     FormsModule,
-    IconComponent,
+    DsIconComponent,
+
     TableModule,
     DialogModule,
     ButtonModule,
@@ -66,7 +67,7 @@ interface ConfirmModalData {
 export class DashboardComponent implements OnInit {
   private readonly supabase = inject(SupabaseService);
   private readonly generator = inject(EscalaGeneratorService);
-  public readonly toastService = inject(ToastService);
+  public readonly toastService = inject(DsToastService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -82,10 +83,30 @@ export class DashboardComponent implements OnInit {
   private readonly _hoje = new Date();
   readonly hojeDia = this._hoje.getDate();
   readonly hojeStr = this._hoje.toISOString().split('T')[0];
-  readonly currentYearMonth = `${this._hoje.getFullYear()}-${String(this._hoje.getMonth() + 1).padStart(2, '0')}`;
+
+  readonly mesesDisponiveis = [
+    { label: 'Julho 2026', value: '2026-07' },
+    { label: 'Agosto 2026', value: '2026-08' },
+    { label: 'Setembro 2026', value: '2026-09' },
+    { label: 'Outubro 2026', value: '2026-10' },
+    { label: 'Novembro 2026', value: '2026-11' },
+    { label: 'Dezembro 2026', value: '2026-12' }
+  ];
+
+  private _initCurrentMonth(): string {
+    const y = this._hoje.getFullYear();
+    const m = this._hoje.getMonth() + 1;
+    if (y === 2026 && m >= 7 && m <= 12) {
+      return `${y}-${String(m).padStart(2, '0')}`;
+    }
+    return '2026-07';
+  }
+  readonly currentYearMonth = this._initCurrentMonth();
 
   // Mapa de rascunhos em memória para persistência entre trocas de abas/setores
   draftEscalasMap = signal<Map<string, EscalaItem[]>>(new Map());
+
+  historicoMesAnteriorAtivo = signal<Record<string, TipoDia[]> | undefined>(undefined);
 
   private _selectedMonth = this.currentYearMonth;
   get selectedMonth() { return this._selectedMonth; }
@@ -325,7 +346,10 @@ export class DashboardComponent implements OnInit {
     const minReq = this.minFuncionariosPorDiaSetor();
     const minDom = this.minFuncionariosDomingoSetor();
     const tConfigs = this.turnosConfigs();
-    return this.generator.validarEscala(itens, ano, mes, minReq, tConfigs, this.feriados(), { minDomingo: minDom });
+    return this.generator.validarEscala(itens, ano, mes, minReq, tConfigs, this.feriados(), {
+      minDomingo: minDom,
+      historicoMesAnterior: this.historicoMesAnteriorAtivo()
+    });
   });
 
 
@@ -589,6 +613,16 @@ export class DashboardComponent implements OnInit {
       map.set(d, dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase());
     }
     return map;
+  });
+
+  readonly diasDashboardOptions = computed(() => {
+    const list = [{ label: `Automático (Dia ${this.diaInspecionadoEfetivo()})`, value: 0 }];
+    const map = this.diasSemanaAbrevMap();
+    for (const d of this.diasDoMes()) {
+      const abrev = map.get(d) || '';
+      list.push({ label: `Dia ${d} (${abrev})`, value: d });
+    }
+    return list;
   });
 
   /** Mapa pré-computado: dia → abreviação de 3 letras do dia da semana (UPPER) */
@@ -1160,9 +1194,40 @@ export class DashboardComponent implements OnInit {
     return this.cargosPorSetorMap().get(setorNome) ?? [];
   }
 
+  async obterHistoricoMesAnterior(ano: number, mes: number, setorNome: string): Promise<Record<string, TipoDia[]> | undefined> {
+    const loja = this.activeLoja();
+    if (!loja) return undefined;
+
+    const prevMes = mes === 1 ? 12 : mes - 1;
+    const prevAno = mes === 1 ? ano - 1 : ano;
+    const prevMonthStr = `${prevAno}-${String(prevMes).padStart(2, '0')}`;
+    const key = `${loja.id}|${prevMonthStr}|${setorNome}`;
+
+    if (this.draftEscalasMap().has(key)) {
+      const draftItens = this.draftEscalasMap().get(key)!;
+      return this.generator.extrairHistoricoMesAnterior(draftItens);
+    }
+
+    try {
+      const mesRef = `${prevMonthStr}-01`;
+      const escala = await this.supabase.getEscala(loja.id, mesRef, setorNome);
+      if (escala?.dados?.itens && escala.dados.itens.length > 0) {
+        return this.generator.extrairHistoricoMesAnterior(escala.dados.itens);
+      }
+    } catch (err) {
+      console.warn('Não foi possível carregar histórico do mês anterior:', err);
+    }
+
+    return undefined;
+  }
+
   async loadEscala() {
     const loja = this.activeLoja();
     if (!loja) return;
+
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    const histAnt = await this.obterHistoricoMesAnterior(ano, mes, this.selectedSetor);
+    this.historicoMesAnteriorAtivo.set(histAnt);
 
     const key = `${loja.id}|${this.selectedMonth}|${this.selectedSetor}`;
 
@@ -1186,13 +1251,13 @@ export class DashboardComponent implements OnInit {
         // Se Supabase não tem escala salva, gera a escala 6x1 giratória automaticamente
         const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => (f.setor === this.selectedSetor || f.setores_cobertura?.includes(this.selectedSetor)) && f.ativo);
         if (funcsDoSetor.length > 0) {
-          const [ano, mes] = this.selectedMonth.split('-').map(Number);
           const gerada = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes, {
             permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
             diasPermitidosFolga: this.diasPermitidosFolga(),
             feriados: this.feriados(),
             minFuncionariosPorDia: this.minFuncionariosPorDiaSetor(),
-            turnosConfigs: this.turnosConfigs()
+            turnosConfigs: this.turnosConfigs(),
+            historicoMesAnterior: histAnt
           });
           this.escalaItens.set(gerada);
           this.draftEscalasMap.update((m: Map<string, EscalaItem[]>) => {
@@ -1364,9 +1429,12 @@ export class DashboardComponent implements OnInit {
     return this.funcionarios().filter((f: Funcionario) => (f.setor === setorNome || f.setores_cobertura?.includes(setorNome)) && f.ativo).length;
   }
 
-  private _executarGeracaoEscala(funcsDoSetor: Funcionario[], minPorDia?: number) {
+  private async _executarGeracaoEscala(funcsDoSetor: Funcionario[], minPorDia?: number) {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
     const minReq = minPorDia ?? this.minFuncionariosPorDiaSetor();
+
+    const histAnt = await this.obterHistoricoMesAnterior(ano, mes, this.selectedSetor);
+    this.historicoMesAnteriorAtivo.set(histAnt);
 
     this.generator.invalidateCache(ano, mes);
 
@@ -1383,7 +1451,8 @@ export class DashboardComponent implements OnInit {
       },
       modeloEscala: this.modeloEscalaAtivo(),
       turnosConfigs: this.turnosConfigs(),
-      regrasConformidade: this.regrasConformidade()
+      regrasConformidade: this.regrasConformidade(),
+      historicoMesAnterior: histAnt
     });
     this.escalaItens.set(gerada);
 
@@ -1924,6 +1993,24 @@ export class DashboardComponent implements OnInit {
     this.feriadoModal.set({ visible: false, isEdit: false });
   }
 
+  private _notificarImpactoFeriado(dataFeriadoStr: string, nomeFeriado: string) {
+    if (!dataFeriadoStr) return;
+    const [ano, mes] = dataFeriadoStr.split('-');
+    this.generator.invalidateCache(Number(ano), Number(mes));
+
+    const key = `${this.activeLoja()?.id || 'loja-02-demo'}|${ano}-${mes}|${this.selectedSetor}`;
+    this.draftEscalasMap.update(m => {
+      const nm = new Map(m);
+      nm.delete(key);
+      return nm;
+    });
+
+    this.toastService.warning(
+      'Atenção: Feriado Alterado/Removido',
+      `O feriado "${nomeFeriado}" em ${this.formatFeriadoData(dataFeriadoStr)} foi modificado. Recomenda-se regerar a escala do mês ${mes}/${ano} para ajustar a equipe.`
+    );
+  }
+
   async saveFeriadoModal() {
     if (!this.feriadoModalForm.nome.trim() || !this.feriadoModalForm.data) {
       this.toastService.warning('Campos Obrigatórios', 'Informe o nome e a data do feriado.');
@@ -1953,6 +2040,7 @@ export class DashboardComponent implements OnInit {
         });
         this.toastService.success('Feriado Cadastrado', `Feriado "${this.feriadoModalForm.nome}" cadastrado com sucesso.`);
       }
+      this._notificarImpactoFeriado(this.feriadoModalForm.data, this.feriadoModalForm.nome);
       this.closeFeriadoModal();
       await this.refreshAllDataAndCaches();
     } catch (err: any) {
@@ -1969,6 +2057,7 @@ export class DashboardComponent implements OnInit {
       onConfirm: async () => {
         await this.supabase.deleteFeriado(feriado.id);
         this.toastService.warning('Feriado Removido', `Feriado "${feriado.nome}" excluído com sucesso.`);
+        this._notificarImpactoFeriado(feriado.data, feriado.nome);
         await this.refreshAllDataAndCaches();
       }
     });
@@ -2076,6 +2165,14 @@ export class DashboardComponent implements OnInit {
     if (tipo === 'FR') return 'status-ferias-simple';
     if (tipo === 'F' || tipo === 'FD' || tipo === 'FE') return 'status-folga-simple';
     return 'status-trabalho-simple';
+  }
+
+  getDiaSeverityFromTipoDia(tipo: TipoDia): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+    if (tipo === 'F') return 'info';
+    if (tipo === 'FD') return 'warn';
+    if (tipo === 'FE' || tipo === 'TF') return 'danger';
+    if (tipo === 'FR' || tipo === 'AF') return 'warn';
+    return 'success';
   }
 
   getDiaLabelFromTipoDia(tipo: TipoDia): string {

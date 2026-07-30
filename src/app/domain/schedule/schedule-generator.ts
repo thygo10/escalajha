@@ -144,7 +144,7 @@ function applyFixedAnchors(
   // Sort by shift start time so early shifts get even Sunday distribution,
   // ensuring morning coverage on Sundays (validator checks from 08:00).
   const shiftStartMin = items.map(item => {
-    const m = item.turno?.match(/(\d{2}):(\d{2})/);
+    const m = item.turno ? /(\d{2}):(\d{2})/.exec(item.turno) : null;
     return m ? Number(m[1]) * 60 + Number(m[2]) : 999;
   });
   const priorityOrder = items.map((_, i) => i).sort((a, b) => shiftStartMin[a] - shiftStartMin[b]);
@@ -200,7 +200,6 @@ function allocateRestOfDays(
     if (isDom && isFrontEnd) return Math.max(minFuncionariosDomingo ?? 3, 3);
     return isFrontEnd ? Math.max(minFuncionariosPorDia ?? 2, 6) : (minFuncionariosPorDia ?? 2);
   };
-  const sundayCount = getSundays(month).length;
   const isExceptionSector = sectorName.includes('padaria') || sectorName.includes('acougue') || sectorName.includes('açougue');
   // Exception sectors (bakery/açougue) keep min=4 even with 5 Sundays
   // due to production constraint (max 1 voluntary rest/day)
@@ -221,10 +220,6 @@ function allocateRestOfDays(
     const base = totalDays >= 30 ? 5 : 4;
     return base + feCount;
   };
-
-  // Helper to count only voluntary rests (F/FD) excluding FE
-  const countVoluntaryFolgas = (emp: ScheduleEntry): number =>
-    Object.values(emp.dias).filter(st => st === 'F' || st === 'FD').length;
 
   // Helper that includes previous month consecutive count
   const countConsecBefore = (emp: ScheduleEntry, day: number): number => {

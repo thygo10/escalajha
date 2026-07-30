@@ -21,9 +21,7 @@ import { AppConfiguratorComponent } from './app.configurator.component';
   template: `
     <div class="layout-wrapper" [ngClass]="containerClass">
       <app-topbar></app-topbar>
-      <div class="layout-sidebar">
-        <app-sidebar></app-sidebar>
-      </div>
+      <app-sidebar></app-sidebar>
       <div class="layout-main-container">
         <div class="layout-main">
           <router-outlet></router-outlet>

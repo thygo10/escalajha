@@ -249,4 +249,47 @@ export class CSPSolverEngine {
       estadosSaida: carryOverManager.exportarEstados()
     };
   }
+
+  private _validarMatrizStreakMax6(diasMatriz: Record<number, TipoDiaSigla>, totalDias: number, prevConsec: number): boolean {
+    let consec = prevConsec;
+    for (let d = 1; d <= totalDias; d++) {
+      const s = diasMatriz[d];
+      if (s === 'T' || s === 'TD' || s === 'TF') {
+        consec++;
+        if (consec > 6) return false;
+      } else {
+        consec = 0;
+      }
+    }
+    return true;
+  }
+
+  private _validarMatrizDomingos(diasMatriz: Record<number, TipoDiaSigla>, totalDias: number, year: number, month: number): boolean {
+    let ultimoDomTrab = -1;
+    for (let d = 1; d <= totalDias; d++) {
+      const dateObj = new Date(year, month - 1, d);
+      if (dateObj.getDay() === 0) {
+        const s = diasMatriz[d];
+        if (s === 'TD' || s === 'TF') {
+          if (ultimoDomTrab > 0 && (d - ultimoDomTrab) <= 7) return false;
+          ultimoDomTrab = d;
+        }
+      }
+    }
+    return true;
+  }
+
+  private _encontrarDiaStreakEstourado(diasMatriz: Record<number, TipoDiaSigla>, totalDias: number, prevConsec: number): number {
+    let consec = prevConsec;
+    for (let d = 1; d <= totalDias; d++) {
+      const s = diasMatriz[d];
+      if (s === 'T' || s === 'TD' || s === 'TF') {
+        consec++;
+        if (consec > 6) return d;
+      } else {
+        consec = 0;
+      }
+    }
+    return 0;
+  }
 }

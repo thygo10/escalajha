@@ -53,7 +53,7 @@ export interface MenuItem {
         [routerLink]="item.routerLink"
         [queryParams]="item.queryParams"
         routerLinkActive="active-route"
-        [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored' }"
+        [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'exact', matrixParams: 'ignored', fragment: 'ignored' }"
         [attr.target]="item.target"
         tabindex="0"
       >
@@ -132,9 +132,10 @@ export class AppMenuItemComponent implements OnInit, OnDestroy {
   updateActiveStateFromRoute() {
     if (!this.item.routerLink?.[0]) return;
 
-    const activeRoute = this.router.isActive(this.item.routerLink[0], {
+    const urlTree = this.router.createUrlTree(this.item.routerLink, { queryParams: this.item.queryParams });
+    const activeRoute = this.router.isActive(urlTree, {
       paths: 'exact',
-      queryParams: 'ignored',
+      queryParams: 'exact',
       matrixParams: 'ignored',
       fragment: 'ignored'
     });

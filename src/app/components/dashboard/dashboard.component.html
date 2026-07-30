@@ -1,393 +1,438 @@
-<div class="sakai-dashboard-container p-3">
+<div class="p-3">
 
-  <!-- BREADCRUMB & HEADER PROFISSIONAL SAKAI -->
-  <div class="module-header no-print flex-between align-center mb-4 wrap gap-10">
-    <div class="breadcrumb-container">
-      <span class="breadcrumb-root">Home</span>
-      <span class="breadcrumb-sep">/</span>
-      <span class="breadcrumb-active">{{ breadcrumbLabel() }}</span>
+  <!-- HEADER & BREADCRUMB SAKAI NG -->
+  <div class="flex justify-content-between align-items-center mb-4 flex-wrap gap-3 no-print">
+    <div>
+      <div class="text-sm font-semibold text-muted-color mb-1">
+        <span>Home</span> <span class="mx-1">/</span> <span class="text-primary font-semibold">{{ breadcrumbLabel() }}</span>
+      </div>
+      <h2 class="text-2xl font-semibold m-0 text-color">Painel de Escalas & Gestão de Folgas</h2>
     </div>
 
-    <div class="flex-items-center-gap">
+    <div class="flex align-items-center gap-2">
       @if (activeTab() === 'escala' || activeTab() === 'dashboard') {
-        <button type="button" (click)="openPrintOptionsModal()" class="p-button p-button-warning p-button-sm font-bold flex-items-center-gap" style="border-radius: 8px; padding: 0.5rem 1rem;">
-          <app-icon name="printer" [size]="16" color="#0b2a52"></app-icon>
+        <button pButton type="button" (click)="openPrintOptionsModal()" class="p-button-outlined p-button-secondary p-button-sm font-bold flex align-items-center gap-2" style="border-radius: 8px;">
+          <i class="pi pi-print"></i>
           <span>Imprimir A4</span>
         </button>
-      }
-
-      @if (activeTab() === 'dashboard') {
-        <div class="header-kpi-bar">
-          <button type="button" class="kpi-chip clickable" (click)="openSetorDetalhamentoModal('', 'FOLGA')" title="Clique para ver quem está de folga hoje" style="border: none; font-family: inherit;">
-            <span class="kpi-val">{{ folgasHojeInfo().total }}</span>
-            <span class="kpi-lbl">Folgas Hoje</span>
-          </button>
-          <button type="button" class="kpi-chip clickable" (click)="openSetorDetalhamentoModal('', 'TODOS')" title="Clique para ver toda a equipe por setor" style="border: none; font-family: inherit;">
-            <span class="kpi-val">{{ funcionarios().length }}</span>
-            <span class="kpi-lbl">Colaboradores</span>
-          </button>
-        </div>
-      }
-
-      @if (activeTab() === 'regras') {
-        <div class="header-kpi-bar">
-          <div class="kpi-chip">
-            <span class="kpi-val">{{ statsRegras().implementadas }}</span>
-            <span class="kpi-lbl">No Algoritmo</span>
-          </div>
-          <div class="kpi-chip">
-            <span class="kpi-val">{{ statsRegras().pendentes }}</span>
-            <span class="kpi-lbl">Pendentes</span>
-          </div>
-        </div>
       }
     </div>
   </div>
 
-      <!-- ABA 0: DASHBOARD VISÃO GERAL -->
-      @if (activeTab() === 'dashboard') {
-
-        <!-- BARRA DE PESQUISA & FILTROS EM PÍLULA -->
-        <div class="filter-pill-bar no-print">
-          <div class="search-input-wrapper">
-            <span class="search-icon-left">
-              <app-icon name="search" [size]="18" color="#94a3b8"></app-icon>
-            </span>
-            <label for="searchQueryDashInput" class="sr-only">Pesquisar colaboradores ou setores</label>
-            <input
-              id="searchQueryDashInput"
-              type="text"
-              [ngModel]="searchQueryDashboard()"
-              (ngModelChange)="searchQueryDashboard.set($event)"
-              placeholder="Pesquisar colaboradores ou setores..."
-            />
-            @if (searchQueryDashboard() || filterSetorDashboard()) {
-              <div class="search-actions-right">
-                <button (click)="searchQueryDashboard.set(''); filterSetorDashboard.set('')" title="Limpar Filtros" class="icon-btn-sm">
-                  <app-icon name="x" [size]="16"></app-icon>
-                </button>
-              </div>
-            }
+  @if (activeTab() === 'dashboard') {
+    <!-- 4 WIDGETS DE ESTATÍSTICAS ESTILO SAKAI NG -->
+    <div class="grid mb-4 no-print">
+      <div class="col-12 md:col-6 lg:col-3">
+        <button type="button" class="card mb-0 cursor-pointer p-ripple p-4 w-full flex flex-column align-items-center text-center h-full" (click)="openSetorDetalhamentoModal('', 'FOLGA')" title="Clique para ver quem está de folga hoje" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius); transition: transform 0.25s, box-shadow 0.25s; background: var(--p-surface-card); color: inherit; font-family: inherit; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;">
+          <div class="flex align-items-center justify-content-center bg-blue-100 dark:bg-blue-900/30 border-round mb-3" style="width: 3.5rem; height: 3.5rem">
+            <i class="pi pi-calendar-times text-blue-700 text-2xl"></i>
           </div>
+          <span class="block text-muted-color font-medium mb-2 text-sm">Folgas Hoje</span>
+          <div class="text-color font-bold text-3xl mb-2">{{ folgasHojeInfo().total }}</div>
+          <span class="text-muted-color text-xs">Colaboradores de folga</span>
+        </button>
+      </div>
 
-          <div class="pill-group">
-            <span class="pill-group-title">Filtrar Setor:</span>
-
-            <button (click)="filterSetorDashboard.set('')" [class.active]="filterSetorDashboard() === ''" class="pill-btn">
-              Todos os Setores <span class="pill-badge">{{ setores().length }}</span>
-            </button>
-
-            @for (s of setores(); track s.id) {
-              <button (click)="filterSetorDashboard.set(s.nome)" [class.active]="filterSetorDashboard() === s.nome" class="pill-btn">
-                {{ s.nome }} <span class="pill-badge">{{ (folgasPorSetorMap().get(s.nome) ?? []).length }}</span>
-              </button>
-            }
+      <div class="col-12 md:col-6 lg:col-3">
+        <button type="button" class="card mb-0 cursor-pointer p-ripple p-4 w-full flex flex-column align-items-center text-center h-full" (click)="openSetorDetalhamentoModal('', 'TODOS')" title="Clique para ver toda a equipe" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius); transition: transform 0.25s, box-shadow 0.25s; background: var(--p-surface-card); color: inherit; font-family: inherit; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;">
+          <div class="flex align-items-center justify-content-center bg-green-100 dark:bg-green-900/30 border-round mb-3" style="width: 3.5rem; height: 3.5rem">
+            <i class="pi pi-user text-green-700 text-2xl"></i>
           </div>
+          <span class="block text-muted-color font-medium mb-2 text-sm">Trabalhando Hoje</span>
+          <div class="text-color font-bold text-3xl mb-2">{{ funcionarios().length - folgasHojeInfo().total }}</div>
+          <span class="text-muted-color text-xs">Operação em escala</span>
+        </button>
+      </div>
+
+      <div class="col-12 md:col-6 lg:col-3">
+        <button type="button" class="card mb-0 cursor-pointer p-ripple p-4 w-full flex flex-column align-items-center text-center h-full" (click)="openSetorDetalhamentoModal('', 'TODOS')" title="Total de Colaboradores" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius); transition: transform 0.25s, box-shadow 0.25s; background: var(--p-surface-card); color: inherit; font-family: inherit; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;">
+          <div class="flex align-items-center justify-content-center bg-orange-100 dark:bg-orange-900/30 border-round mb-3" style="width: 3.5rem; height: 3.5rem">
+            <i class="pi pi-users text-orange-700 text-2xl"></i>
+          </div>
+          <span class="block text-muted-color font-medium mb-2 text-sm">Total Colaboradores</span>
+          <div class="text-color font-bold text-3xl mb-2">{{ funcionarios().length }}</div>
+          <span class="text-muted-color text-xs">{{ setores().length }} Setores cadastrados</span>
+        </button>
+      </div>
+
+      <div class="col-12 md:col-6 lg:col-3">
+        <button type="button" class="card mb-0 cursor-pointer p-ripple p-4 w-full flex flex-column align-items-center text-center h-full" (click)="activeTab.set('regras')" title="Clique para ver as regras de conformidade" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius); transition: transform 0.25s, box-shadow 0.25s; background: var(--p-surface-card); color: inherit; font-family: inherit; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;">
+          <div class="flex align-items-center justify-content-center bg-purple-100 dark:bg-purple-900/30 border-round mb-3" style="width: 3.5rem; height: 3.5rem">
+            <i class="pi pi-shield text-purple-700 text-2xl"></i>
+          </div>
+          <span class="block text-muted-color font-medium mb-2 text-sm">Conformidade CLT</span>
+          <div class="text-color font-bold text-3xl mb-2">{{ statsRegras().implementadas }}</div>
+          <span class="text-muted-color text-xs">{{ statsRegras().pendentes }} Regras pendentes</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- BARRA DE PESQUISA & FILTROS EM PÍLULA -->
+    <div class="card p-3 mb-4 no-print" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+      <div class="flex flex-column md:flex-row gap-3 align-items-center justify-content-between">
+        <div class="p-inputgroup flex-1">
+          <span class="p-inputgroup-addon">
+            <i class="pi pi-search"></i>
+          </span>
+          <label for="searchQueryDashInput" class="sr-only">Pesquisar colaboradores ou setores</label>
+          <input
+            id="searchQueryDashInput"
+            pInputText
+            type="text"
+            [ngModel]="searchQueryDashboard()"
+            (ngModelChange)="searchQueryDashboard.set($event)"
+            placeholder="Pesquisar colaboradores ou setores..."
+          />
+          @if (searchQueryDashboard() || filterSetorDashboard()) {
+            <button type="button" pButton icon="pi pi-times" class="p-button-text p-button-secondary" (click)="searchQueryDashboard.set(''); filterSetorDashboard.set('')" title="Limpar Filtros"></button>
+          }
         </div>
 
-        <!-- Detalhamento por Setores: Quem Está de Folga Hoje -->
-        <div class="clean-card">
-          <div class="card-section-header flex-between align-center flex-wrap gap-10">
-            <h3>Status da Equipe por Setor ({{ dataAtualFormatted() }})</h3>
-            <div class="flex-align-center gap-10 no-print">
-              <label for="diaDashboardSelect" class="text-sm font-weight-medium" style="color: #64748b;">Inspecionar Dia:</label>
-              <select
-                id="diaDashboardSelect"
-                [ngModel]="diaFiltroDashboard()"
-                (ngModelChange)="diaFiltroDashboard.set(+$event)"
-                style="padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.875rem; background: white; color: #1e293b; font-weight: 500;"
-              >
-                <option [value]="0">Automático (Dia {{ diaInspecionadoEfetivo() }})</option>
-                @for (d of diasDoMes(); track d) {
-                  <option [value]="d">Dia {{ d }} ({{ diasSemanaAbrevMap().get(d) }})</option>
-                }
-              </select>
-            </div>
-          </div>
+        <div class="flex align-items-center gap-2 flex-wrap">
+          <span class="text-muted-color font-semibold text-sm mr-2">Filtrar Setor:</span>
 
-          @if (isLoading()) {
-            <div class="setores-grid">
-              @for (i of [1,2,3,4,5,6,7,8,9]; track i) {
-                <div class="setor-card skeleton-card">
-                  <div class="skeleton-header"></div>
-                  <div class="skeleton-body">
-                    <div class="skeleton-line"></div>
-                    <div class="skeleton-line short"></div>
+          <p-tag
+            value="Todos ({{ setores().length }})"
+            [severity]="filterSetorDashboard() === '' ? 'success' : 'secondary'"
+            class="cursor-pointer"
+            role="button"
+            tabindex="0"
+            (click)="filterSetorDashboard.set('')"
+            (keydown.enter)="filterSetorDashboard.set('')"
+          ></p-tag>
+
+          @for (s of setores(); track s.id) {
+            <p-tag
+              [value]="s.nome + ' (' + ((folgasPorSetorMap().get(s.nome) ?? []).length) + ')'"
+              [severity]="filterSetorDashboard() === s.nome ? 'success' : 'secondary'"
+              class="cursor-pointer"
+              role="button"
+              tabindex="0"
+              (click)="filterSetorDashboard.set(s.nome)"
+              (keydown.enter)="filterSetorDashboard.set(s.nome)"
+            ></p-tag>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Detalhamento por Setores: Quem Está de Folga Hoje -->
+    <div class="card p-4" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+      <div class="flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <h3 class="m-0 font-semibold text-lg text-color">Status da Equipe por Setor ({{ dataAtualFormatted() }})</h3>
+        <div class="flex align-items-center gap-2 no-print">
+          <label for="diaDashboardSelect" class="text-sm font-medium text-muted-color">Inspecionar Dia:</label>
+          <p-select
+            id="diaDashboardSelect"
+            [options]="diasDashboardOptions()"
+            [ngModel]="diaFiltroDashboard()"
+            (ngModelChange)="diaFiltroDashboard.set(+$event)"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="w-16rem"
+          ></p-select>
+        </div>
+      </div>
+
+      @if (isLoading()) {
+        <div class="grid">
+          @for (i of [1,2,3,4,5,6,7,8,9]; track i) {
+            <div class="col-12 md:col-6 lg:col-4">
+              <div class="card mb-4 skeleton-card">
+                <div class="skeleton-header"></div>
+                <div class="skeleton-body">
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line short"></div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="grid">
+          @for (setor of setoresFiltradosDashboard(); track setor.id) {
+            <div class="col-12 md:col-6 lg:col-4">
+              <div class="card mb-4 flex flex-column h-full p-0 overflow-hidden" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+                <!-- Header area with subtle colored top border instead of solid background -->
+                <div class="p-3 border-bottom-1 border-100" [style.border-top]="'4px solid ' + getSetorColor(setor.nome)">
+                  <div class="flex justify-content-between align-items-center mb-2">
+                    <h4 class="m-0 font-semibold text-base text-color">{{ setor.nome }}</h4>
+                    <button pButton type="button" class="p-button-text p-button-secondary p-button-sm font-semibold p-1" (click)="openSetorDetalhamentoModal(setor.nome, 'TODOS')" title="Ver equipe inteira">
+                      {{ getFuncionariosPorSetor(setor.nome).length }} Colaboradores
+                    </button>
+                  </div>
+
+                  <!-- Sub-métricas -->
+                  <div class="flex gap-2 mb-3">
+                    <button pButton type="button" class="p-button-outlined p-button-success p-button-xs py-1 px-2 text-xs" (click)="openSetorDetalhamentoModal(setor.nome, 'TRABALHANDO')" title="Ver quem está trabalhando hoje">
+                      <span class="w-2 h-2 border-circle bg-green-500 mr-1 inline-block"></span>
+                      {{ getFuncionariosPorSetor(setor.nome).length - getFolgasPorSetorFiltradas(setor.nome).length }} Trabalhando
+                    </button>
+                    <button pButton type="button" class="p-button-outlined p-button-info p-button-xs py-1 px-2 text-xs" (click)="openSetorDetalhamentoModal(setor.nome, 'FOLGA')" title="Ver quem está de folga hoje">
+                      <span class="w-2 h-2 border-circle bg-blue-500 mr-1 inline-block"></span>
+                      {{ getFolgasPorSetorFiltradas(setor.nome).length }} Folgando
+                    </button>
+                  </div>
+
+                  <!-- Cobertura -->
+                  <div class="w-full bg-200 border-round overflow-hidden" style="height: 6px;" [title]="getCoberturaPercent(setor.nome) + '% da equipe presente'">
+                    <div class="bg-primary h-full transition-all duration-200" [style.width.%]="getCoberturaPercent(setor.nome)"></div>
                   </div>
                 </div>
-              }
-            </div>
-          } @else {
-            <div class="setores-grid">
-              @for (setor of setoresFiltradosDashboard(); track setor.id) {
-                <div class="setor-card interactive-card">
-                  <div class="setor-card-header" [style.background-color]="getSetorColor(setor.nome)">
-                    <div class="flex-1">
-                      <div class="flex-between align-center mb-5">
-                        <h4 class="setor-title">{{ setor.nome }}</h4>
-                        <button type="button" class="setor-badge-total" (click)="openSetorDetalhamentoModal(setor.nome, 'TODOS')" title="Ver equipe inteira" style="border: none; font-family: inherit;">
-                          {{ getFuncionariosPorSetor(setor.nome).length }} Colaboradores
-                        </button>
-                      </div>
 
-                      <!-- Sub-métricas do setor -->
-                      <div class="setor-metrics-row mb-10">
-                        <button type="button" class="metric-chip green" (click)="openSetorDetalhamentoModal(setor.nome, 'TRABALHANDO')" title="Ver quem está trabalhando hoje" style="font-family: inherit;">
-                          <span class="dot green"></span>
-                          {{ getFuncionariosPorSetor(setor.nome).length - getFolgasPorSetorFiltradas(setor.nome).length }} Trabalhando
+                <!-- Body area: list of folgas -->
+                <div class="p-3 flex-1 overflow-y-auto" style="max-height: 180px;">
+                  @if (getFolgasPorSetorFiltradas(setor.nome).length > 0) {
+                    <div class="flex flex-column gap-2">
+                      @for (f of getFolgasPorSetorFiltradas(setor.nome); track f.id) {
+                        <button
+                          type="button"
+                          (click)="openQuickBlurModal(f)"
+                          class="flex align-items-center justify-content-between p-2 border-round hover:bg-100 cursor-pointer border w-full text-left bg-transparent color-inherit"
+                          style="color: inherit; font-family: inherit; background: transparent;"
+                        >
+                          <div class="flex flex-column">
+                            <span class="font-medium text-sm text-color">{{ f.primeiro_nome }}</span>
+                            <span class="text-xs text-muted-color">Matrícula: {{ f.matricula_aleatoria }}</span>
+                          </div>
+                          <span class="text-xs text-primary font-semibold">Detalhes</span>
                         </button>
-                        <button type="button" class="metric-chip blue" (click)="openSetorDetalhamentoModal(setor.nome, 'FOLGA')" title="Ver quem está de folga hoje" style="font-family: inherit;">
-                          <span class="dot blue"></span>
-                          {{ getFolgasPorSetorFiltradas(setor.nome).length }} Folgando
-                        </button>
-                      </div>
-
-                      <div class="cobertura-bar-wrapper" [title]="getCoberturaPercent(setor.nome) + '% da equipe presente'">
-                        <div class="cobertura-bar-fill" [style.width.%]="getCoberturaPercent(setor.nome)"></div>
-                      </div>
+                      }
                     </div>
-                  </div>
-
-                  <div class="setor-card-body">
-                    @if (getFolgasPorSetorFiltradas(setor.nome).length > 0) {
-                      <div class="folgas-list">
-                        @for (f of getFolgasPorSetorFiltradas(setor.nome); track f.id) {
-                          <button
-                            type="button"
-                            (click)="openQuickBlurModal(f)"
-                            class="clickable-row folga-item-row"
-                          >
-                            <div>
-                              <span class="folga-name">{{ f.primeiro_nome }}</span>
-                              <span class="folga-mat">Matrícula: {{ f.matricula_aleatoria }}</span>
-                            </div>
-                            <span class="btn-ver-detalhes">Detalhes</span>
-                          </button>
-                        }
-                      </div>
-                    } @else {
-                      <div class="empty-folga-state">
-                        100% da equipe em trabalho hoje
-                      </div>
-                    }
-
-                    <div class="setor-card-footer mt-15 pt-10 border-top">
-                      <button type="button" (click)="openSetorDetalhamentoModal(setor.nome, 'TODOS')" class="btn-inspect-setor">
-                        <span>Ver Equipe & Status Completo</span>
-                        <app-icon name="arrow-right" [size]="14"></app-icon>
-                      </button>
+                  } @else {
+                    <div class="text-center text-muted-color text-sm py-4">
+                      100% da equipe em trabalho hoje
                     </div>
-                  </div>
+                  }
                 </div>
-              }
+
+                <!-- Footer -->
+                <div class="p-3 border-top-1 border-100 mt-auto bg-50">
+                  <button pButton type="button" (click)="openSetorDetalhamentoModal(setor.nome, 'TODOS')" class="p-button-text p-button-primary p-button-sm w-full flex justify-content-between align-items-center">
+                    <span>Ver Equipe & Status Completo</span>
+                    <i class="pi pi-arrow-right text-xs"></i>
+                  </button>
+                </div>
+              </div>
             </div>
-        }
+          }
         </div>
       }
+    </div>
+  }
 
       <!-- ABA 1: ESCALA DO MÊS -->
       @if (activeTab() === 'escala') {
-        <div class="clean-card no-print">
-          <div class="escala-controls-header">
-            <div class="escala-inputs-group">
-              <div class="input-col">
-                <label for="selectedMonthInput">Mês / Ano Ref:</label>
-                <input id="selectedMonthInput" type="month" [(ngModel)]="selectedMonth" (change)="loadEscala()" class="form-control" />
+        <div class="card p-4 mb-4 no-print" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+          <div class="flex flex-column gap-3">
+            <div class="flex flex-column md:flex-row gap-3">
+              <div class="flex flex-column gap-1 flex-1">
+                <label for="selectedMonthSelect" class="text-sm font-semibold text-muted-color">Mês / Ano Ref:</label>
+                <p-select
+                  id="selectedMonthSelect"
+                  [options]="mesesDisponiveis"
+                  [(ngModel)]="selectedMonth"
+                  (ngModelChange)="loadEscala()"
+                  optionLabel="label"
+                  optionValue="value"
+                  styleClass="w-full"
+                ></p-select>
               </div>
-              <div class="input-col-lg">
-                <label for="selectedSetorSelect">Setor Operacional:</label>
-                <select id="selectedSetorSelect" [(ngModel)]="selectedSetor" (change)="loadEscala()" class="form-control">
-                  @for (s of setores(); track s.id) {
-                    <option [value]="s.nome">{{ s.nome }}</option>
-                  }
-                </select>
+              <div class="flex flex-column gap-1 flex-1">
+                <label for="selectedSetorSelect" class="text-sm font-semibold text-muted-color">Setor Operacional:</label>
+                <p-select
+                  id="selectedSetorSelect"
+                  [options]="setores()"
+                  [(ngModel)]="selectedSetor"
+                  (ngModelChange)="loadEscala()"
+                  optionLabel="nome"
+                  optionValue="nome"
+                  styleClass="w-full"
+                ></p-select>
               </div>
-              <div class="input-col" style="max-width: 100px;">
-                <label for="minDiaInput" title="Mínimo de colaboradores trabalhando por dia útil">Mín. Dia:</label>
-                <input id="minDiaInput" type="number" min="1" [ngModel]="minFuncionariosPorDiaSetor()" (ngModelChange)="updateActiveSetorMinimums($event, minFuncionariosDomingoSetor(), minFuncionariosFeriadoSetor())" class="form-control text-center font-bold" />
+              <div class="flex flex-column gap-1 w-7rem">
+                <label for="minDiaInput" class="text-sm font-semibold text-muted-color" title="Mínimo de colaboradores trabalhando por dia útil">Mín. Dia:</label>
+                <input id="minDiaInput" type="number" min="1" [ngModel]="minFuncionariosPorDiaSetor()" (ngModelChange)="updateActiveSetorMinimums($event, minFuncionariosDomingoSetor(), minFuncionariosFeriadoSetor())" class="p-inputtext p-component text-center font-bold w-full" />
               </div>
-              <div class="input-col" style="max-width: 100px;">
-                <label for="minDomInput" title="Mínimo de colaboradores trabalhando nos domingos">Mín. Dom:</label>
-                <input id="minDomInput" type="number" min="1" [ngModel]="minFuncionariosDomingoSetor()" (ngModelChange)="updateActiveSetorMinimums(minFuncionariosPorDiaSetor(), $event, minFuncionariosFeriadoSetor())" class="form-control text-center font-bold" />
+              <div class="flex flex-column gap-1 w-7rem">
+                <label for="minDomInput" class="text-sm font-semibold text-muted-color" title="Mínimo de colaboradores trabalhando nos domingos">Mín. Dom:</label>
+                <input id="minDomInput" type="number" min="1" [ngModel]="minFuncionariosDomingoSetor()" (ngModelChange)="updateActiveSetorMinimums(minFuncionariosPorDiaSetor(), $event, minFuncionariosFeriadoSetor())" class="p-inputtext p-component text-center font-bold w-full" />
               </div>
-              <div class="input-col" style="max-width: 100px;">
-                <label for="minFerInput" title="Mínimo de colaboradores trabalhando nos feriados abertos">Mín. Fer:</label>
-                <input id="minFerInput" type="number" min="1" [ngModel]="minFuncionariosFeriadoSetor()" (ngModelChange)="updateActiveSetorMinimums(minFuncionariosPorDiaSetor(), minFuncionariosDomingoSetor(), $event)" class="form-control text-center font-bold" />
+              <div class="flex flex-column gap-1 w-7rem">
+                <label for="minFerInput" class="text-sm font-semibold text-muted-color" title="Mínimo de colaboradores trabalhando nos feriados abertos">Mín. Fer:</label>
+                <input id="minFerInput" type="number" min="1" [ngModel]="minFuncionariosFeriadoSetor()" (ngModelChange)="updateActiveSetorMinimums(minFuncionariosPorDiaSetor(), minFuncionariosDomingoSetor(), $event)" class="p-inputtext p-component text-center font-bold w-full" />
               </div>
             </div>
 
-            <div class="escala-actions-group">
-              <button (click)="abrirEscalaGuiada()" class="btn-premium btn-accent-gold" title="Assistente passo a passo com perguntas de cobertura e turnos">
-                <app-icon name="sliders" [size]="16"></app-icon>
+            <div class="flex gap-2 flex-wrap mb-4 justify-content-end">
+              <button pButton type="button" (click)="abrirEscalaGuiada()" class="p-button-outlined p-button-warning p-button-sm font-bold flex align-items-center gap-2" title="Assistente passo a passo com perguntas de cobertura e turnos">
+                <i class="pi pi-sliders-h"></i>
                 <span>Escala Guiada ✨</span>
               </button>
-              <button (click)="abrirModalTurnos()" class="btn-secondary-save" title="Gerenciar horários fixos e tempo de intervalo">
-                <app-icon name="clock" [size]="16"></app-icon>
+              <button pButton type="button" (click)="abrirModalTurnos()" class="p-button-outlined p-button-secondary p-button-sm font-bold flex align-items-center gap-2" title="Gerenciar horários fixos e tempo de intervalo">
+                <i class="pi pi-clock"></i>
                 <span>Horários & Intervalos</span>
               </button>
-              <button (click)="gerarNovaEscala()" class="btn-premium btn-primary-solid">
+              <button pButton type="button" (click)="gerarNovaEscala()" class="p-button-success p-button-sm font-bold flex align-items-center gap-2">
+                <i class="pi pi-cog"></i>
                 <span>Gerar Escala 6x1</span>
               </button>
-              <button (click)="confirmarRegerarEscala()" class="btn-secondary-save" title="Regerar a escala para ver variações de rotação (solicita confirmação)">
-                <app-icon name="refresh-cw" [size]="16"></app-icon>
+              <button pButton type="button" (click)="confirmarRegerarEscala()" class="p-button-outlined p-button-info p-button-sm font-bold flex align-items-center gap-2" title="Regerar a escala para ver variações de rotação (solicita confirmação)">
+                <i class="pi pi-refresh"></i>
                 <span>Regerar Escala 🔄</span>
               </button>
-              <button (click)="salvarEscala()" class="btn-secondary-save" [disabled]="saving()">
+              <button pButton type="button" (click)="salvarEscala()" class="p-button-primary p-button-sm font-bold flex align-items-center gap-2" [disabled]="saving()">
+                <i class="pi pi-save"></i>
                 <span>{{ saving() ? 'Salvando...' : 'Salvar' }}</span>
               </button>
             </div>
           </div>
 
           <!-- PAINEL DE CONTROLE DA ESCALA 6X1 GIRATÓRIA -->
-          <div class="rotacao-config-panel">
-            <div class="rotacao-config-title">
-              <span>Configurações da Rotação 6x1 Giratória</span>
-              <span class="custom-tooltip" data-tooltip="Defina os dias da semana permitidos para folga e exceções para 2 dias consecutivos.">
-                <app-icon name="info" [size]="16" color="#0b2a52"></app-icon>
+          <div class="card p-3 mb-4 bg-50" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+            <div class="flex justify-content-between align-items-center mb-3">
+              <span class="font-semibold text-color flex align-items-center gap-2">
+                <span>Configurações da Rotação 6x1 Giratória</span>
+                <i class="pi pi-info-circle text-primary" [pTooltip]="'Defina os dias da semana permitidos para folga e exceções para 2 dias consecutivos.'"></i>
               </span>
             </div>
 
-            <div class="rotacao-options-wrapper">
-              <div>
-                <span class="rotacao-lbl">Dias permitidos para folga:</span>
-                <div class="dias-pills-row">
-                  <button type="button" (click)="toggleDiaFolgaPermitido(1)" [class.active]="isDiaFolgaPermitido(1)" class="pill-btn-sm">Seg</button>
-                  <button type="button" (click)="toggleDiaFolgaPermitido(2)" [class.active]="isDiaFolgaPermitido(2)" class="pill-btn-sm">Ter</button>
-                  <button type="button" (click)="toggleDiaFolgaPermitido(3)" [class.active]="isDiaFolgaPermitido(3)" class="pill-btn-sm">Qua</button>
-                  <button type="button" (click)="toggleDiaFolgaPermitido(4)" [class.active]="isDiaFolgaPermitido(4)" class="pill-btn-sm">Qui</button>
-                  <button type="button" (click)="toggleDiaFolgaPermitido(5)" [class.active]="isDiaFolgaPermitido(5)" class="pill-btn-sm">Sex</button>
-                  <button type="button" (click)="toggleDiaFolgaPermitido(6)" [class.active]="isDiaFolgaPermitido(6)" class="pill-btn-sm">Sáb</button>
-                  <button type="button" (click)="toggleDiaFolgaPermitido(0)" [class.active]="isDiaFolgaPermitido(0)" class="pill-btn-sm">Dom</button>
+            <div class="flex flex-column md:flex-row gap-4 align-items-md-center justify-content-between">
+              <div class="flex align-items-center gap-2 flex-wrap">
+                <span class="text-sm font-semibold text-muted-color">Dias permitidos para folga:</span>
+                <div class="flex gap-1">
+                  <button pButton type="button" (click)="toggleDiaFolgaPermitido(1)" [class.p-button-outlined]="!isDiaFolgaPermitido(1)" class="p-button-xs py-1 px-2 text-xs">Seg</button>
+                  <button pButton type="button" (click)="toggleDiaFolgaPermitido(2)" [class.p-button-outlined]="!isDiaFolgaPermitido(2)" class="p-button-xs py-1 px-2 text-xs">Ter</button>
+                  <button pButton type="button" (click)="toggleDiaFolgaPermitido(3)" [class.p-button-outlined]="!isDiaFolgaPermitido(3)" class="p-button-xs py-1 px-2 text-xs">Qua</button>
+                  <button pButton type="button" (click)="toggleDiaFolgaPermitido(4)" [class.p-button-outlined]="!isDiaFolgaPermitido(4)" class="p-button-xs py-1 px-2 text-xs">Qui</button>
+                  <button pButton type="button" (click)="toggleDiaFolgaPermitido(5)" [class.p-button-outlined]="!isDiaFolgaPermitido(5)" class="p-button-xs py-1 px-2 text-xs">Sex</button>
+                  <button pButton type="button" (click)="toggleDiaFolgaPermitido(6)" [class.p-button-outlined]="!isDiaFolgaPermitido(6)" class="p-button-xs py-1 px-2 text-xs">Sáb</button>
+                  <button pButton type="button" (click)="toggleDiaFolgaPermitido(0)" [class.p-button-outlined]="!isDiaFolgaPermitido(0)" class="p-button-xs py-1 px-2 text-xs">Dom</button>
                 </div>
               </div>
 
-              <div class="chk-consecutivos-wrapper">
-                <input
-                  type="checkbox"
+              <div class="flex align-items-center gap-2">
+                <p-checkbox
                   id="chkConsecutivos"
+                  [binary]="true"
                   [ngModel]="permitirDoisDiasConsecutivos()"
                   (ngModelChange)="permitirDoisDiasConsecutivos.set($event)"
-                  class="chk-input"
-                />
-                <label for="chkConsecutivos" class="chk-lbl">
+                ></p-checkbox>
+                <label for="chkConsecutivos" class="text-sm font-semibold text-muted-color flex align-items-center gap-1 cursor-pointer">
                   Permitir 2 folgas consecutivas
-                  <span class="custom-tooltip" data-tooltip="Permitir 2 folgas consecutivas quando necessário para fechar a escala">
-                    <app-icon name="info" [size]="14" color="#64748b"></app-icon>
-                  </span>
+                  <i class="pi pi-info-circle text-muted-color" [pTooltip]="'Permitir 2 folgas consecutivas quando necessário para fechar a escala'"></i>
                 </label>
               </div>
             </div>
           </div>
 
           <!-- LEGENDA DA ESCALA 6X1 GIRATÓRIA -->
-          <div class="escala-legend-bar">
-            <span class="legend-title">Legenda de Cores:</span>
-            <div class="legend-items">
-              <span class="legend-item"><span class="badge-legend status-trabalho-simple">-</span> Dia de Trabalho</span>
-              <span class="legend-item"><span class="badge-legend status-folga-simple">F</span> Folga (Semanal / Domingo / Feriado)</span>
-              <span class="legend-item"><span class="badge-legend status-domingo-highlight">DOM</span> Domingo (Amarelo)</span>
-              <span class="legend-item"><span class="badge-legend status-feriado-highlight">FER</span> Feriado (Vermelho)</span>
-            </div>
+          <div class="flex align-items-center gap-2 flex-wrap mb-4 text-sm bg-50 p-2 border-round border">
+            <span class="font-semibold text-muted-color">Legenda de Cores:</span>
+            <p-tag severity="success" value="- Trabalho"></p-tag>
+            <p-tag severity="info" value="F Folga"></p-tag>
+            <p-tag severity="warn" value="FD Folga Domingo"></p-tag>
+            <p-tag severity="danger" value="FE Folga Feriado"></p-tag>
           </div>
 
           <!-- RESUMO DE MÉTRICAS DE FOLGA E HORAS LÍQUIDAS DA ESCALA CORRENTE -->
-          <div class="metrics-summary-grid mb-15">
-            <div class="metric-summary-card">
-              <div class="metric-summary-icon blue">
-                <app-icon name="calendar" [size]="20" color="#2563eb"></app-icon>
-              </div>
-              <div class="metric-summary-info">
-                <span class="lbl">Total de Folgas no Mês</span>
-                <h4 class="val">{{ totalFolgasEscala() }} folgas</h4>
-                <small class="text-xs text-muted">Na escala do setor {{ selectedSetor }}</small>
-              </div>
-            </div>
-
-            <div class="metric-summary-card">
-              <div class="metric-summary-icon green">
-                <app-icon name="clock" [size]="20" color="#16a34a"></app-icon>
-              </div>
-              <div class="metric-summary-info">
-                <span class="lbl">Modelo de Jornada</span>
-                <h4 class="val">Escala {{ modeloEscalaAtivo() }}</h4>
-                <small class="text-xs text-muted">Jornada {{ modeloEscalaAtivo() === '5x1' ? 'Ciclo Contínuo' : 'Giratória Semanal' }}</small>
+          <div class="grid mb-4 no-print">
+            <div class="col-12 md:col-4">
+              <div class="card mb-0 p-3 flex align-items-center gap-3" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+                <div class="flex align-items-center justify-content-center bg-blue-100 dark:bg-blue-900/30 border-round" style="width: 3rem; height: 3rem">
+                  <i class="pi pi-calendar text-blue-500 text-2xl"></i>
+                </div>
+                <div class="flex flex-column">
+                  <span class="text-sm text-muted-color font-medium">Total de Folgas no Mês</span>
+                  <h4 class="m-0 font-semibold text-xl text-color">{{ totalFolgasEscala() }} folgas</h4>
+                  <span class="text-xs text-muted-color">No setor {{ selectedSetor }}</span>
+                </div>
               </div>
             </div>
 
-            <div class="metric-summary-card">
-              <div class="metric-summary-icon gold">
-                <app-icon name="users" [size]="20" color="#d97706"></app-icon>
+            <div class="col-12 md:col-4">
+              <div class="card mb-0 p-3 flex align-items-center gap-3" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+                <div class="flex align-items-center justify-content-center bg-green-100 dark:bg-green-900/30 border-round" style="width: 3rem; height: 3rem">
+                  <i class="pi pi-clock text-green-500 text-2xl"></i>
+                </div>
+                <div class="flex flex-column">
+                  <span class="text-sm text-muted-color font-medium">Modelo de Jornada</span>
+                  <h4 class="m-0 font-semibold text-xl text-color">Escala {{ modeloEscalaAtivo() }}</h4>
+                  <span class="text-xs text-muted-color">Jornada {{ modeloEscalaAtivo() === '5x1' ? 'Ciclo Contínuo' : 'Giratória Semanal' }}</span>
+                </div>
               </div>
-              <div class="metric-summary-info">
-                <span class="lbl">Equipe Escalada</span>
-                <h4 class="val">{{ resumoMetrics().length }} colaboradores</h4>
-                <small class="text-xs text-muted">Setor {{ selectedSetor }}</small>
+            </div>
+
+            <div class="col-12 md:col-4">
+              <div class="card mb-0 p-3 flex align-items-center gap-3" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+                <div class="flex align-items-center justify-content-center bg-orange-100 dark:bg-orange-900/30 border-round" style="width: 3rem; height: 3rem">
+                  <i class="pi pi-users text-orange-500 text-2xl"></i>
+                </div>
+                <div class="flex flex-column">
+                  <span class="text-sm text-muted-color font-medium">Equipe Escalada</span>
+                  <h4 class="m-0 font-semibold text-xl text-color">{{ resumoMetrics().length }} colaboradores</h4>
+                  <span class="text-xs text-muted-color">Setor {{ selectedSetor }}</span>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- PAINEL DA CURVA DE PRESENÇA DE FUNCIONÁRIOS NO MERCADO POR HORÁRIO -->
-          <div class="clean-card p-15 mb-15 no-print border rounded bg-white">
-            <div class="flex-between align-center mb-10">
-              <h4 class="color-navy font-bold m-0">📊 Presença de Funcionários no Mercado Por Horário</h4>
-              <div class="flex-align-center gap-10">
-                <label for="diaPresencaSelect" class="text-xs font-bold color-navy m-0">Dia do Mês:</label>
-                <select id="diaPresencaSelect" [ngModel]="diaSelecionadoPresenca()" (ngModelChange)="diaSelecionadoPresenca.set($event)" class="form-control form-control-sm w-auto">
-                  @for (d of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]; track d) {
-                    <option [value]="d">Dia {{ d }}</option>
-                  }
-                </select>
+          <div class="card p-3 mb-4 no-print" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+            <div class="flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <h4 class="m-0 font-semibold text-base text-color">📊 Presença de Funcionários no Mercado Por Horário</h4>
+              <div class="flex align-items-center gap-2">
+                <label for="diaPresencaSelect" class="text-xs font-semibold text-muted-color m-0">Dia do Mês:</label>
+                <p-select
+                  id="diaPresencaSelect"
+                  [options]="[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]"
+                  [ngModel]="diaSelecionadoPresenca()"
+                  (ngModelChange)="diaSelecionadoPresenca.set($event)"
+                  styleClass="w-8rem"
+                ></p-select>
               </div>
             </div>
 
-            <div class="presenca-horarios-scroll">
-              <div class="presenca-horarios-grid">
+            <div class="overflow-x-auto pb-2">
+              <div class="flex gap-2">
                 @for (p of presencaPorHorario(); track p.horaStr) {
-                  <div class="presenca-hora-card" [class.highlight]="p.quantidadeTrabalhando > 0">
-                    <span class="hora-label">{{ p.horaStr }}</span>
-                    <strong class="count-val">{{ p.quantidadeTrabalhando }} pess.</strong>
-                    <div class="names-tooltip" [title]="p.funcionariosNomes.join(', ')">
-                      <small class="text-xs text-muted">{{ p.funcionariosNomes.length > 0 ? (p.funcionariosNomes[0] + (p.funcionariosNomes.length > 1 ? ' +' + (p.funcionariosNomes.length - 1) : '')) : 'Ninguém' }}</small>
-                    </div>
+                  <div class="flex flex-column align-items-center justify-content-center p-2 border-round border min-w-5rem" [class.bg-blue-50]="p.quantidadeTrabalhando > 0" [class.border-blue-200]="p.quantidadeTrabalhando > 0" [class.border-100]="p.quantidadeTrabalhando === 0" [pTooltip]="p.funcionariosNomes.join(', ')" tooltipPosition="top">
+                    <span class="text-xs font-bold text-muted-color">{{ p.horaStr }}</span>
+                    <strong class="text-sm font-semibold text-color">{{ p.quantidadeTrabalhando }} p.</strong>
                   </div>
                 }
               </div>
             </div>
           </div>
 
-
           <!-- PAINEL DE VALIDAÇÃO REAL E COBERTURA DIÁRIA -->
           @if (escalaItens().length > 0) {
-            <div class="validation-audit-card mb-15" [class.valid-card]="validacaoResultado().valida" [class.invalid-card]="!validacaoResultado().valida">
-              <div class="validation-card-header">
-                <div class="validation-title-group">
-                  <app-icon [name]="validacaoResultado().valida ? 'check-circle' : 'alert-triangle'" [size]="22" [color]="validacaoResultado().valida ? '#16a34a' : '#dc2626'"></app-icon>
+            <div class="card p-3 mb-4" [style.border-left]="'6px solid ' + (validacaoResultado().valida ? 'var(--p-emerald-500)' : 'var(--p-red-500)')" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+              <div class="flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+                <div class="flex align-items-center gap-2">
+                  <i class="pi" [ngClass]="validacaoResultado().valida ? 'pi-check-circle text-emerald-500' : 'pi-exclamation-triangle text-red-500'" style="font-size: 1.5rem;"></i>
                   <div>
-                    <h4 class="m-0 font-bold" [style.color]="validacaoResultado().valida ? '#15803d' : '#991b1b'">
+                    <h4 class="m-0 font-semibold text-base" [class.text-emerald-700]="validacaoResultado().valida" [class.text-red-700]="!validacaoResultado().valida">
                       {{ validacaoResultado().valida ? 'Escala Real Válida & Coberta' : 'Atenção: Ações de Cobertura Necessárias' }}
                     </h4>
-                    <span class="text-xs text-muted">
+                    <span class="text-xs text-muted-color">
                       Garantia Mínima Exigida: <strong>{{ minFuncionariosPorDiaSetor() }} colab/dias úteis | {{ minFuncionariosDomingoSetor() }} nos domingos</strong> no setor <strong>{{ selectedSetor }}</strong>
                     </span>
                   </div>
                 </div>
-                <div class="validation-badges-row">
-                  <span class="badge-status-val" [class.badge-success]="validacaoResultado().valida" [class.badge-danger]="!validacaoResultado().valida">
-                    {{ validacaoResultado().totalErros }} Erros de Regra / Cobertura
-                  </span>
+                <div class="flex gap-2">
+                  <p-tag [value]="validacaoResultado().totalErros + ' Erros de Cobertura'" [severity]="validacaoResultado().valida ? 'success' : 'danger'"></p-tag>
                   @if (validacaoResultado().totalAlertas > 0) {
-                    <span class="badge-status-val badge-warning">
-                      {{ validacaoResultado().totalAlertas }} Alerta(s) de Carga Horária
-                    </span>
+                    <p-tag [value]="validacaoResultado().totalAlertas + ' Alerta(s) Carga Horária'" severity="warn"></p-tag>
                   }
                 </div>
               </div>
 
               @if (validacaoResultado().itensValidados.length > 0) {
-                <div class="validation-messages-list mt-10">
+                <div class="flex flex-column gap-2">
                   @for (item of validacaoResultado().itensValidados; track $index) {
-                    <div class="val-msg-item" [class.msg-error]="item.tipo === 'ERRO_COBERTURA' || item.tipo === 'ERRO_CLT'" [class.msg-warning]="item.tipo === 'ALERTA_CARGA'">
-                      <app-icon [name]="item.tipo === 'ALERTA_CARGA' ? 'clock' : 'alert-circle'" [size]="14"></app-icon>
+                    <div class="flex align-items-center gap-2 text-sm p-2 border-round" [class.bg-red-50]="item.tipo === 'ERRO_COBERTURA' || item.tipo === 'ERRO_CLT'" [class.text-red-900]="item.tipo === 'ERRO_COBERTURA' || item.tipo === 'ERRO_CLT'" [class.bg-yellow-50]="item.tipo === 'ALERTA_CARGA'" [class.text-yellow-900]="item.tipo === 'ALERTA_CARGA'">
+                      <i class="pi text-xs" [ngClass]="item.tipo === 'ALERTA_CARGA' ? 'pi-clock' : 'pi-times-circle'"></i>
                       <span>{{ item.mensagem }}</span>
                     </div>
                   }
@@ -398,55 +443,54 @@
 
           <!-- Tabela Visual de Escala Mensal -->
           @if (escalaItens().length > 0) {
-            <div class="flex-header-between mb-10">
-              <h4 class="color-navy">Visualização da Escala</h4>
-              <div class="chk-consecutivos-wrapper">
-                <input type="checkbox" id="chkApenasFolgas" [ngModel]="mostrarApenasFolgasImpressao()" (ngModelChange)="mostrarApenasFolgasImpressao.set($event)" class="chk-input" />
-                <label for="chkApenasFolgas" class="chk-lbl font-bold color-navy">Mostrar APENAS folgas (ocultar trabalho)</label>
+            <div class="flex justify-content-between align-items-center mb-3">
+              <h4 class="m-0 font-semibold text-lg text-color">Visualização da Escala</h4>
+              <div class="flex align-items-center gap-2">
+                <p-checkbox id="chkApenasFolgas" [binary]="true" [ngModel]="mostrarApenasFolgasImpressao()" (ngModelChange)="mostrarApenasFolgasImpressao.set($event)"></p-checkbox>
+                <label for="chkApenasFolgas" class="text-sm font-semibold text-color cursor-pointer">Mostrar APENAS folgas</label>
               </div>
             </div>
-            <div class="escala-table-wrapper">
-              <table class="escala-table">
-                <thead>
+
+            <div class="card p-0 overflow-hidden" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+              <p-table [value]="escalaItens()" responsiveLayout="scroll" styleClass="p-datatable-sm" [scrollable]="true" scrollHeight="600px">
+                <ng-template pTemplate="header">
                   <tr>
-                    <th class="sticky-col col-mat">Matrícula</th>
-                    <th class="sticky-col col-nome">Nome</th>
-                    <th class="col-turno">Turno</th>
+                    <th scope="col" style="min-width: 100px; font-weight: 600;">Matrícula</th>
+                    <th scope="col" style="min-width: 150px; font-weight: 600;">Nome</th>
+                    <th scope="col" style="min-width: 150px; font-weight: 600;">Turno</th>
                     @for (d of diasDoMes(); track d) {
-                      <th class="col-dia" [class.col-domingo]="isDiaDomingo(d)" [class.col-feriado]="isDiaFeriado(d)">
-                        <div class="header-dia-container">
-                          <span class="header-dia-num">{{ d }}</span>
-                          <span class="header-dia-sem">{{ getDiaSemanaAbrevUpper(d) }}</span>
+                      <th scope="col" [class.bg-yellow-100]="isDiaDomingo(d)" [class.bg-red-100]="isDiaFeriado(d)" class="text-center" style="min-width: 55px; font-weight: 600;">
+                        <div class="flex flex-column align-items-center">
+                          <span class="text-xs">{{ d }}</span>
+                          <span class="text-xs text-muted-color font-normal">{{ getDiaSemanaAbrevUpper(d) }}</span>
                         </div>
                       </th>
                     }
                   </tr>
-                </thead>
-                <tbody>
-                  @for (item of escalaItens(); track item.matricula) {
-                    <tr>
-                      <td class="sticky-col col-mat font-mono">{{ item.matricula }}</td>
-                      <td class="sticky-col col-nome font-bold">{{ item.nome }}</td>
-                      <td class="col-turno-text">{{ item.turno }}</td>
-                      @for (d of diasDoMes(); track d) {
+                </ng-template>
+                <ng-template pTemplate="body" let-item>
+                  <tr>
+                    <td class="font-mono text-sm" style="min-width: 100px;">{{ item.matricula }}</td>
+                    <td class="font-semibold text-sm" style="min-width: 150px;">{{ item.nome }}</td>
+                    <td class="text-xs text-muted-color" style="min-width: 150px;">{{ item.turno }}</td>
+                    @for (d of diasDoMes(); track d) {
+                      <td class="text-center p-1" style="min-width: 55px;" [class.bg-yellow-50]="isDiaDomingo(d)" [class.bg-red-50]="isDiaFeriado(d)">
                         @if (!mostrarApenasFolgasImpressao() || item.dias[d] === 'F' || item.dias[d] === 'FD' || item.dias[d] === 'FE') {
-                          <td [class]="getDiaClassFromTipoDia(item.dias[d])" [class.col-domingo]="isDiaDomingo(d)" [class.col-feriado]="isDiaFeriado(d)">
-                            {{ getDiaLabelFromTipoDia(item.dias[d]) }}
-                          </td>
+                          <p-tag [value]="getDiaLabelFromTipoDia(item.dias[d])" [severity]="getDiaSeverityFromTipoDia(item.dias[d])" styleClass="text-xs font-bold w-full"></p-tag>
                         } @else {
-                          <td class="bg-gray-100 text-gray-400 text-center text-xs" [class.col-domingo]="isDiaDomingo(d)" [class.col-feriado]="isDiaFeriado(d)">-</td>
+                          <span class="text-muted-color text-xs">-</span>
                         }
-                      }
-                    </tr>
-                  }
-                </tbody>
-              </table>
+                      </td>
+                    }
+                  </tr>
+                </ng-template>
+              </p-table>
             </div>
           } @else {
-            <div class="empty-table-state">
-              <app-icon name="calendar" [size]="40" color="#94a3b8"></app-icon>
-              <h4>Nenhuma escala salva neste setor/mês</h4>
-              <p>Clique em <strong>"Gerar Escala 6x1"</strong> para calcular os turnos automaticamente.</p>
+            <div class="card p-5 text-center flex flex-column align-items-center gap-3" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+              <i class="pi pi-calendar text-500" style="font-size: 3rem;"></i>
+              <h4 class="m-0 font-semibold text-color">Nenhuma escala salva neste setor/mês</h4>
+              <p class="text-sm text-muted-color max-w-20rem m-0">Clique em "Gerar Escala 6x1" para calcular os turnos automaticamente.</p>
             </div>
           }
         </div>
@@ -456,269 +500,231 @@
       @if (activeTab() === 'funcionarios') {
 
         <!-- BARRA DE PESQUISA & FILTROS -->
-        <div class="filter-pill-bar no-print">
-          <div class="search-input-wrapper">
-            <span class="search-icon-left">
-              <app-icon name="search" [size]="18" color="#94a3b8"></app-icon>
-            </span>
-            <label for="searchQueryInput" class="sr-only">Pesquisar por nome ou matrícula</label>
-            <input
-              id="searchQueryInput"
-              type="text"
-              [ngModel]="searchQuery()"
-              (ngModelChange)="searchQuery.set($event)"
-              placeholder="Pesquisar por nome ou matrícula..."
-            />
-            @if (searchQuery() || filterSetor()) {
-              <div class="search-actions-right">
-                <button (click)="searchQuery.set(''); filterSetor.set('')" title="Limpar Filtros" class="icon-btn-sm">
-                  <app-icon name="x" [size]="16"></app-icon>
-                </button>
-              </div>
-            }
-          </div>
+        <div class="card p-3 mb-4 no-print" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+          <div class="flex flex-column md:flex-row gap-3 align-items-center justify-content-between">
+            <div class="p-inputgroup flex-1">
+              <span class="p-inputgroup-addon">
+                <i class="pi pi-search"></i>
+              </span>
+              <label for="searchQueryInput" class="sr-only">Pesquisar por nome ou matrícula</label>
+              <input
+                id="searchQueryInput"
+                pInputText
+                type="text"
+                [ngModel]="searchQuery()"
+                (ngModelChange)="searchQuery.set($event)"
+                placeholder="Pesquisar por nome ou matrícula..."
+              />
+              @if (searchQuery() || filterSetor()) {
+                <button type="button" pButton icon="pi pi-times" class="p-button-text p-button-secondary" (click)="searchQuery.set(''); filterSetor.set('')" title="Limpar Filtros"></button>
+              }
+            </div>
 
-          <div class="pill-group">
-            <span class="pill-group-title">Filtros:</span>
+            <div class="flex align-items-center gap-2 flex-wrap">
+              <span class="text-muted-color font-semibold text-sm mr-2">Filtros:</span>
+              <p-tag
+                value="Todos os Setores ({{ funcionarios().length }})"
+                [severity]="filterSetor() === '' ? 'success' : 'secondary'"
+                class="cursor-pointer"
+                role="button"
+                tabindex="0"
+                (click)="filterSetor.set('')"
+                (keydown.enter)="filterSetor.set('')"
+              ></p-tag>
 
-            <button (click)="filterSetor.set('')" [class.active]="filterSetor() === ''" class="pill-btn">
-              Todos os Setores <span class="pill-badge">{{ funcionarios().length }}</span>
-            </button>
-
-            @for (s of setores(); track s.id) {
-              <button (click)="filterSetor.set(s.nome)" [class.active]="filterSetor() === s.nome" class="pill-btn">
-                {{ s.nome }} <span class="pill-badge">{{ getFuncionariosPorSetor(s.nome).length }}</span>
-              </button>
-            }
+              @for (s of setores(); track s.id) {
+                <p-tag
+                  [value]="s.nome + ' (' + getFuncionariosPorSetor(s.nome).length + ')'"
+                  [severity]="filterSetor() === s.nome ? 'success' : 'secondary'"
+                  class="cursor-pointer"
+                  role="button"
+                  tabindex="0"
+                  (click)="filterSetor.set(s.nome)"
+                  (keydown.enter)="filterSetor.set(s.nome)"
+                ></p-tag>
+              }
+            </div>
           </div>
         </div>
 
         <!-- Form de Inclusão de Novo Colaborador -->
-        <div class="clean-card no-print">
-          <div class="card-section-header">
-            <h3>Cadastrar Novo Colaborador</h3>
-          </div>
-
-          <form (ngSubmit)="cadastrarFuncionario()" class="cadastro-form-grid">
-            <div class="form-group mb-0">
-              <label for="novoNomeInput">Primeiro Nome (LGPD)</label>
-              <input id="novoNomeInput" type="text" [(ngModel)]="novoNome" name="novoNome" class="form-control" placeholder="Ex: Carlos" required />
+        <div class="card p-4 mb-4 no-print" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+          <h3 class="m-0 mb-4 font-semibold text-lg text-color">Cadastrar Novo Colaborador</h3>
+          <form (ngSubmit)="cadastrarFuncionario()" class="grid p-fluid">
+            <div class="col-12 md:col-6 lg:col-2 mb-3">
+              <label for="novoNomeInput" class="block text-sm font-semibold text-muted-color mb-1">Primeiro Nome (LGPD)</label>
+              <input id="novoNomeInput" pInputText type="text" [(ngModel)]="novoNome" name="novoNome" placeholder="Ex: Carlos" required />
             </div>
 
-            <div class="form-group mb-0">
-              <label for="novoSetorSelect">Setor Operacional</label>
-              <select id="novoSetorSelect" [ngModel]="novoSetor()" (ngModelChange)="onNovoSetorChange($event)" name="novoSetor" class="form-control" required>
-                @for (s of setores(); track s.id) {
-                  <option [value]="s.nome">{{ s.nome }}</option>
-                }
-              </select>
+            <div class="col-12 md:col-6 lg:col-2 mb-3">
+              <label for="novoSetorSelect" class="block text-sm font-semibold text-muted-color mb-1">Setor Operacional</label>
+              <p-select id="novoSetorSelect" [options]="setores()" [ngModel]="novoSetor()" (ngModelChange)="onNovoSetorChange($event)" name="novoSetor" optionLabel="nome" optionValue="nome" placeholder="Selecione" required></p-select>
             </div>
 
-            <div class="form-group mb-0">
-              <label for="novoCargoSelect">Função / Cargo</label>
-              <select id="novoCargoSelect" [ngModel]="novoCargo()" (ngModelChange)="novoCargo.set($event)" name="novoCargo" class="form-control" required [disabled]="cargosDoNovoSetor().length === 0">
-                @for (c of cargosDoNovoSetor(); track c.id) {
-                  <option [value]="c.nome">{{ c.nome }}</option>
-                }
-              </select>
+            <div class="col-12 md:col-6 lg:col-2 mb-3">
+              <label for="novoCargoSelect" class="block text-sm font-semibold text-muted-color mb-1">Função / Cargo</label>
+              <p-select id="novoCargoSelect" [options]="cargosDoNovoSetor()" [ngModel]="novoCargo()" (ngModelChange)="novoCargo.set($event)" name="novoCargo" optionLabel="nome" optionValue="nome" placeholder="Selecione" required [disabled]="cargosDoNovoSetor().length === 0"></p-select>
             </div>
 
-            <div class="form-group mb-0">
-              <label for="novoTurnoSelect">Turno Padrão</label>
-              <select id="novoTurnoSelect" [ngModel]="novoTurno" (ngModelChange)="novoTurno = $event" name="novoTurnoSelect" class="form-control mb-4">
-                @for (h of horariosFixosCaixa; track h.id) {
-                  <option [value]="h.nome">{{ h.nome }}</option>
-                }
-              </select>
-              <input id="novoTurnoInput" type="text" [(ngModel)]="novoTurno" name="novoTurno" class="form-control" placeholder="07:00 às 15:50 (Almoço 11:00 às 12:30)" required aria-label="Turno Padrão Personalizado" />
+            <div class="col-12 md:col-6 lg:col-2 mb-3">
+              <label for="novoTurnoSelect" class="block text-sm font-semibold text-muted-color mb-1">Turno Padrão</label>
+              <p-select id="novoTurnoSelect" [options]="horariosFixosCaixa" [ngModel]="novoTurno" (ngModelChange)="novoTurno = $event" name="novoTurnoSelect" optionLabel="nome" optionValue="nome" placeholder="Selecione"></p-select>
             </div>
 
-            <div class="form-group mb-0">
-              <label for="novoGeneroSelect">Gênero (CLT Art 386)</label>
-              <select id="novoGeneroSelect" [(ngModel)]="novoGenero" name="novoGenero" class="form-control" required>
-                <option value="M">Masculino</option>
-                <option value="F">Feminino</option>
-              </select>
+            <div class="col-12 md:col-6 lg:col-2 mb-3">
+              <label for="novoGeneroSelect" class="block text-sm font-semibold text-muted-color mb-1">Gênero (CLT 386)</label>
+              <p-select id="novoGeneroSelect" [options]="[{label: 'Masculino', value: 'M'}, {label: 'Feminino', value: 'F'}]" [(ngModel)]="novoGenero" name="novoGenero" optionLabel="label" optionValue="value" required></p-select>
             </div>
 
-            <div class="form-group mb-0" style="grid-column: span 2;">
-              <span style="display: block; margin-bottom: 6px; font-weight: 600; color: #0b2a52;">Setores de Cobertura (Função Secundária)</span>
-              <div style="display: flex; flex-wrap: wrap; gap: 12px; padding: 10px; background: rgba(255,255,255,0.5); border: 1px solid #d1d5db; border-radius: 6px;">
+            <div class="col-12 lg:col-2 mb-3 flex align-items-end">
+              <button pButton type="submit" class="p-button-primary w-full" label="Adicionar"></button>
+            </div>
+
+            <div class="col-12 mb-3">
+              <span class="block text-sm font-semibold text-muted-color mb-2">Setores de Cobertura (Função Secundária)</span>
+              <div class="flex gap-3 flex-wrap p-3 border-round border bg-50">
                 @for (s of setores(); track s.id) {
                   @if (s.nome !== novoSetor()) {
-                    <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: #1e293b;">
-                      <input
-                        type="checkbox"
-                        [checked]="novoSetoresCobertura().includes(s.nome)"
-                        (change)="toggleNovoSetoresCobertura(s.nome)"
-                        style="width: 16px; height: 16px; accent-color: #0b2a52; cursor: pointer;"
-                      />
-                      <span>{{ s.nome }}</span>
-                    </label>
+                    <div class="flex align-items-center gap-2">
+                      <p-checkbox
+                        [id]="'cob_' + s.id"
+                        [binary]="true"
+                        [ngModel]="novoSetoresCobertura().includes(s.nome)"
+                        (ngModelChange)="toggleNovoSetoresCobertura(s.nome)"
+                      ></p-checkbox>
+                      <label [for]="'cob_' + s.id" class="text-sm font-semibold text-color cursor-pointer">{{ s.nome }}</label>
+                    </div>
                   }
                 }
               </div>
             </div>
-
-            <button type="submit" class="btn-premium btn-primary-solid btn-add-submit">
-              <span>Adicionar Colaborador</span>
-            </button>
           </form>
         </div>
 
         <!-- Quadro da Equipe Ativa -->
-        <div class="clean-card no-print">
-          <div class="card-section-header">
-            <h3>Quadro da Equipe Ativa ({{ funcionariosFiltrados().length }})</h3>
+        <div class="card p-0 overflow-hidden" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+          <div class="p-4 bg-50 border-bottom-1 border-100">
+            <h3 class="m-0 font-semibold text-lg text-color">Quadro da Equipe Ativa ({{ funcionariosFiltrados().length }})</h3>
           </div>
 
-          <div class="escala-table-wrapper">
-            <table class="escala-table full-width">
-              <thead>
-                <tr>
-                  <th class="w-130">Matrícula</th>
-                  <th>Primeiro Nome</th>
-                  <th>Setor</th>
-                  <th>Cargo / Função</th>
-                  <th>Turno Padrão</th>
-                  <th class="w-180 text-center">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (f of funcionariosFiltrados(); track f.id + '_' + f.primeiro_nome + '_' + f.cargo) {
-                  <tr>
-                    <td class="font-mono font-bold color-navy">
-                      {{ f.matricula_aleatoria }}
-                    </td>
-                    <td class="font-bold">{{ f.nomeExibicao || f.primeiro_nome }}</td>
-                    <td>
-                      <span [style.background-color]="getSetorColor(f.setor)" class="setor-badge-color">
-                        {{ f.setor }}
-                      </span>
-                      @if (f.setores_cobertura && f.setores_cobertura.length > 0) {
-                        <div class="mt-5">
-                          @for (cob of f.setores_cobertura; track cob) {
-                            <span class="badge-cobertura-tag">🔄 Cobre {{ cob }}</span>
-                          }
-                        </div>
+          <p-table [value]="funcionariosFiltrados()" [paginator]="true" [rows]="10" responsiveLayout="scroll" styleClass="p-datatable-sm">
+            <ng-template pTemplate="header">
+              <tr>
+                <th scope="col" style="width: 120px; font-weight: 600;">Matrícula</th>
+                <th scope="col" style="font-weight: 600;">Primeiro Nome</th>
+                <th scope="col" style="font-weight: 600;">Setor</th>
+                <th scope="col" style="font-weight: 600;">Cargo / Função</th>
+                <th scope="col" style="font-weight: 600;">Turno Padrão</th>
+                <th scope="col" style="width: 180px; font-weight: 600;" class="text-center">Ações</th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-f>
+              <tr>
+                <td class="font-mono font-semibold text-sm">{{ f.matricula_aleatoria }}</td>
+                <td class="font-semibold text-sm">{{ f.nomeExibicao || f.primeiro_nome }}</td>
+                <td>
+                  <p-tag [value]="f.setor" [style.background-color]="getSetorColor(f.setor)" styleClass="text-xs font-bold text-white"></p-tag>
+                  @if (f.setores_cobertura && f.setores_cobertura.length > 0) {
+                    <div class="flex gap-1 flex-wrap mt-1">
+                      @for (cob of f.setores_cobertura; track cob) {
+                        <p-tag [value]="'Cobre ' + cob" severity="info" styleClass="text-xs font-medium"></p-tag>
                       }
-                    </td>
-                    <td>{{ f.cargo }}</td>
-                    <td class="text-sm color-slate">{{ f.turno_padrao }}</td>
-                    <td class="text-center">
-                      <div class="actions-flex-center">
-                        <button (click)="navigateToFuncProfile(f)" class="btn-action-sm btn-yellow" title="Ver Perfil">
-                          Perfil
-                        </button>
-                        <button (click)="openEditFuncModal(f)" class="btn-action-sm btn-primary" title="Editar">
-                          <app-icon name="pencil" [size]="14"></app-icon>
-                        </button>
-                        <button (click)="confirmSoftDeleteFuncionario(f)" class="btn-action-sm btn-danger" title="Desativar">
-                          <app-icon name="trash" [size]="14"></app-icon>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr>
-                    <td colspan="6" class="empty-cell">
-                      Nenhum colaborador encontrado para o filtro selecionado.
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  }
+                </td>
+                <td class="text-sm">{{ f.cargo }}</td>
+                <td class="text-sm text-muted-color">{{ f.turno_padrao }}</td>
+                <td class="text-center">
+                  <div class="flex justify-content-center gap-2">
+                    <button pButton type="button" (click)="navigateToFuncProfile(f)" class="p-button-outlined p-button-warning p-button-xs" label="Perfil"></button>
+                    <button pButton type="button" (click)="openEditFuncModal(f)" icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-xs"></button>
+                    <button pButton type="button" (click)="confirmSoftDeleteFuncionario(f)" icon="pi pi-trash" class="p-button-text p-button-danger p-button-xs"></button>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="empty">
+              <tr>
+                <td colspan="6" class="text-center text-muted-color py-4">Nenhum colaborador encontrado para o filtro selecionado.</td>
+              </tr>
+            </ng-template>
+          </p-table>
         </div>
       }
 
       <!-- ABA 3: SETORES E CARGOS -->
       @if (activeTab() === 'setores') {
-        <div class="clean-card no-print">
-          <div class="flex-header-between">
-            <h3 class="flex-items-center-gap">
-              <app-icon name="layers" [size]="22" color="#0b2a52"></app-icon>
+        <div class="card p-4 no-print" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+          <div class="flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <h3 class="m-0 font-semibold text-lg text-color flex align-items-center gap-2">
+              <i class="pi pi-clone" style="font-size: 1.5rem;"></i>
               <span>Setores e Cargos</span>
             </h3>
 
-            <div class="actions-flex-gap">
-              <button (click)="openAddSetorModal()" class="btn-premium btn-primary-solid flex-items-center-gap">
-                <app-icon name="plus" [size]="16" color="#ffffff"></app-icon>
+            <div class="flex gap-2">
+              <button pButton type="button" (click)="openAddSetorModal()" class="p-button-primary p-button-sm font-semibold flex align-items-center gap-2">
+                <i class="pi pi-plus"></i>
                 <span>Novo Setor</span>
               </button>
-              <button (click)="openAddCargoModal()" class="btn-premium btn-yellow-solid flex-items-center-gap">
-                <app-icon name="plus" [size]="16" color="#0b2a52"></app-icon>
+              <button pButton type="button" (click)="openAddCargoModal()" class="p-button-warning p-button-sm font-semibold flex align-items-center gap-2">
+                <i class="pi pi-plus"></i>
                 <span>Novo Cargo</span>
               </button>
             </div>
           </div>
 
-          <div class="setores-grid mt-20">
+          <div class="grid mt-2">
             @for (setor of setores(); track setor.id) {
-              <div class="setor-card">
-                <div class="setor-card-header">
-                  <div class="setor-header-main">
-                    <span class="setor-color-pill" [style.background-color]="getSetorColor(setor.nome)"></span>
-                    <div>
-                      <h4 class="setor-title">{{ setor.nome }}</h4>
-                      @if (setor.descricao) {
-                        <p class="setor-desc">{{ setor.descricao }}</p>
-                      }
+              <div class="col-12 md:col-6 lg:col-4">
+                <div class="card mb-4 flex flex-column h-full p-0 overflow-hidden" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+                  <div class="p-3 border-bottom-1 border-100 flex justify-content-between align-items-center bg-50">
+                    <div class="flex align-items-center gap-2">
+                      <span class="w-3 h-3 border-circle mr-1" [style.background-color]="getSetorColor(setor.nome)" style="width: 12px; height: 12px; display: inline-block;"></span>
+                      <div>
+                        <h4 class="m-0 font-semibold text-base text-color">{{ setor.nome }}</h4>
+                        @if (setor.descricao) {
+                          <span class="text-xs text-muted-color">{{ setor.descricao }}</span>
+                        }
+                      </div>
+                    </div>
+                    <div class="flex gap-2">
+                      <button pButton type="button" icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-xs" (click)="openEditSetorModal(setor)"></button>
+                      <button pButton type="button" icon="pi pi-trash" class="p-button-text p-button-danger p-button-xs" (click)="confirmDeleteSetor(setor)"></button>
                     </div>
                   </div>
 
-                  <div class="actions-flex-gap">
-                    <button (click)="openEditSetorModal(setor)" title="Editar Setor" class="icon-btn-sm" aria-label="Editar setor">
-                      <app-icon name="pencil" [size]="14" color="#0b2a52"></app-icon>
-                    </button>
-                    <button (click)="confirmDeleteSetor(setor)" title="Excluir Setor" class="icon-btn-sm danger" aria-label="Excluir setor">
-                      <app-icon name="trash" [size]="14" color="#ef4444"></app-icon>
-                    </button>
-                  </div>
-                </div>
+                  <div class="p-3 flex-1 flex flex-column gap-3">
+                    <div class="flex justify-content-between align-items-center text-sm border-bottom-1 border-100 pb-2">
+                      <span class="font-semibold text-muted-color flex align-items-center gap-1">
+                        <i class="pi pi-users text-xs"></i>
+                        <span>Equipe: {{ (funcionariosPorSetorMap().get(setor.nome) ?? []).length }} colaboradores</span>
+                      </span>
+                      <button pButton type="button" class="p-button-link p-button-xs p-0 text-xs font-semibold" label="Ver Equipe" (click)="openSetorDetalhamentoModal(setor.nome)"></button>
+                    </div>
 
-                <div class="setor-card-body">
-                  <div class="flex-between align-center mb-12 pb-10 border-bottom">
-                    <span class="text-xs font-bold color-navy flex-items-center-gap">
-                      <app-icon name="users" [size]="14" color="#0b2a52"></app-icon>
-                      <span>Equipe: {{ (funcionariosPorSetorMap().get(setor.nome) ?? []).length }} colaborador(es)</span>
-                    </span>
-                    <button (click)="openSetorDetalhamentoModal(setor.nome)" class="btn-link-sm">
-                      Ver Equipe Completa
-                    </button>
-                  </div>
-
-                  <div class="cargos-section-header mb-10">
-                    <span class="cargos-count-label flex-items-center-gap">
-                      <app-icon name="briefcase" [size]="14" color="#64748b"></app-icon>
-                      <span>Cargos ({{ getCargosDoSetor(setor.nome).length }})</span>
-                    </span>
-                    <button (click)="openAddCargoModal(setor.nome)" class="btn-link-sm">
-                      + Função
-                    </button>
-                  </div>
-
-                  <div class="cargos-list">
-                    @for (cargo of getCargosDoSetor(setor.nome); track cargo.id) {
-                      <div class="cargo-item">
-                        <div class="cargo-name-group">
-                          <app-icon name="briefcase" [size]="14" color="#2563eb"></app-icon>
-                          <span class="cargo-name">{{ cargo.nome }}</span>
-                        </div>
-                        <div class="actions-flex-gap">
-                          <button (click)="openEditCargoModal(cargo)" title="Editar Cargo" class="icon-btn-sm" aria-label="Editar cargo">
-                            <app-icon name="pencil" [size]="14" color="#0b2a52"></app-icon>
-                          </button>
-                          <button (click)="confirmDeleteCargo(cargo)" title="Excluir Cargo" class="icon-btn-sm danger" aria-label="Excluir cargo">
-                            <app-icon name="trash" [size]="14" color="#ef4444"></app-icon>
-                          </button>
-                        </div>
+                    <div>
+                      <div class="flex justify-content-between align-items-center mb-2">
+                        <span class="text-sm font-semibold text-muted-color flex align-items-center gap-1">
+                          <i class="pi pi-briefcase text-xs"></i>
+                          <span>Cargos ({{ getCargosDoSetor(setor.nome).length }})</span>
+                        </span>
+                        <button pButton type="button" class="p-button-link p-button-xs p-0 text-xs font-semibold" label="+ Função" (click)="openAddCargoModal(setor.nome)"></button>
                       </div>
-                    } @empty {
-                      <div class="empty-cargo-state">
-                        Nenhum cargo cadastrado neste setor.
+
+                      <div class="flex flex-column gap-2" style="max-height: 150px; overflow-y: auto;">
+                        @for (cargo of getCargosDoSetor(setor.nome); track cargo.id) {
+                          <div class="flex justify-content-between align-items-center p-2 border-round border bg-50">
+                            <span class="text-sm font-semibold text-color">{{ cargo.nome }}</span>
+                            <div class="flex gap-1">
+                              <button pButton type="button" icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-xs" (click)="openEditCargoModal(cargo)"></button>
+                              <button pButton type="button" icon="pi pi-trash" class="p-button-text p-button-danger p-button-xs" (click)="confirmDeleteCargo(cargo)"></button>
+                            </div>
+                          </div>
+                        } @empty {
+                          <span class="text-xs text-muted-color text-center block py-2">Nenhum cargo cadastrado neste setor.</span>
+                        }
                       </div>
-                    }
+                    </div>
                   </div>
                 </div>
               </div>
@@ -729,142 +735,138 @@
 
       <!-- ABA 4: GESTÃO DE FERIADOS -->
       @if (activeTab() === 'feriados') {
-        <div class="clean-card no-print">
-          <div class="flex-header-between">
-            <h3>Gestão de Feriados</h3>
+        <div class="card p-4 no-print" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+          <div class="flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <h3 class="m-0 font-semibold text-lg text-color">Gestão de Feriados</h3>
 
-            <div class="actions-flex-gap">
-              <label for="filterTipoFeriadoSelect" class="sr-only">Âmbito</label>
-              <select id="filterTipoFeriadoSelect" [ngModel]="filterTipoFeriado()" (ngModelChange)="filterTipoFeriado.set($event)" class="form-control w-200">
-                <option value="">Todos os Âmbitos</option>
-                <option value="Nacional">Nacionais (Brasil)</option>
-                <option value="Estadual">Estaduais (Bahia)</option>
-                <option value="Municipal">Municipais (Poções - BA)</option>
-              </select>
+            <div class="flex gap-2 align-items-center">
+              <p-select
+                id="filterTipoFeriadoSelect"
+                [options]="[{label: 'Todos os Âmbitos', value: ''}, {label: 'Nacionais', value: 'Nacional'}, {label: 'Estaduais', value: 'Estadual'}, {label: 'Municipais', value: 'Municipal'}]"
+                [ngModel]="filterTipoFeriado()"
+                (ngModelChange)="filterTipoFeriado.set($event)"
+                optionLabel="label"
+                optionValue="value"
+                styleClass="w-12rem"
+              ></p-select>
 
-              <button (click)="openAddFeriadoModal()" class="btn-premium btn-yellow-solid">
+              <button pButton type="button" (click)="openAddFeriadoModal()" class="p-button-warning p-button-sm font-semibold flex align-items-center gap-2">
+                <i class="pi pi-plus"></i>
                 <span>Adicionar Feriado</span>
               </button>
             </div>
           </div>
 
           <!-- Tabela de Feriados -->
-          <div class="escala-table-wrapper mt-16">
-            <table class="escala-table full-width">
-              <thead>
+          <div class="card p-0 overflow-hidden" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+            <p-table [value]="feriadosFiltrados()" [paginator]="true" [rows]="10" responsiveLayout="scroll" styleClass="p-datatable-sm">
+              <ng-template pTemplate="header">
                 <tr>
-                  <th class="w-120">Data</th>
-                  <th>Nome do Feriado</th>
-                  <th class="w-140">Âmbito</th>
-                  <th class="w-160">Abrangência</th>
-                  <th>Observação</th>
-                  <th class="w-160 text-center">Ações</th>
+                  <th scope="col" style="width: 120px; font-weight: 600;">Data</th>
+                  <th scope="col" style="font-weight: 600;">Nome do Feriado</th>
+                  <th scope="col" style="width: 140px; font-weight: 600;">Âmbito</th>
+                  <th scope="col" style="width: 160px; font-weight: 600;">Abrangência</th>
+                  <th scope="col" style="font-weight: 600;">Observação</th>
+                  <th scope="col" style="width: 160px; font-weight: 600;" class="text-center">Ações</th>
                 </tr>
-              </thead>
-              <tbody>
-                @for (f of feriadosFiltrados(); track f.id) {
-                  <tr>
-                    <td class="font-mono font-bold color-navy">{{ formatFeriadoData(f.data) }}</td>
-                    <td class="font-bold text-left">{{ f.nome }}</td>
-                    <td>
-                      <span [style.background-color]="getFeriadoBadgeColor(f.tipo)" class="badge-tipo">
-                        {{ f.tipo }}
-                      </span>
-                    </td>
-                    <td class="font-bold color-slate">{{ f.abrangencia || 'Brasil' }}</td>
-                    <td class="text-sm color-slate text-left">{{ f.descricao || '-' }}</td>
-                    <td class="text-center">
-                      <div class="actions-flex-center">
-                        <button (click)="openEditFeriadoModal(f)" class="btn-action-sm btn-primary">
-                          <app-icon name="pencil" [size]="14"></app-icon>
-                          <span>Editar</span>
-                        </button>
-                        <button (click)="confirmDeleteFeriado(f)" class="btn-action-sm btn-danger">
-                          <app-icon name="trash" [size]="14"></app-icon>
-                          <span>Excluir</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr>
-                    <td colspan="6" class="empty-cell">
-                      Nenhum feriado encontrado para o filtro selecionado.
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+              </ng-template>
+              <ng-template pTemplate="body" let-f>
+                <tr>
+                  <td class="font-mono font-semibold text-sm">{{ formatFeriadoData(f.data) }}</td>
+                  <td class="font-semibold text-sm">{{ f.nome }}</td>
+                  <td>
+                    <p-tag [value]="f.tipo" [severity]="f.tipo === 'Nacional' ? 'danger' : f.tipo === 'Estadual' ? 'warn' : 'info'"></p-tag>
+                  </td>
+                  <td class="font-semibold text-muted-color">{{ f.abrangencia || 'Brasil' }}</td>
+                  <td class="text-sm text-muted-color">{{ f.descricao || '-' }}</td>
+                  <td class="text-center">
+                    <div class="flex justify-content-center gap-2">
+                      <button pButton type="button" (click)="openEditFeriadoModal(f)" icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-xs"></button>
+                      <button pButton type="button" (click)="confirmDeleteFeriado(f)" icon="pi pi-trash" class="p-button-text p-button-danger p-button-xs"></button>
+                    </div>
+                  </td>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="empty">
+                <tr>
+                  <td colspan="6" class="text-center text-muted-color py-4">Nenhum feriado encontrado para o filtro selecionado.</td>
+                </tr>
+              </ng-template>
+            </p-table>
           </div>
         </div>
       }
 
       <!-- ABA 5: REGRAS DE ESCALA -->
       @if (activeTab() === 'regras') {
-        <div class="clean-card no-print">
-
-          <div class="filter-pill-bar mb-20">
-            <div class="flex-header-between">
-              <div class="pill-group">
-                <span class="pill-group-title">Filtrar:</span>
-
-                <button (click)="filterTipoRegra.set('')" [class.active]="filterTipoRegra() === ''" class="pill-btn">
-                  Todas as Regras <span class="pill-badge">{{ regras().length }}</span>
-                </button>
-
-                <button (click)="filterTipoRegra.set('IMPLEMENTADA')" [class.active]="filterTipoRegra() === 'IMPLEMENTADA'" class="pill-btn">
-                  Implementadas <span class="pill-badge">{{ statsRegras().implementadas }}</span>
-                </button>
-
-                <button (click)="filterTipoRegra.set('PENDENTE_PROGRAMADOR')" [class.active]="filterTipoRegra() === 'PENDENTE_PROGRAMADOR'" class="pill-btn">
-                  Pendente Dev <span class="pill-badge">{{ statsRegras().pendentes }}</span>
-                </button>
-              </div>
-
-              <button (click)="openAddRegraModal()" class="btn-premium btn-danger-solid">
-                <span>Cadastrar Regra</span>
-              </button>
+        <div class="card p-4 no-print" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+          <div class="flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div class="flex gap-2 flex-wrap align-items-center">
+              <span class="text-muted-color font-semibold text-sm mr-2">Filtrar:</span>
+              <p-tag
+                value="Todas as Regras ({{ regras().length }})"
+                [severity]="filterTipoRegra() === '' ? 'success' : 'secondary'"
+                class="cursor-pointer"
+                role="button"
+                tabindex="0"
+                (click)="filterTipoRegra.set('')"
+                (keydown.enter)="filterTipoRegra.set('')"
+              ></p-tag>
+              <p-tag
+                value="Implementadas ({{ statsRegras().implementadas }})"
+                [severity]="filterTipoRegra() === 'IMPLEMENTADA' ? 'success' : 'secondary'"
+                class="cursor-pointer"
+                role="button"
+                tabindex="0"
+                (click)="filterTipoRegra.set('IMPLEMENTADA')"
+                (keydown.enter)="filterTipoRegra.set('IMPLEMENTADA')"
+              ></p-tag>
+              <p-tag
+                value="Pendente Dev ({{ statsRegras().pendentes }})"
+                [severity]="filterTipoRegra() === 'PENDENTE_PROGRAMADOR' ? 'success' : 'secondary'"
+                class="cursor-pointer"
+                role="button"
+                tabindex="0"
+                (click)="filterTipoRegra.set('PENDENTE_PROGRAMADOR')"
+                (keydown.enter)="filterTipoRegra.set('PENDENTE_PROGRAMADOR')"
+              ></p-tag>
             </div>
+
+            <button pButton type="button" (click)="openAddRegraModal()" class="p-button-danger p-button-sm font-semibold flex align-items-center gap-2">
+              <i class="pi pi-plus"></i>
+              <span>Cadastrar Regra</span>
+            </button>
           </div>
 
           <!-- Grade de Cards de Regras -->
-          <div class="regras-grid">
+          <div class="grid">
             @for (regra of regrasFiltradas(); track regra.id) {
-              <div class="regra-card">
-                <div>
-                  <div class="regra-card-top">
-                    <span [class]="regra.status === 'IMPLEMENTADA' ? 'badge-status-implementada' : 'badge-status-pendente'">
-                      {{ regra.status === 'IMPLEMENTADA' ? 'No Algoritmo' : 'Pendente Programação' }}
-                    </span>
+              <div class="col-12 md:col-6 lg:col-4">
+                <div class="card mb-4 flex flex-column h-full justify-content-between p-3" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+                  <div>
+                    <div class="flex justify-content-between align-items-center mb-3">
+                      <p-tag [value]="regra.status === 'IMPLEMENTADA' ? 'No Algoritmo' : 'Pendente Dev'" [severity]="regra.status === 'IMPLEMENTADA' ? 'success' : 'warn'"></p-tag>
+                      <span class="text-xs text-muted-color font-semibold">{{ regra.categoria }}</span>
+                    </div>
 
-                    <span class="regra-categoria-tag">
-                      {{ regra.categoria }}
-                    </span>
+                    <h4 class="m-0 mb-2 font-semibold text-base text-color">{{ regra.titulo }}</h4>
+                    <p class="text-sm text-muted-color mb-3">{{ regra.descricao }}</p>
                   </div>
 
-                  <h4 class="regra-title">{{ regra.titulo }}</h4>
-                  <p class="regra-desc">{{ regra.descricao }}</p>
-                </div>
+                  <div class="flex justify-content-between align-items-center border-top-1 border-100 pt-3">
+                    <span class="text-xs font-semibold text-muted-color">
+                      Obrigatoriedade: <strong [style.color]="regra.obrigatoria ? 'var(--p-red-500)' : 'var(--p-muted-color)'">{{ regra.obrigatoria ? 'Rígida' : 'Desejável' }}</strong>
+                    </span>
 
-                <div class="regra-card-bottom">
-                  <span class="regra-obrigatoria-lbl">
-                    Obrigatoriedade: <strong [style.color]="regra.obrigatoria ? '#dc2626' : '#64748b'">{{ regra.obrigatoria ? 'Rígida' : 'Desejável' }}</strong>
-                  </span>
-
-                  <div class="actions-flex-gap">
-                    <button (click)="openEditRegraModal(regra)" class="icon-btn-sm" title="Editar Regra">
-                      <app-icon name="pencil" [size]="14"></app-icon>
-                    </button>
-                    <button (click)="confirmDeleteRegra(regra)" class="icon-btn-sm danger" title="Excluir Regra">
-                      <app-icon name="trash" [size]="14" color="#ef4444"></app-icon>
-                    </button>
+                    <div class="flex gap-1">
+                      <button pButton type="button" icon="pi pi-pencil" class="p-button-text p-button-secondary p-button-xs" (click)="openEditRegraModal(regra)"></button>
+                      <button pButton type="button" icon="pi pi-trash" class="p-button-text p-button-danger p-button-xs" (click)="confirmDeleteRegra(regra)"></button>
+                    </div>
                   </div>
                 </div>
               </div>
             } @empty {
-              <div class="empty-regras-state">
-                Nenhuma regra encontrada para o filtro selecionado.
-              </div>
+              <div class="col-12 text-center text-muted-color py-4">Nenhuma regra encontrada para o filtro selecionado.</div>
             }
           </div>
         </div>
@@ -1015,10 +1017,10 @@
     @for (t of toastService.toasts(); track t.id) {
       <div class="toast-item" [class.toast-success]="t.type === 'success'" [class.toast-error]="t.type === 'error'" [class.toast-warning]="t.type === 'warning'">
         <div class="toast-icon">
-          @if (t.type === 'success') { <app-icon name="check" [size]="18" color="#16a34a"></app-icon> }
-          @if (t.type === 'error') { <app-icon name="x" [size]="18" color="#dc2626"></app-icon> }
-          @if (t.type === 'warning') { <app-icon name="alert-triangle" [size]="18" color="#d97706"></app-icon> }
-          @if (t.type === 'info') { <app-icon name="info" [size]="18" color="#0284c7"></app-icon> }
+          @if (t.type === 'success') { <ds-icon name="check" [size]="18" color="#16a34a"></ds-icon> }
+          @if (t.type === 'error') { <ds-icon name="x" [size]="18" color="#dc2626"></ds-icon> }
+          @if (t.type === 'warning') { <ds-icon name="alert-triangle" [size]="18" color="#d97706"></ds-icon> }
+          @if (t.type === 'info') { <ds-icon name="info" [size]="18" color="#0284c7"></ds-icon> }
         </div>
         <div class="toast-content">
           <div class="toast-title">{{ t.title }}</div>
@@ -1027,7 +1029,7 @@
           }
         </div>
         <button (click)="toastService.remove(t.id)" class="icon-btn-sm text-slate">
-          <app-icon name="x" [size]="14"></app-icon>
+          <ds-icon name="x" [size]="14"></ds-icon>
         </button>
       </div>
     }
@@ -1123,7 +1125,7 @@
         <label for="chkObrigatoria" class="chk-lbl text-sm">
           Regra Obrigatória / Rígida
           <span class="custom-tooltip" data-tooltip="O algoritmo nunca poderá quebrar esta regra">
-            <app-icon name="info" [size]="14" color="#64748b"></app-icon>
+            <ds-icon name="info" [size]="14" color="#64748b"></ds-icon>
           </span>
         </label>
       </div>
@@ -1202,13 +1204,9 @@
       <p class="confirm-modal-msg text-sm color-navy m-0">{{ confirmModal().message }}</p>
     </div>
     <ng-template pTemplate="footer">
-      <div class="flex-end gap-2">
-        <button type="button" (click)="closeConfirmModal()" class="p-button p-button-secondary p-button-outlined p-button-sm">
-          {{ confirmModal().cancelText || 'Cancelar' }}
-        </button>
-        <button type="button" (click)="executeConfirmModal()" class="p-button p-button-danger p-button-sm font-bold">
-          {{ confirmModal().confirmText || 'Confirmar' }}
-        </button>
+      <div class="flex justify-content-end gap-2">
+        <button pButton type="button" (click)="closeConfirmModal()" class="p-button-outlined p-button-secondary p-button-sm" [label]="confirmModal().cancelText || 'Cancelar'"></button>
+        <button pButton type="button" (click)="executeConfirmModal()" class="p-button-danger p-button-sm font-bold" [label]="confirmModal().confirmText || 'Confirmar'"></button>
       </div>
     </ng-template>
   </p-dialog>
@@ -1225,71 +1223,56 @@
       [draggable]="false"
       [resizable]="false"
     >
-      <div class="p-3 space-y-14">
-        <div class="form-group mb-3">
-          <label for="editPrimeiroNomeInput" class="font-bold text-xs d-block mb-1">Primeiro Nome</label>
-          <input id="editPrimeiroNomeInput" type="text" [(ngModel)]="ef.primeiro_nome" class="p-inputtext p-component w-full" required />
+      <div class="p-3 flex flex-column gap-3 p-fluid">
+        <div class="flex flex-column gap-1">
+          <label for="editPrimeiroNomeInput" class="text-sm font-semibold text-muted-color">Primeiro Nome</label>
+          <input id="editPrimeiroNomeInput" pInputText type="text" [(ngModel)]="ef.primeiro_nome" required />
         </div>
 
-        <div class="form-group mb-3">
-          <label for="editSetorSelect" class="font-bold text-xs d-block mb-1">Setor Operacional</label>
-          <select id="editSetorSelect" [ngModel]="ef.setor" (ngModelChange)="onEditFuncSetorChange($event)" class="p-inputtext p-component w-full">
-            @for (s of setores(); track s.id) {
-              <option [value]="s.nome">{{ s.nome }}</option>
-            }
-          </select>
+        <div class="flex flex-column gap-1">
+          <label for="editSetorSelect" class="text-sm font-semibold text-muted-color">Setor Operacional</label>
+          <p-select id="editSetorSelect" [options]="setores()" [ngModel]="ef.setor" (ngModelChange)="onEditFuncSetorChange($event)" optionLabel="nome" optionValue="nome" placeholder="Selecione"></p-select>
         </div>
 
-        <div class="form-group mb-3">
-          <label for="editCargoSelect" class="font-bold text-xs d-block mb-1">Função / Cargo</label>
-          <select id="editCargoSelect" [(ngModel)]="ef.cargo" class="p-inputtext p-component w-full">
-            @for (c of cargosDoEditSetor(); track c.id) {
-              <option [value]="c.nome">{{ c.nome }}</option>
-            }
-          </select>
+        <div class="flex flex-column gap-1">
+          <label for="editCargoSelect" class="text-sm font-semibold text-muted-color">Função / Cargo</label>
+          <p-select id="editCargoSelect" [options]="cargosDoEditSetor()" [(ngModel)]="ef.cargo" optionLabel="nome" optionValue="nome" placeholder="Selecione"></p-select>
         </div>
 
-        <div class="form-group mb-3">
-          <label for="editTurnoSelect" class="font-bold text-xs d-block mb-1">Horário Padrão / Turno Fixo</label>
-          <select id="editTurnoSelect" [ngModel]="ef.turno_padrao" (ngModelChange)="ef.turno_padrao = $event" class="p-inputtext p-component w-full mb-2">
-            @for (h of horariosFixosCaixa; track h.id) {
-              <option [value]="h.nome">{{ h.nome }}</option>
-            }
-          </select>
-          <input id="editTurnoInput" type="text" [(ngModel)]="ef.turno_padrao" class="p-inputtext p-component w-full" placeholder="Ou digite um horário personalizado" required aria-label="Turno Padrão Personalizado" />
+        <div class="flex flex-column gap-1">
+          <label for="editTurnoSelect" class="text-sm font-semibold text-muted-color">Horário Padrão / Turno Fixo</label>
+          <p-select id="editTurnoSelect" [options]="horariosFixosCaixa" [ngModel]="ef.turno_padrao" (ngModelChange)="ef.turno_padrao = $event" optionLabel="nome" optionValue="nome" placeholder="Selecione" styleClass="mb-2"></p-select>
+          <input id="editTurnoInput" pInputText type="text" [(ngModel)]="ef.turno_padrao" placeholder="Ou digite um horário personalizado" required aria-label="Turno Padrão Personalizado" />
         </div>
 
-        <div class="form-group mb-3">
-          <label for="editGeneroSelect" class="font-bold text-xs d-block mb-1">Gênero (Regras CLT/CCT)</label>
-          <select id="editGeneroSelect" [(ngModel)]="ef.genero" class="p-inputtext p-component w-full" required>
-            <option value="M">Masculino</option>
-            <option value="F">Feminino</option>
-          </select>
+        <div class="flex flex-column gap-1">
+          <label for="editGeneroSelect" class="text-sm font-semibold text-muted-color">Gênero (Regras CLT/CCT)</label>
+          <p-select id="editGeneroSelect" [options]="[{label: 'Masculino', value: 'M'}, {label: 'Feminino', value: 'F'}]" [(ngModel)]="ef.genero" optionLabel="label" optionValue="value" required></p-select>
         </div>
 
-        <div class="form-group mb-3">
-          <span style="display: block; margin-bottom: 6px; font-weight: 600; color: #0b2a52;">Setores de Cobertura (Função Secundária)</span>
-          <div style="display: flex; flex-wrap: wrap; gap: 12px; padding: 10px; background: rgba(255,255,255,0.5); border: 1px solid #d1d5db; border-radius: 6px; max-height: 120px; overflow-y: auto;">
+        <div class="flex flex-column gap-2">
+          <span class="block text-sm font-semibold text-muted-color">Setores de Cobertura (Função Secundária)</span>
+          <div class="flex gap-3 flex-wrap p-3 border-round border bg-50" style="max-height: 120px; overflow-y: auto;">
             @for (s of setores(); track s.id) {
               @if (s.nome !== ef.setor) {
-                <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: #1e293b;">
-                  <input
-                    type="checkbox"
-                    [checked]="(ef.setores_cobertura || []).includes(s.nome)"
-                    (change)="toggleEditSetoresCobertura(s.nome)"
-                    style="width: 16px; height: 16px; accent-color: #0b2a52; cursor: pointer;"
-                  />
-                  <span>{{ s.nome }}</span>
-                </label>
+                <div class="flex align-items-center gap-2">
+                  <p-checkbox
+                    [id]="'edit_cob_' + s.id"
+                    [binary]="true"
+                    [ngModel]="(ef.setores_cobertura || []).includes(s.nome)"
+                    (ngModelChange)="toggleEditSetoresCobertura(s.nome)"
+                  ></p-checkbox>
+                  <label [for]="'edit_cob_' + s.id" class="text-sm font-semibold text-color cursor-pointer">{{ s.nome }}</label>
+                </div>
               }
             }
           </div>
         </div>
       </div>
       <ng-template pTemplate="footer">
-        <div class="flex-end gap-2">
-          <button type="button" (click)="editingFunc.set(null)" class="p-button p-button-secondary p-button-outlined p-button-sm">Cancelar</button>
-          <button type="button" (click)="saveEditFuncionario()" class="p-button p-button-primary p-button-sm font-bold">Salvar Alterações</button>
+        <div class="flex justify-content-end gap-2">
+          <button pButton type="button" (click)="editingFunc.set(null)" class="p-button-outlined p-button-secondary p-button-sm" label="Cancelar"></button>
+          <button pButton type="button" (click)="saveEditFuncionario()" class="p-button-primary p-button-sm font-bold" label="Salvar Alterações"></button>
         </div>
       </ng-template>
     </p-dialog>
@@ -1305,36 +1288,35 @@
     [draggable]="false"
     [resizable]="false"
   >
-    <div class="p-3 space-y-14">
-      <div class="form-group mb-3">
-        <label for="setorNomeInput" class="font-bold text-xs d-block mb-1">Nome do Setor</label>
-        <input id="setorNomeInput" type="text" [(ngModel)]="sectorModalForm.nome" class="p-inputtext p-component w-full" placeholder="Ex: Recebimento" required />
+    <div class="p-3 flex flex-column gap-3 p-fluid">
+      <div class="flex flex-column gap-1">
+        <label for="setorNomeInput" class="text-sm font-semibold text-muted-color">Nome do Setor</label>
+        <input id="setorNomeInput" pInputText type="text" [(ngModel)]="sectorModalForm.nome" placeholder="Ex: Recebimento" required />
       </div>
-      <div class="form-group mb-3">
-        <label for="setorDescricaoInput" class="font-bold text-xs d-block mb-1">Descrição (Opcional)</label>
-        <input id="setorDescricaoInput" type="text" [(ngModel)]="sectorModalForm.descricao" class="p-inputtext p-component w-full" placeholder="Ex: Recebimento de mercadorias" />
+      <div class="flex flex-column gap-1">
+        <label for="setorDescricaoInput" class="text-sm font-semibold text-muted-color">Descrição (Opcional)</label>
+        <input id="setorDescricaoInput" pInputText type="text" [(ngModel)]="sectorModalForm.descricao" placeholder="Ex: Recebimento de mercadorias" />
       </div>
-      <div class="form-row flex gap-3 mb-3">
-        <div class="form-group flex-1">
-          <label for="setorMinDiaInput" class="font-bold text-xs d-block mb-1">Mín. (Dias Úteis)</label>
-          <input id="setorMinDiaInput" type="number" min="1" [(ngModel)]="sectorModalForm.min_funcionarios_dia" class="p-inputtext p-component w-full" required />
+      <div class="flex gap-3">
+        <div class="flex flex-column gap-1 flex-1">
+          <label for="setorMinDiaInput" class="text-sm font-semibold text-muted-color">Mín. (Dias Úteis)</label>
+          <input id="setorMinDiaInput" pInputText type="number" min="1" [(ngModel)]="sectorModalForm.min_funcionarios_dia" required />
         </div>
-        <div class="form-group flex-1">
-          <label for="setorMinDomInput" class="font-bold text-xs d-block mb-1">Mín. (Domingos)</label>
-          <input id="setorMinDomInput" type="number" min="1" [(ngModel)]="sectorModalForm.min_funcionarios_domingo" class="p-inputtext p-component w-full" required />
+        <div class="flex flex-column gap-1 flex-1">
+          <label for="setorMinDomInput" class="text-sm font-semibold text-muted-color">Mín. (Domingos)</label>
+          <input id="setorMinDomInput" pInputText type="number" min="1" [(ngModel)]="sectorModalForm.min_funcionarios_domingo" required />
         </div>
-        <div class="form-group flex-1">
-          <label for="setorMinFerInput" class="font-bold text-xs d-block mb-1">Mín. (Feriados)</label>
-          <input id="setorMinFerInput" type="number" min="1" [(ngModel)]="sectorModalForm.min_funcionarios_feriado" class="p-inputtext p-component w-full" required />
+        <div class="flex flex-column gap-1 flex-1">
+          <label for="setorMinFerInput" class="text-sm font-semibold text-muted-color">Mín. (Feriados)</label>
+          <input id="setorMinFerInput" pInputText type="number" min="1" [(ngModel)]="sectorModalForm.min_funcionarios_feriado" required />
         </div>
       </div>
     </div>
     <ng-template pTemplate="footer">
-      <div class="flex-end gap-2">
-        <button type="button" (click)="closeSectorModal()" class="p-button p-button-secondary p-button-outlined p-button-sm">Cancelar</button>
-        <button type="button" (click)="saveSectorModal()" class="p-button p-button-warning p-button-sm font-bold">
-          {{ sectorModal().isEdit ? 'Salvar Alterações' : 'Criar Setor' }}
-        </button>
+      <div class="flex justify-content-end gap-2">
+        <button pButton type="button" (click)="closeSectorModal()" class="p-button-outlined p-button-secondary p-button-sm" label="Cancelar"></button>
+        <button pButton type="button" (click)="saveSectorModal()" class="p-button-warning p-button-sm font-bold" label="Salvar Alterações" *ngIf="sectorModal().isEdit"></button>
+        <button pButton type="button" (click)="saveSectorModal()" class="p-button-warning p-button-sm font-bold" label="Criar Setor" *ngIf="!sectorModal().isEdit"></button>
       </div>
     </ng-template>
   </p-dialog>
@@ -1349,32 +1331,27 @@
     [draggable]="false"
     [resizable]="false"
   >
-    <div class="p-3 space-y-14">
-      <div class="form-group mb-3">
-        <label for="cargoSetorSelect" class="font-bold text-xs d-block mb-1">Setor Vinculado</label>
-        <select id="cargoSetorSelect" [(ngModel)]="cargoModalForm.setor_nome" class="p-inputtext p-component w-full" [disabled]="cargoModal().isEdit">
-          @for (s of setores(); track s.id) {
-            <option [value]="s.nome">{{ s.nome }}</option>
-          }
-        </select>
+    <div class="p-3 flex flex-column gap-3 p-fluid">
+      <div class="flex flex-column gap-1">
+        <label for="cargoSetorSelect" class="text-sm font-semibold text-muted-color">Setor Vinculado</label>
+        <p-select id="cargoSetorSelect" [options]="setores()" [(ngModel)]="cargoModalForm.setor_nome" optionLabel="nome" optionValue="nome" [disabled]="cargoModal().isEdit"></p-select>
       </div>
 
-      <div class="form-group mb-3">
-        <label for="cargoNomeInput" class="font-bold text-xs d-block mb-1">Nome da Função / Cargo</label>
-        <input id="cargoNomeInput" type="text" [(ngModel)]="cargoModalForm.nome" class="p-inputtext p-component w-full" placeholder="Ex: Operador de Caixa Senior" required />
+      <div class="flex flex-column gap-1">
+        <label for="cargoNomeInput" class="text-sm font-semibold text-muted-color">Nome da Função / Cargo</label>
+        <input id="cargoNomeInput" pInputText type="text" [(ngModel)]="cargoModalForm.nome" placeholder="Ex: Operador de Caixa Senior" required />
       </div>
 
-      <div class="form-group mb-3">
-        <label for="cargoDescricaoInput" class="font-bold text-xs d-block mb-1">Descrição (Opcional)</label>
-        <input id="cargoDescricaoInput" type="text" [(ngModel)]="cargoModalForm.descricao" class="p-inputtext p-component w-full" placeholder="Ex: Operação nos caixas rápidos" />
+      <div class="flex flex-column gap-1">
+        <label for="cargoDescricaoInput" class="text-sm font-semibold text-muted-color">Descrição (Opcional)</label>
+        <input id="cargoDescricaoInput" pInputText type="text" [(ngModel)]="cargoModalForm.descricao" placeholder="Ex: Operação nos caixas rápidos" />
       </div>
     </div>
     <ng-template pTemplate="footer">
-      <div class="flex-end gap-2">
-        <button type="button" (click)="closeCargoModal()" class="p-button p-button-secondary p-button-outlined p-button-sm">Cancelar</button>
-        <button type="button" (click)="saveCargoModal()" class="p-button p-button-primary p-button-sm font-bold">
-          {{ cargoModal().isEdit ? 'Salvar Alterações' : 'Criar Cargo' }}
-        </button>
+      <div class="flex justify-content-end gap-2">
+        <button pButton type="button" (click)="closeCargoModal()" class="p-button-outlined p-button-secondary p-button-sm" label="Cancelar"></button>
+        <button pButton type="button" (click)="saveCargoModal()" class="p-button-primary p-button-sm font-bold" label="Salvar Alterações" *ngIf="cargoModal().isEdit"></button>
+        <button pButton type="button" (click)="saveCargoModal()" class="p-button-primary p-button-sm font-bold" label="Criar Cargo" *ngIf="!cargoModal().isEdit"></button>
       </div>
     </ng-template>
   </p-dialog>
@@ -1389,44 +1366,44 @@
     [draggable]="false"
     [resizable]="false"
   >
-    <div class="p-3 space-y-14">
-      <div class="form-group mb-3">
-        <label for="feriadoNomeInput" class="font-bold text-xs d-block mb-1">Nome do Feriado</label>
-        <input id="feriadoNomeInput" type="text" [(ngModel)]="feriadoModalForm.nome" class="p-inputtext p-component w-full" placeholder="Ex: Emancipação de Poções" required />
+    <div class="p-3 flex flex-column gap-3 p-fluid">
+      <div class="flex flex-column gap-1">
+        <label for="feriadoNomeInput" class="text-sm font-semibold text-muted-color">Nome do Feriado</label>
+        <input id="feriadoNomeInput" pInputText type="text" [(ngModel)]="feriadoModalForm.nome" placeholder="Ex: Emancipação de Poções" required />
       </div>
 
-      <div class="form-group mb-3">
-        <label for="feriadoDataInput" class="font-bold text-xs d-block mb-1">Data</label>
-        <input id="feriadoDataInput" type="date" [(ngModel)]="feriadoModalForm.data" class="p-inputtext p-component w-full" required />
+      <div class="flex flex-column gap-1">
+        <label for="feriadoDataInput" class="text-sm font-semibold text-muted-color">Data</label>
+        <input id="feriadoDataInput" pInputText type="date" [(ngModel)]="feriadoModalForm.data" required />
       </div>
 
-      <div class="form-group mb-3">
-        <label for="feriadoTipoSelect" class="font-bold text-xs d-block mb-1">Âmbito / Tipo</label>
-        <select id="feriadoTipoSelect" [(ngModel)]="feriadoModalForm.tipo" (ngModelChange)="onFeriadoTipoChange($event)" class="p-inputtext p-component w-full">
-          <option value="Nacional">Nacional (Brasil)</option>
-          <option value="Estadual">Estadual (Bahia)</option>
-          <option value="Municipal">Municipal (Poções - BA)</option>
-          <option value="Ponto Facultativo">Ponto Facultativo</option>
-        </select>
+      <div class="flex flex-column gap-1">
+        <label for="feriadoTipoSelect" class="text-sm font-semibold text-muted-color">Âmbito / Tipo</label>
+        <p-select
+          id="feriadoTipoSelect"
+          [options]="[{label: 'Nacional (Brasil)', value: 'Nacional'}, {label: 'Estadual (Bahia)', value: 'Estadual'}, {label: 'Municipal (Poções - BA)', value: 'Municipal'}, {label: 'Ponto Facultativo', value: 'Ponto Facultativo'}]"
+          [(ngModel)]="feriadoModalForm.tipo"
+          (ngModelChange)="onFeriadoTipoChange($event)"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
       </div>
 
-      <div class="form-group mb-3">
-        <label for="feriadoAbrangenciaInput" class="font-bold text-xs d-block mb-1">Abrangência</label>
-        <input id="feriadoAbrangenciaInput" type="text" [(ngModel)]="feriadoModalForm.abrangencia" class="p-inputtext p-component w-full" placeholder="Ex: Poções - BA" required />
+      <div class="flex flex-column gap-1">
+        <label for="feriadoAbrangenciaInput" class="text-sm font-semibold text-muted-color">Abrangência</label>
+        <input id="feriadoAbrangenciaInput" pInputText type="text" [(ngModel)]="feriadoModalForm.abrangencia" placeholder="Ex: Poções - BA" required />
       </div>
 
-      <div class="form-group mb-3">
-        <label for="feriadoDescricaoInput" class="font-bold text-xs d-block mb-1">Descrição / Observação</label>
-        <input id="feriadoDescricaoInput" type="text" [(ngModel)]="feriadoModalForm.descricao" class="p-inputtext p-component w-full" placeholder="Ex: Feriado municipal comemorativo" />
+      <div class="flex flex-column gap-1">
+        <label for="feriadoDescricaoInput" class="text-sm font-semibold text-muted-color">Descrição / Observação</label>
+        <input id="feriadoDescricaoInput" pInputText type="text" [(ngModel)]="feriadoModalForm.descricao" placeholder="Ex: Feriado municipal comemorativo" />
       </div>
 
-      <div class="form-group flex-items-center-gap flex align-center gap-2">
-        <input type="checkbox" [(ngModel)]="feriadoModalForm.funcionamento_proibido" id="chkFeriadoProibido" class="chk-input" />
-        <label for="chkFeriadoProibido" class="chk-lbl text-sm">
+      <div class="flex align-items-center gap-2">
+        <p-checkbox [(ngModel)]="feriadoModalForm.funcionamento_proibido" [binary]="true" id="chkFeriadoProibido"></p-checkbox>
+        <label for="chkFeriadoProibido" class="text-sm font-semibold text-muted-color flex align-items-center gap-1 cursor-pointer">
           Funcionamento Proibido
-          <span class="custom-tooltip" data-tooltip="Gera folga obrigatória para todos os colaboradores">
-            <app-icon name="info" [size]="14" color="#64748b"></app-icon>
-          </span>
+          <i class="pi pi-info-circle text-muted-color" [pTooltip]="'Gera folga obrigatória para todos os colaboradores'"></i>
         </label>
       </div>
     </div>
@@ -1585,7 +1562,7 @@
             </div>
 
             <button (click)="abrirModalTurnos()" class="p-button p-button-secondary p-button-outlined p-button-sm w-full">
-              <app-icon name="plus" [size]="16"></app-icon>
+              <ds-icon name="plus" [size]="16"></ds-icon>
               <span class="ml-1">Cadastrar Novo Horário ou Intervalo</span>
             </button>
           </div>
@@ -1744,7 +1721,7 @@
 
         <div class="search-input-wrapper flex-1 max-w-320">
           <span class="search-icon-left">
-            <app-icon name="search" [size]="16" color="#94a3b8"></app-icon>
+            <ds-icon name="search" [size]="16" color="#94a3b8"></ds-icon>
           </span>
           <input
             id="modalSearchInput"

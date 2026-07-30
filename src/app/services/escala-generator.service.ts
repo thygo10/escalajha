@@ -49,7 +49,8 @@ export class EscalaGeneratorService {
       mes: month,
       funcs: employees.map(f => ({ id: f.matricula_aleatoria, turno: f.turno_padrao, ativo: f.ativo, setor: f.setor })),
       feriados: options?.feriados || [],
-      turnos: options?.turnosConfigs || []
+      turnos: options?.turnosConfigs || [],
+      historico: options?.historicoMesAnterior || {}
     };
     return this._simpleHash(JSON.stringify(payload));
   }
@@ -100,11 +101,32 @@ export class EscalaGeneratorService {
       ativo: f.ativo ?? true
     }));
 
+    // Construir mapa de estados de transição a partir do histórico do mês anterior se não fornecido diretamente
+    let estadosTransicao = options?.estadosTransicao;
+    if (!estadosTransicao && options?.historicoMesAnterior) {
+      estadosTransicao = new Map();
+      for (const [mat, dias] of Object.entries(options.historicoMesAnterior)) {
+        let consec = 0;
+        for (let i = dias.length - 1; i >= 0; i--) {
+          const d = dias[i];
+          if (d === 'T' || d === 'TD' || d === 'TF') consec++;
+          else break;
+        }
+        estadosTransicao.set(mat, {
+          funcionarioId: mat,
+          domingosDescansoRestantes: 0,
+          grupoUltimoFeriadoTrabalhado: 'A',
+          diasConsecutivosAcumulados: consec
+        } as any);
+      }
+    }
+
     // Solver Options
     const solverOpts: SolverOptions = {
       year,
       month,
       minFuncionariosPorDia: options?.minFuncionariosPorDia,
+      estadosTransicao: estadosTransicao as any,
       feriados: (options?.feriados || []).map(fer => ({
         data: fer.data,
         nome: fer.nome,

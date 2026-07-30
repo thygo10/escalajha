@@ -387,7 +387,7 @@ describe('Suite 11: Hourly coverage', () => {
     });
 
     const presenca = calcularPresencaPorFaixaHoraria(result.entries, defaultTurnosConfigs, 10);
-    expect(presenca.length).toBe(16);
+    expect(presenca).toHaveLength(16);
     expect(presenca[0].horaStr).toBe('07:00');
   });
 });
@@ -477,7 +477,7 @@ describe('Suite 15: Open holiday distribution (TF eligibility)', () => {
     // July 2 is an open holiday — some should rest, not all TF
     const onHoliday = result.entries.filter(e => e.dias[2] === 'TF' || e.dias[2] === 'F');
     const restingOnHoliday = result.entries.filter(e => e.dias[2] === 'F');
-    expect(onHoliday.length).toBe(funcsCaixa.length);
+    expect(onHoliday).toHaveLength(funcsCaixa.length);
     expect(restingOnHoliday.length).toBeGreaterThan(0);
   });
 });
@@ -529,4 +529,31 @@ describe('Suite 17: Rest Day Spacing', () => {
     });
   });
 });
+
+// --------------------------------------------------------------------------
+// SUÍTE 18: Continuidade Transicional Inter-Meses (Julho -> Agosto)
+// --------------------------------------------------------------------------
+describe('Suite 18: Cross-month continuity (Julho -> Agosto)', () => {
+  it('deve atribuir folga no dia 1º de agosto para quem trabalhou os últimos 6 dias de julho', () => {
+    const funcsCaixa = INITIAL_FUNCIONARIOS.filter(f => f.setor === 'Frente de Caixa' && f.ativo);
+    
+    // Simular que o primeiro funcionário trabalhou os últimos 6 dias de julho (26 a 31 de julho)
+    const empsHistorico: Record<string, import('./schedule.types').TipoDia[]> = {
+      [funcsCaixa[0].matricula_aleatoria]: ['T', 'T', 'T', 'T', 'T', 'T']
+    };
+
+    const result = generateSchedule({
+      employees: funcsCaixa,
+      month: createYearMonth(2026, 8),
+      holidays: [],
+      minFuncionariosPorDia: 6,
+      historicoMesAnterior: empsHistorico
+    });
+
+    const emp1 = result.entries.find(e => e.matricula === funcsCaixa[0].matricula_aleatoria)!;
+    // Como emp1 trabalhou 6 dias seguidos no fim de julho, dia 1º de agosto DEVE ser folga
+    expect(isFolgaNormal(emp1.dias[1])).toBe(true);
+  });
+});
+
 

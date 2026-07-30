@@ -233,12 +233,13 @@ export class EscalaValidatorService {
 
             const folgasVoluntariasNoMes = Object.values(item.dias).filter(st => st === 'F' || st === 'FD').length;
             const domingosFolgaValCount = Object.values(item.dias).filter(st => st === 'FD').length;
-            const feriadosAbertosValCount = feriadosAbertos.size;
-            let maxPermitidoVoluntario = (domingosNoMesVal.length === 5 ? 6 : 5) + feriadosAbertosValCount;
+            let maxPermitidoVoluntario = (domingosNoMesVal.length === 5 ? 7 : 6) + feriadosFechadosVal.size;
             if (domingosFolgaValCount >= 3) {
-                maxPermitidoVoluntario = Math.max(maxPermitidoVoluntario, domingosFolgaValCount + 3);
+                maxPermitidoVoluntario = Math.max(maxPermitidoVoluntario, domingosFolgaValCount + 4);
             }
-
+            if (historicoMesAnterior && Object.hasOwn(historicoMesAnterior, item.matricula)) {
+                maxPermitidoVoluntario += 1;
+            }
             const minFolgasEsperadas = (domingosNoMesVal.length === 5) ? 5 : 4;
 
             if (folgasVoluntariasNoMes > maxPermitidoVoluntario) {

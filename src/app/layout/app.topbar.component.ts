@@ -4,16 +4,20 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { LayoutService } from './service/layout.service';
 import { SupabaseService } from '../services/supabase.service';
+import { SelectModule } from 'primeng/select';
+import { ButtonModule } from 'primeng/button';
+import { PopoverModule } from 'primeng/popover';
 
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SelectModule, ButtonModule, PopoverModule],
+
   template: `
     <div class="layout-topbar">
       <div class="layout-topbar-logo-container">
-        <button class="p-link layout-menu-button layout-topbar-action" (click)="layoutService.onMenuToggle()">
-          <i class="pi pi-bars"></i>
+        <button pButton type="button" class="p-button-text p-button-secondary p-button-rounded layout-topbar-action" (click)="layoutService.onMenuToggle()" title="Alternar Menu">
+          <i class="pi pi-bars" style="font-size: 1.25rem;"></i>
         </button>
         <a class="layout-topbar-logo" routerLink="/">
           <div class="brand-badge-box">
@@ -27,49 +31,73 @@ import { SupabaseService } from '../services/supabase.service';
       </div>
 
       <div class="layout-topbar-actions">
-        <div *ngIf="userLojas().length > 0" class="topbar-loja-select mr-3">
-          <select
-            [ngModel]="activeLoja()?.id"
-            (ngModelChange)="onLojaChange($event)"
-            class="p-inputtext p-component p-inputtext-sm font-semibold"
-            style="border-radius: 8px; font-size: 0.85rem; padding: 0.4rem 0.8rem;"
-          >
-            <option *ngFor="let l of userLojas()" [value]="l.id">
-              {{ l.nome }} ({{ l.codigo }})
-            </option>
-          </select>
-        </div>
-
-        <div class="layout-config-menu">
-          <button type="button" class="layout-topbar-action" (click)="layoutService.toggleDarkMode()" [title]="layoutService.isDarkTheme() ? 'Modo Claro' : 'Modo Escuro'">
-            <i [class]="layoutService.isDarkTheme() ? 'pi pi-sun' : 'pi pi-moon'"></i>
-          </button>
-          <button type="button" class="layout-topbar-action" (click)="layoutService.showConfigSidebar()" title="Configurações de Tema">
-            <i class="pi pi-palette"></i>
-          </button>
-        </div>
-
-        <button class="p-link layout-topbar-menu-button layout-topbar-action" (click)="toggleTopMenu()">
-          <i class="pi pi-ellipsis-v"></i>
-        </button>
-
         <div #topbarmenu class="layout-topbar-menu" [ngClass]="{ 'layout-topbar-menu-mobile-active': topMenuMobileActive }">
-          <div class="topbar-user-profile">
-            <div class="user-avatar">
-              <span>{{ userInitials() }}</span>
-            </div>
-            <div class="user-info">
-              <span class="user-name" [title]="currentUser()?.email || 'rhjoaohenriqueatacadista@gmail.com'">
-                {{ currentUser()?.email || 'Gestor RH JHA' }}
-              </span>
-              <span class="user-role">Supermercado JHA</span>
-            </div>
-          </div>
+          <div class="relative">
+            <button
+              type="button"
+              class="topbar-user-profile cursor-pointer border-none bg-transparent flex align-items-center gap-2 p-1 border-round hover:bg-100"
+              (click)="profilePopover.toggle($event)"
+              style="color: inherit; font-family: inherit;"
+            >
+              <div class="user-avatar">
+                <span>{{ userInitials() }}</span>
+              </div>
+              <div class="user-info text-left hidden md:flex flex-column">
+                <span class="user-name font-semibold text-sm text-color">{{ currentUser()?.email?.split('@')?.[0] || 'Gestor RH' }}</span>
+                <span class="user-role text-xs text-muted-color">Supermercado JHA</span>
+              </div>
+            </button>
 
-          <button type="button" class="layout-topbar-action logout-btn" (click)="logout()" title="Sair do Sistema">
-            <i class="pi pi-sign-out"></i>
-            <span>Sair</span>
-          </button>
+            <!-- Popover Menu NATIVO PrimeNG -->
+            <p-popover #profilePopover>
+              <div class="flex flex-column gap-3 w-16rem p-2">
+                <div class="flex align-items-center gap-3 pb-3 border-bottom-1 border-100">
+                  <div class="user-avatar" style="width: 2.5rem; height: 2.5rem;">
+                    <span>{{ userInitials() }}</span>
+                  </div>
+                  <div class="flex flex-column text-left">
+                    <span class="font-bold text-sm text-color">{{ currentUser()?.email?.split('@')?.[0] || 'Gestor RH' }}</span>
+                    <span class="text-xs text-muted-color" style="word-break: break-all;">{{ currentUser()?.email || 'rhjoaohenriqueatacadista@gmail.com' }}</span>
+                  </div>
+                </div>
+
+                <div class="flex flex-column gap-1 text-left">
+                  <span class="text-xs font-bold text-muted-color px-2 mb-1">LOJA ATIVA</span>
+                  @if (userLojas().length > 0) {
+                    <p-select
+                      [options]="userLojas()"
+                      [ngModel]="activeLoja()?.id"
+                      (ngModelChange)="onLojaChange($event)"
+                      optionLabel="nome"
+                      optionValue="id"
+                      styleClass="w-full"
+                    >
+                      <ng-template pTemplate="selectedItem" let-selectedOption>
+                        <span class="font-semibold text-sm">{{ selectedOption.nome }} ({{ selectedOption.codigo }})</span>
+                      </ng-template>
+                      <ng-template pTemplate="item" let-option>
+                        <span class="text-sm">{{ option.nome }} ({{ option.codigo }})</span>
+                      </ng-template>
+                    </p-select>
+                  } @else {
+                    <div class="flex align-items-center gap-2 p-2 border-round bg-50 border">
+                      <i class="pi pi-building text-primary"></i>
+                      <div class="flex flex-column">
+                        <span class="text-xs font-semibold text-color">{{ activeLoja()?.nome || 'Loja Principal' }}</span>
+                        <span class="text-muted-color" style="font-size: 10px;">Cód: {{ activeLoja()?.codigo || '002' }}</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <div class="flex flex-column gap-2 pt-2 border-top-1 border-100">
+                  <button pButton type="button" [icon]="layoutService.isDarkTheme() ? 'pi pi-sun' : 'pi pi-moon'" [label]="layoutService.isDarkTheme() ? 'Modo Claro' : 'Modo Escuro'" class="p-button-text p-button-secondary p-button-sm w-full text-left justify-content-start" (click)="layoutService.toggleDarkMode(); profilePopover.hide();"></button>
+                  <button pButton type="button" icon="pi pi-palette" label="Aparência" class="p-button-text p-button-secondary p-button-sm w-full text-left justify-content-start" (click)="layoutService.showConfigSidebar(); profilePopover.hide();"></button>
+                  <button pButton type="button" icon="pi pi-sign-out" label="Sair do Sistema" class="p-button-text p-button-danger p-button-sm w-full text-left justify-content-start" (click)="logout(); profilePopover.hide();"></button>
+                </div>
+              </div>
+            </p-popover>
+          </div>
         </div>
       </div>
     </div>
