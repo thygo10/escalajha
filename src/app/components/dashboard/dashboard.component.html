@@ -87,8 +87,22 @@
 
         <!-- Detalhamento por Setores: Quem Está de Folga Hoje -->
         <div class="clean-card">
-          <div class="card-section-header">
-            <h3>Folgas Hoje Por Setor ({{ dataAtualFormatted }})</h3>
+          <div class="card-section-header flex-between align-center flex-wrap gap-10">
+            <h3>Status da Equipe por Setor ({{ dataAtualFormatted() }})</h3>
+            <div class="flex-align-center gap-10 no-print">
+              <label for="diaDashboardSelect" class="text-sm font-weight-medium" style="color: #64748b;">Inspecionar Dia:</label>
+              <select
+                id="diaDashboardSelect"
+                [ngModel]="diaFiltroDashboard()"
+                (ngModelChange)="diaFiltroDashboard.set(+$event)"
+                style="padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.875rem; background: white; color: #1e293b; font-weight: 500;"
+              >
+                <option [value]="0">Automático (Dia {{ diaInspecionadoEfetivo() }})</option>
+                @for (d of diasDoMes(); track d) {
+                  <option [value]="d">Dia {{ d }} ({{ diasSemanaAbrevMap().get(d) }})</option>
+                }
+              </select>
+            </div>
           </div>
 
           @if (isLoading()) {
@@ -188,6 +202,18 @@
                   }
                 </select>
               </div>
+              <div class="input-col" style="max-width: 100px;">
+                <label for="minDiaInput" title="Mínimo de colaboradores trabalhando por dia útil">Mín. Dia:</label>
+                <input id="minDiaInput" type="number" min="1" [ngModel]="minFuncionariosPorDiaSetor()" (ngModelChange)="updateActiveSetorMinimums($event, minFuncionariosDomingoSetor(), minFuncionariosFeriadoSetor())" class="form-control text-center font-bold" />
+              </div>
+              <div class="input-col" style="max-width: 100px;">
+                <label for="minDomInput" title="Mínimo de colaboradores trabalhando nos domingos">Mín. Dom:</label>
+                <input id="minDomInput" type="number" min="1" [ngModel]="minFuncionariosDomingoSetor()" (ngModelChange)="updateActiveSetorMinimums(minFuncionariosPorDiaSetor(), $event, minFuncionariosFeriadoSetor())" class="form-control text-center font-bold" />
+              </div>
+              <div class="input-col" style="max-width: 100px;">
+                <label for="minFerInput" title="Mínimo de colaboradores trabalhando nos feriados abertos">Mín. Fer:</label>
+                <input id="minFerInput" type="number" min="1" [ngModel]="minFuncionariosFeriadoSetor()" (ngModelChange)="updateActiveSetorMinimums(minFuncionariosPorDiaSetor(), minFuncionariosDomingoSetor(), $event)" class="form-control text-center font-bold" />
+              </div>
             </div>
 
             <div class="escala-actions-group">
@@ -201,6 +227,10 @@
               </button>
               <button (click)="gerarNovaEscala()" class="btn-premium btn-primary-solid">
                 <span>Gerar Escala 6x1</span>
+              </button>
+              <button (click)="confirmarRegerarEscala()" class="btn-secondary-save" title="Regerar a escala para ver variações de rotação (solicita confirmação)">
+                <app-icon name="refresh-cw" [size]="16"></app-icon>
+                <span>Regerar Escala 🔄</span>
               </button>
               <button (click)="salvarEscala()" class="btn-secondary-save" [disabled]="saving()">
                 <span>{{ saving() ? 'Salvando...' : 'Salvar' }}</span>
@@ -1284,6 +1314,20 @@
         <label for="setorDescricaoInput" class="font-bold text-xs d-block mb-1">Descrição (Opcional)</label>
         <input id="setorDescricaoInput" type="text" [(ngModel)]="sectorModalForm.descricao" class="p-inputtext p-component w-full" placeholder="Ex: Recebimento de mercadorias" />
       </div>
+      <div class="form-row flex gap-3 mb-3">
+        <div class="form-group flex-1">
+          <label for="setorMinDiaInput" class="font-bold text-xs d-block mb-1">Mín. (Dias Úteis)</label>
+          <input id="setorMinDiaInput" type="number" min="1" [(ngModel)]="sectorModalForm.min_funcionarios_dia" class="p-inputtext p-component w-full" required />
+        </div>
+        <div class="form-group flex-1">
+          <label for="setorMinDomInput" class="font-bold text-xs d-block mb-1">Mín. (Domingos)</label>
+          <input id="setorMinDomInput" type="number" min="1" [(ngModel)]="sectorModalForm.min_funcionarios_domingo" class="p-inputtext p-component w-full" required />
+        </div>
+        <div class="form-group flex-1">
+          <label for="setorMinFerInput" class="font-bold text-xs d-block mb-1">Mín. (Feriados)</label>
+          <input id="setorMinFerInput" type="number" min="1" [(ngModel)]="sectorModalForm.min_funcionarios_feriado" class="p-inputtext p-component w-full" required />
+        </div>
+      </div>
     </div>
     <ng-template pTemplate="footer">
       <div class="flex-end gap-2">
@@ -1655,7 +1699,7 @@
     [visible]="setorDetalhamentoModal().visible"
     (onHide)="closeSetorDetalhamentoModal()"
     [modal]="true"
-    [header]="setorDetalhamentoData().setorNome + ' — Inspeção da Equipe (' + dataAtualFormatted + ')'"
+    [header]="setorDetalhamentoData().setorNome + ' — Inspeção da Equipe (' + dataAtualFormatted() + ')'"
     [style]="{ width: '90vw', maxWidth: '880px' }"
     [draggable]="false"
     [resizable]="false"

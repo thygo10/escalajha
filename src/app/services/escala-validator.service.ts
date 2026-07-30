@@ -13,16 +13,20 @@ export class EscalaValidatorService {
         minRequerido: number = 2,
         turnosConfigs: TurnoConfig[] = [],
         feriados: Feriado[] = [],
-        opcoesExtra?: Record<string, TipoDia[]> | { historicoMesAnterior?: Record<string, TipoDia[]>; minDomingo?: number }
+        opcoesExtra?: { historicoMesAnterior?: Record<string, TipoDia[]>; minDomingo?: number; minFeriado?: number; permitirDoisDiasConsecutivos?: boolean } | Record<string, TipoDia[]>
     ): ValidacaoEscalaResultado {
         let historicoMesAnterior: Record<string, TipoDia[]> | undefined;
         let minDomingo: number | undefined;
+        let minFeriado: number | undefined;
+        let permitirDoisDiasConsecutivos = false;
 
         if (opcoesExtra) {
-            if ('historicoMesAnterior' in opcoesExtra || 'minDomingo' in opcoesExtra) {
-                const opts = opcoesExtra as { historicoMesAnterior?: Record<string, TipoDia[]>; minDomingo?: number };
+            if ('historicoMesAnterior' in opcoesExtra || 'minDomingo' in opcoesExtra || 'minFeriado' in opcoesExtra || 'permitirDoisDiasConsecutivos' in opcoesExtra) {
+                const opts = opcoesExtra as { historicoMesAnterior?: Record<string, TipoDia[]>; minDomingo?: number; minFeriado?: number; permitirDoisDiasConsecutivos?: boolean };
                 historicoMesAnterior = opts.historicoMesAnterior;
                 minDomingo = opts.minDomingo;
+                minFeriado = opts.minFeriado;
+                permitirDoisDiasConsecutivos = opts.permitirDoisDiasConsecutivos ?? false;
             } else {
                 historicoMesAnterior = opcoesExtra as Record<string, TipoDia[]>;
             }
@@ -66,12 +70,15 @@ export class EscalaValidatorService {
 
         for (let dia = 1; dia <= totalDias; dia++) {
             const isDomingo = (new Date(ano, mes - 1, dia).getDay() === 0);
+            const isFeriadoAberto = feriadosAbertos.has(dia);
             const emTrabalho = itens.filter(i => i.dias[dia] === 'T' || i.dias[dia] === 'TD' || i.dias[dia] === 'TF').length;
             const emFolga = itens.filter(i => i.dias[dia] === 'F' || i.dias[dia] === 'FE' || i.dias[dia] === 'AF' || i.dias[dia] === 'FR').length;
             coberturaPorDia[dia] = emTrabalho;
 
             let minPermitidoDia = minEfetivoValida;
-            if (isDomingo) {
+            if (isFeriadoAberto && minFeriado !== undefined) {
+                minPermitidoDia = minFeriado;
+            } else if (isDomingo) {
                 minPermitidoDia = minDomingo ?? (eFrenteDeCaixa ? 3 : Math.max(1, Math.floor(itens.length / 3)));
             } else if (eAdm || itens.length <= 4) {
                 minPermitidoDia = 1;
@@ -256,6 +263,13 @@ export class EscalaValidatorService {
                 for (let d = d1 + 1; d < d2; d++) {
                     const st = item.dias[d];
                     if (st === 'T' || st === 'TD' || st === 'TF') diasTrabalhadosEfetivos++;
+                }
+                if (d2 - d1 === 1 && !permitirDoisDiasConsecutivos) {
+                    const isVol1 = st1 === 'F' || st1 === 'FD';
+                    const isVol2 = st2 === 'F' || st2 === 'FD';
+                    if (isVol1 && isVol2) {
+                        erros.push({ dia: d2, setor: item.setor, mensagem: `${item.nome}: Possui 2 folgas consecutivas não permitidas nos dias ${d1} e ${d2} (${st1} e ${st2}).`, tipo: 'ERRO_CLT' });
+                    }
                 }
                 const gapDias = d2 - d1 - 1;
                 if (gapDias > 0 && diasTrabalhadosEfetivos === 1) {

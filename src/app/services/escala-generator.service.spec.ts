@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { INITIAL_FUNCIONARIOS, INITIAL_FERIADOS } from '../models/mock-data';
 import { EscalaGeneratorService } from './escala-generator.service';
 import { EscalaValidatorService } from './escala-validator.service'; // 💡 Importando o Validador
-import { EscalaItem, Feriado, Funcionario } from '../models/types';
+import { EscalaItem, Feriado, Funcionario, TipoDia } from '../models/types';
 
 /**
  * Suíte de Testes Senior QA & Dev: EscalaGeneratorService
@@ -449,6 +449,27 @@ export function runEscalaGeneratorSpec(): void {
   const funcFerias = itensComFerias.find(i => i.matricula === funcsCaixa[0].matricula_aleatoria);
   assert.strictEqual(funcFerias?.dias[1], 'FR', 'Dia 1 do funcionário de férias deve ser marcado como FR');
   assert.strictEqual(funcFerias?.dias[10], 'FR', 'Dia 10 do funcionário de férias deve ser marcado como FR');
+
+  // Print Laísa July -> August transition
+  const laisaJulio = service.gerarEscalaMensal(funcsCaixa, 2026, 7, { feriados: INITIAL_FERIADOS });
+  const laisaJulioItem = laisaJulio.find(i => i.nome.includes('Laísa'));
+  const laisaJulioDiasArray: TipoDia[] = [];
+  for (let d = 1; d <= 31; d++) laisaJulioDiasArray.push(laisaJulioItem!.dias[d]);
+
+  const histJulio: Record<string, TipoDia[]> = {};
+  for (const item of laisaJulio) {
+    const arr: TipoDia[] = [];
+    for (let d = 1; d <= 31; d++) arr.push(item.dias[d]);
+    histJulio[item.matricula] = arr;
+  }
+
+  const laisaAgosto = service.gerarEscalaMensal(funcsCaixa, 2026, 8, {
+    feriados: INITIAL_FERIADOS,
+    historicoMesAnterior: histJulio
+  });
+  const laisaAgostoItem = laisaAgosto.find(i => i.nome.includes('Laísa'));
+
+  assert.strictEqual(laisaAgostoItem?.dias[1], 'F', 'Laísa deve ter folgar no dia 1 de Agosto após sequência de trabalho no fim de Julho');
 
   console.log('  ✅ Recursos avançados da Fase 2 (5x1, Interjornada 11h, Virada de Mês e Férias/AF) validados com sucesso!\n');
 

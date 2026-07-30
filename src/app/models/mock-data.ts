@@ -175,17 +175,17 @@ export const INITIAL_FUNCIONARIOS: Funcionario[] = [
 ];
 
 export const INITIAL_SETORES: Setor[] = [
-  { id: 's1', nome: 'Frente de Caixa', descricao: 'Operadores e fiscais de caixa' },
-  { id: 's2', nome: 'Reposição', descricao: 'Repositores de gôndolas e estoque' },
-  { id: 's3', nome: 'Assistente de Lanchonete', descricao: 'Atendimento e preparo na lanchonete' },
-  { id: 's4', nome: 'Açougue', descricao: 'Corte, preparo e atendimento do açougue' },
-  { id: 's5', nome: 'Padaria (Produção)', descricao: 'Produção e atendimento de panificação' },
-  { id: 's6', nome: 'Fiscal de Caixa', descricao: 'Supervisão e suporte aos caixas' },
-  { id: 's7', nome: 'Operador de Empilhadeira', descricao: 'Operação de empilhadeiras e logística alta' },
-  { id: 's8', nome: 'Higienização', descricao: 'Serviços gerais e zeladoria' },
-  { id: 's9', nome: 'Manutenção', descricao: 'TI, elétrica e infraestrutura predial' },
-  { id: 's10', nome: 'Depósito', descricao: 'Recebimento, conferência e armazenagem' },
-  { id: 's11', nome: 'ADM', descricao: 'Administração e suporte ao cliente' }
+  { id: 's1', nome: 'Frente de Caixa', descricao: 'Operadores e fiscais de caixa', min_funcionarios_dia: 6, min_funcionarios_domingo: 3, min_funcionarios_feriado: 3 },
+  { id: 's2', nome: 'Reposição', descricao: 'Repositores de gôndolas e estoque', min_funcionarios_dia: 2, min_funcionarios_domingo: 1, min_funcionarios_feriado: 1 },
+  { id: 's3', nome: 'Assistente de Lanchonete', descricao: 'Atendimento e preparo na lanchonete', min_funcionarios_dia: 2, min_funcionarios_domingo: 1, min_funcionarios_feriado: 1 },
+  { id: 's4', nome: 'Açougue', descricao: 'Corte, preparo e atendimento do açougue', min_funcionarios_dia: 2, min_funcionarios_domingo: 1, min_funcionarios_feriado: 1 },
+  { id: 's5', nome: 'Padaria (Produção)', descricao: 'Produção e atendimento de panificação', min_funcionarios_dia: 2, min_funcionarios_domingo: 1, min_funcionarios_feriado: 1 },
+  { id: 's6', nome: 'Fiscal de Caixa', descricao: 'Supervisão e suporte aos caixas', min_funcionarios_dia: 2, min_funcionarios_domingo: 1, min_funcionarios_feriado: 1 },
+  { id: 's7', nome: 'Operador de Empilhadeira', descricao: 'Operação de empilhadeiras e logística alta', min_funcionarios_dia: 1, min_funcionarios_domingo: 1, min_funcionarios_feriado: 1 },
+  { id: 's8', nome: 'Higienização', descricao: 'Serviços gerais e zeladoria', min_funcionarios_dia: 1, min_funcionarios_domingo: 1, min_funcionarios_feriado: 1 },
+  { id: 's9', nome: 'Manutenção', descricao: 'TI, elétrica e infraestrutura predial', min_funcionarios_dia: 1, min_funcionarios_domingo: 1, min_funcionarios_feriado: 1 },
+  { id: 's10', nome: 'Depósito', descricao: 'Recebimento, conferência e armazenagem', min_funcionarios_dia: 2, min_funcionarios_domingo: 1, min_funcionarios_feriado: 1 },
+  { id: 's11', nome: 'ADM', descricao: 'Administração e suporte ao cliente', min_funcionarios_dia: 1, min_funcionarios_domingo: 1, min_funcionarios_feriado: 1 }
 ];
 
 export const INITIAL_CARGOS: Cargo[] = [

@@ -15,6 +15,9 @@ export interface Setor {
   loja_id?: string;
   nome: string;
   descricao?: string;
+  min_funcionarios_dia?: number;
+  min_funcionarios_domingo?: number;
+  min_funcionarios_feriado?: number;
 }
 
 export interface Cargo {
@@ -59,6 +62,17 @@ export interface Escala {
     itens: EscalaItem[];
   };
   atualizado_em?: string;
+}
+
+export interface SaveEscalaResult {
+  ok: boolean;
+  persistedRemotely?: boolean;
+  pendingSync?: boolean;
+  source?: string;
+  success?: boolean;
+  data?: any;
+  error?: string;
+  mensagem?: string;
 }
 
 export interface UsuarioLojas {
@@ -115,77 +129,66 @@ export interface TurnoConfig {
   nome: string; // Ex: '08:00 às 17:00'
   entrada: string; // '08:00'
   saida: string; // '17:00'
-  intervaloMinutos: number; // Ex: 60 (1h)
-  cargaHorariaLiquidaMinutos: number; // Ex: 480 (8h)
-  excedeLimiteDiario?: boolean;
+  intervaloMinutos: number; // 60, 90, 120, etc.
+  cargaHorariaLiquidaMinutos: number; // Ex: 440m (7h 20m)
+  excedeLimiteDiario?: boolean; // flag se > 8h48m
 }
 
-export interface HorarioFuncionamentoPeriodo {
-  abertura: string; // Ex: '07:00' ou '08:00'
-  fechamento: string; // Ex: '21:30' ou '20:00'
+export interface ValidacaoItem {
+  tipo: string;
+  mensagem: string;
+  dia?: number;
+  setor?: string;
+  matricula?: string;
+  detalhes?: any;
 }
 
-export interface HorarioFuncionamento {
-  segundaASabado: HorarioFuncionamentoPeriodo;
-  domingoEFeriado: HorarioFuncionamentoPeriodo;
-}
-
-export interface ConfiguracaoCoberturaSetor {
-  minimoDiasUteis: number;
-  minimoDomingos: number;
-  minimoFeriados: number;
-  horarioFuncionamento?: HorarioFuncionamento;
-  espacamentoMinimoFolgasDias?: number; // Padrão: 4
-  espacamentoMaximoFolgasDias?: number; // Padrão: 6
+export interface ValidacaoEscalaResultado {
+  valida: boolean;
+  totalErros: number;
+  totalAlertas: number;
+  itensValidados: ValidacaoItem[];
+  coberturaPorDia?: Record<number, number>;
+  minimoRequerido?: number;
 }
 
 export type ModeloEscala = '6x1' | '5x1';
 
+export interface RegraConformidade {
+  id: string;
+  titulo: string;
+  descricao: string;
+  categoria: string;
+  nivel_hierarquia: number; // 0=Legal/Inviolável (Art 67/386), 1=CCT, 2=Empresarial
+  obrigatoria?: boolean;
+  fonte?: string;
+  valor?: any;
+  setor_aplicavel?: string;
+}
+
 export interface EstadoTransicao {
   matricula: string;
-  mes_origem: string; // 'YYYY-MM'
-  dias_trabalhados_fim_mes: number; // Sequência nos últimos dias do mês anterior
-  status_ultimo_domingo: 'TD' | 'FD';
-  domingos_consecutivos_trabalhados: number;
-  data_ultima_folga?: string; // 'YYYY-MM-DD'
+  ultimosDiasTrabalhadosConsecutivos: number;
+  dataUltimoDomingoTrabalhado?: string;
+  dataUltimoFeriadoTrabalhado?: string;
 }
 
 export interface EventoAfastamento {
-  id?: string;
+  id: string;
   matricula: string;
-  tipo: 'FERIAS' | 'ATESTADO' | 'LICENCA' | 'FOLGA_COMPENSATORIA';
+  tipo: 'FERIAS' | 'ATESTADO' | 'LICENCA';
   data_inicio: string; // 'YYYY-MM-DD'
   data_fim: string; // 'YYYY-MM-DD'
   observacao?: string;
 }
 
-export interface RegraConformidade {
-  id: string;
-  nivel_hierarquia: 0 | 1 | 2 | 3 | 4 | 5 | 6;
-  categoria: 'LEGAL' | 'CCT' | 'INTERNA_RH' | 'OPERACIONAL';
-  titulo: string;
-  descricao: string;
-  valor: any; // Número, booleano ou objeto configurável
-  setor_aplicavel: string; // 'TODOS' ou nome do setor
-  vigencia_inicio?: string;
-  vigencia_fim?: string;
-  aprovado_por_juridico?: boolean;
-  fonte?: string;
-}
-
-export interface LogAuditoria {
-  id?: string;
-  escala_id?: string;
-  loja_id: string;
-  usuario_email: string;
-  acao: 'GERACAO_AUTOMATICA' | 'EDICAO_MANUAL' | 'OVERRIDE_REGRA' | 'PUBLICACAO';
-  detalhes: string;
-  justificativa_override?: string;
-  criado_em: string;
+export interface HorarioFuncionamento {
+  segundaASabado: { abertura: string; fechamento: string };
+  domingoEFeriado: { abertura: string; fechamento: string };
 }
 
 export interface HorarioPresenca {
-  horaStr: string; // Ex: '07:00', '08:00', ..., '21:00'
+  horaStr: string; // '07:00', '08:00' ...
   quantidadeTrabalhando: number;
   funcionariosNomes: string[];
 }
@@ -195,40 +198,17 @@ export interface ResumoFuncionarioMetrics {
   nome: string;
   setor: string;
   cargo: string;
-  turno: string;
-  genero: 'M' | 'F';
+  turno?: string;
+  genero?: 'M' | 'F';
   totalFolgas: number;
-  domingosFolgados: number;
-  feriadosFolgados: number;
-  diasTrabalhados: number;
-  horasLiquidasMinutos: number;
-  horasLiquidasFormatted: string;
-  statusConformidade: 'OK' | 'ALERTA' | 'VIOLACAO';
-  alertas: string[];
+  domingosFolgados?: number;
+  feriadosFolgados?: number;
+  diasTrabalhados?: number;
+  horasLiquidasMinutos?: number;
+  horasLiquidasFormatted?: string;
+  statusConformidade?: 'OK' | 'ALERTA';
+  alertas?: string[];
+  totalDomingosTrabalhados?: number;
+  totalHorasLiquidas?: number;
+  mediaDiariaMinutos?: number;
 }
-
-export interface ValidacaoItem {
-  dia: number;
-  setor: string;
-  mensagem: string;
-  tipo: 'ERRO_COBERTURA' | 'ERRO_COBERTURA_CAIXA' | 'ERRO_COBERTURA_HORARIA' | 'ERRO_PADARIA_PRODUCAO' | 'ERRO_FOLGAS_MES' | 'ERRO_CLT' | 'ERRO_CLT_INTERJORNADA_11H' | 'ERRO_CARGA_HORARIA_MENSAL' | 'ERRO_STATUS_FERIADO' | 'ERRO_TRANSICAO_DOMINGO' | 'ALERTA_CARGA' | 'AVISO';
-}
-
-export interface ValidacaoEscalaResultado {
-  valida: boolean;
-  totalErros: number;
-  totalAlertas: number;
-  itensValidados: ValidacaoItem[];
-  coberturaPorDia: Record<number, number>; // dia -> quantidade de pessoas trabalhando
-  minimoRequerido: number;
-}
-
-export interface SaveEscalaResult {
-  ok: boolean;
-  persistedRemotely: boolean;
-  source: 'supabase' | 'local';
-  pendingSync: boolean;
-  error?: string;
-  data?: Escala;
-}
-

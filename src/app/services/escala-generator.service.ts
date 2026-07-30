@@ -23,6 +23,7 @@ export interface OpcionesGeracaoEscala {
   historicoMesAnterior?: Record<string, TipoDia[]>;
   turnosConfigs?: TurnoConfig[];
   horarioFuncionamento?: import('../models/types').HorarioFuncionamento;
+  seed?: number;
 }
 
 @Injectable({
@@ -120,7 +121,13 @@ export class EscalaGeneratorService {
         month,
         options?.minFuncionariosPorDia ?? 2,
         options?.turnosConfigs || [],
-        options?.feriados || []
+        options?.feriados || [],
+        {
+          historicoMesAnterior: options?.historicoMesAnterior,
+          minDomingo: options?.minFuncionariosDomingo,
+          minFeriado: options?.minFuncionariosFeriado,
+          permitirDoisDiasConsecutivos: options?.permitirDoisDiasConsecutivos
+        }
       );
       if (val.valida && val.totalErros === 0) {
         return solverResult.itens as EscalaItem[];
@@ -140,6 +147,7 @@ export class EscalaGeneratorService {
       modeloEscala: options?.modeloEscala,
       leaveEvents: (options?.afastamentos || []) as LeaveEvent[],
       historicoMesAnterior: options?.historicoMesAnterior,
+      seed: options?.seed
     });
     return result.entries as EscalaItem[];
   }

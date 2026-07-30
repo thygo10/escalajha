@@ -101,12 +101,12 @@ export class DashboardComponent implements OnInit {
   get selectedSetor() { return this._selectedSetor; }
   set selectedSetor(val: string) {
     this._selectedSetor = val;
+    const sObj = this.setores().find(s => s.nome === val);
     const lower = val.toLowerCase();
-    if (lower.includes('caixa') && !lower.includes('fiscal')) {
-      this.minFuncionariosPorDiaSetor.set(6);
-    } else {
-      this.minFuncionariosPorDiaSetor.set(2);
-    }
+    const isCaixa = lower.includes('caixa') && !lower.includes('fiscal');
+    this.minFuncionariosPorDiaSetor.set(sObj?.min_funcionarios_dia ?? (isCaixa ? 6 : 2));
+    this.minFuncionariosDomingoSetor.set(sObj?.min_funcionarios_domingo ?? (isCaixa ? 3 : 1));
+    this.minFuncionariosFeriadoSetor.set(sObj?.min_funcionarios_feriado ?? (isCaixa ? 3 : 1));
     this.triggerRecalculoEscala.update((v: number) => v + 1);
     this.onMonthOrSetorChange();
   }
@@ -131,15 +131,67 @@ export class DashboardComponent implements OnInit {
     const feriados = this.feriados();
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
     const funcsMap = new Map(funcs.map((f: Funcionario) => [f.matricula_aleatoria, f]));
+    const setoresMap = new Map(this.setores().map(s => [s.nome, s]));
 
-    const raw = this.generator.gerarEscalaMensalCached(funcs, ano, mes, {
-      permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
-      diasPermitidosFolga: this.diasPermitidosFolga(),
-      feriados,
-      turnosConfigs: this.turnosConfigs()
-    });
+    // Obter histórico do mês anterior para garantir continuidade ergonométrica (virada de mês CLT Art. 67)
+    const prevMes = mes === 1 ? 12 : mes - 1;
+    const prevAno = mes === 1 ? ano - 1 : ano;
+    const prevKey = `${this.activeLoja()?.id || 'loja-02-demo'}|${prevAno}-${String(prevMes).padStart(2, '0')}|${this.selectedSetor}`;
 
-    return raw.map(item => {
+    let historicoMesAnterior: Record<string, TipoDia[]> | undefined;
+    const draftPrev = this.draftEscalasMap().get(prevKey);
+    if (draftPrev && draftPrev.length > 0) {
+      historicoMesAnterior = {};
+      const daysCount = new Date(prevAno, prevMes, 0).getDate();
+      draftPrev.forEach(item => {
+        const diasArr: TipoDia[] = [];
+        for (let d = 1; d <= daysCount; d++) {
+          diasArr.push(item.dias[d] || 'T');
+        }
+        historicoMesAnterior![item.matricula] = diasArr;
+      });
+    }
+
+    // Agrupar colaboradores por setor e gerar para cada setor de acordo com suas regras de mínimo
+    const funcsPorSetorMap = new Map<string, Funcionario[]>();
+    for (const f of funcs) {
+      const sec = f.setor || 'Geral';
+      const list = funcsPorSetorMap.get(sec) || [];
+      list.push(f);
+      funcsPorSetorMap.set(sec, list);
+    }
+
+    const rawAll: EscalaItem[] = [];
+    const lojaId = this.activeLoja()?.id || 'loja-02-demo';
+
+    for (const [secName, secFuncs] of funcsPorSetorMap.entries()) {
+      const secKey = `${lojaId}|${this.selectedMonth}|${secName}`;
+      const draftSec = this.draftEscalasMap().get(secKey);
+      if (draftSec && draftSec.length > 0) {
+        rawAll.push(...draftSec);
+        continue;
+      }
+
+      const secObj = setoresMap.get(secName);
+      const isCaixa = secName.toLowerCase().includes('caixa') && !secName.toLowerCase().includes('fiscal');
+      const minDia = secObj?.min_funcionarios_dia ?? (isCaixa ? 6 : 2);
+      const minDom = secObj?.min_funcionarios_domingo ?? (isCaixa ? 3 : 1);
+      const minFer = secObj?.min_funcionarios_feriado ?? (isCaixa ? 3 : 1);
+
+      const rawSector = this.generator.gerarEscalaMensalCached(secFuncs, ano, mes, {
+        permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
+        diasPermitidosFolga: this.diasPermitidosFolga(),
+        feriados,
+        turnosConfigs: this.turnosConfigs(),
+        minFuncionariosPorDia: minDia,
+        minFuncionariosDomingo: minDom,
+        minFuncionariosFeriado: minFer,
+        historicoMesAnterior
+      });
+      rawAll.push(...rawSector);
+    }
+
+    return rawAll.map(item => {
       const f = funcsMap.get(item.matricula);
       if (!f) return item;
       return {
@@ -153,17 +205,30 @@ export class DashboardComponent implements OnInit {
     });
   });
 
+  diaFiltroDashboard = signal<number>(0);
+
+  diaInspecionadoEfetivo = computed(() => {
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    const totalDias = new Date(ano, mes, 0).getDate();
+    const isCurrentMonth = ano === this._hoje.getFullYear() && mes === (this._hoje.getMonth() + 1);
+    const userDia = this.diaFiltroDashboard();
+    if (userDia > 0 && userDia <= totalDias) return userDia;
+    return isCurrentMonth ? Math.min(this.hojeDia, totalDias) : 1;
+  });
+
   folgasPorSetorMap = computed(() => {
-    const hojeDia = this.hojeDia;
+    const diaAlvo = this.diaInspecionadoEfetivo();
     const itens = this.escalaCompletaDaLojaCache();
     const funcs = this.funcionarios();
     const map = new Map<string, Funcionario[]>();
     
     for (const setor of this.setores()) {
+      const funcDoSetor = this.funcionariosPorSetorMap().get(setor.nome) ?? [];
+      const matriculasSetor = new Set(funcDoSetor.map(f => f.matricula_aleatoria));
       const matriculasFolga = new Set(
         itens.filter((i: EscalaItem) => {
-          if (i.setor !== setor.nome) return false;
-          const s = i.dias[hojeDia];
+          if (!matriculasSetor.has(i.matricula)) return false;
+          const s = i.dias[diaAlvo];
           return s === 'F' || s === 'FD' || s === 'FE';
         }).map((i: EscalaItem) => i.matricula)
       );
@@ -202,6 +267,7 @@ export class DashboardComponent implements OnInit {
   // Mínimo por dia no setor ativo (Frente de Caixa exige 6 em dias úteis, 3 nos domingos)
   minFuncionariosPorDiaSetor = signal<number>(6);
   minFuncionariosDomingoSetor = signal<number>(3);
+  minFuncionariosFeriadoSetor = signal<number>(3);
 
   // Turnos & Intervalos Intrajornada
   isTurnosModalOpen = signal<boolean>(false);
@@ -342,7 +408,12 @@ export class DashboardComponent implements OnInit {
   novoGenero: 'M' | 'F' = 'F';
   novoSetoresCobertura = signal<string[]>([]);
 
-  dataAtualFormatted = this._hoje.toLocaleDateString('pt-BR');
+  dataAtualFormatted = computed(() => {
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    const d = this.diaInspecionadoEfetivo();
+    const dateObj = new Date(ano, mes - 1, d);
+    return dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', weekday: 'short' });
+  });
 
   // Modal de Detalhamento e Inspeção da Equipe por Setor
   setorDetalhamentoModal = signal<{
@@ -490,15 +561,17 @@ export class DashboardComponent implements OnInit {
   /** Mapa pré-computado: setorNome → % cobertura hoje */
   readonly coberturaPercentMap = computed(() => {
     const map = new Map<string, number>();
-    const hojeDia = this.hojeDia;
+    const diaAlvo = this.diaInspecionadoEfetivo();
     const escala = this.escalaCompletaDaLojaCache();
     const funcsPorSetor = this.funcionariosPorSetorMap();
     for (const setor of this.setores()) {
-      const total = (funcsPorSetor.get(setor.nome) ?? []).length;
+      const funcDoSetor = funcsPorSetor.get(setor.nome) ?? [];
+      const total = funcDoSetor.length;
       if (total === 0) { map.set(setor.nome, 100); continue; }
+      const matriculasSetor = new Set(funcDoSetor.map(f => f.matricula_aleatoria));
       const emFolga = escala.filter((i: EscalaItem) => {
-        if (i.setor !== setor.nome) return false;
-        const s = i.dias[hojeDia];
+        if (!matriculasSetor.has(i.matricula)) return false;
+        const s = i.dias[diaAlvo];
         return s === 'F' || s === 'FD' || s === 'FE';
       }).length;
       map.set(setor.nome, Math.round(((total - emFolga) / total) * 100));
@@ -573,8 +646,10 @@ export class DashboardComponent implements OnInit {
     ultimoFeriado: { dataStr: string; nome: string } | null;
   }>({ visible: false, func: null, ultimosDomingos: [], ultimoFeriado: null });
 
+  regeracaoSeedCounter = signal<number>(0);
+
   sectorModal = signal<{ visible: boolean; isEdit: boolean; setorId?: string }>({ visible: false, isEdit: false });
-  sectorModalForm = { nome: '', descricao: '' };
+  sectorModalForm = { nome: '', descricao: '', min_funcionarios_dia: 2, min_funcionarios_domingo: 1, min_funcionarios_feriado: 1 };
 
   cargoModal = signal<{ visible: boolean; isEdit: boolean; cargoId?: string }>({ visible: false, isEdit: false });
   cargoModalForm = { setor_nome: 'Frente de Caixa', nome: '', descricao: '' };
@@ -1301,6 +1376,7 @@ export class DashboardComponent implements OnInit {
       feriados: this.feriados(),
       minFuncionariosPorDia: minReq,
       minFuncionariosDomingo: this.minFuncionariosDomingoSetor(),
+      minFuncionariosFeriado: this.minFuncionariosFeriadoSetor(),
       horarioFuncionamento: {
         segundaASabado: this.horarioFuncionamentoSegSab(),
         domingoEFeriado: this.horarioFuncionamentoDomingo()
@@ -1316,8 +1392,18 @@ export class DashboardComponent implements OnInit {
     this.draftEscalasMap.update((map: Map<string, EscalaItem[]>) => {
       const newMap = new Map(map);
       newMap.set(key, gerada);
+
+      // Invalida o mês seguinte para garantir virada de mês (CLT Art 67) consistente
+      const nextMes = mes === 12 ? 1 : mes + 1;
+      const nextAno = mes === 12 ? ano + 1 : ano;
+      const nextKey = `${this.activeLoja()?.id || 'loja-02-demo'}|${nextAno}-${String(nextMes).padStart(2, '0')}|${this.selectedSetor}`;
+      newMap.delete(nextKey);
       return newMap;
     });
+
+    const nextMes = mes === 12 ? 1 : mes + 1;
+    const nextAno = mes === 12 ? ano + 1 : ano;
+    this.generator.invalidateCache(nextAno, nextMes);
 
     this.triggerRecalculoEscala.update((v: number) => v + 1); // Atualiza os computeds de cache
     this.toastService.success('Escala Gerada!', `Escala ${this.modeloEscalaAtivo()} calculada com garantia de ${minReq} colaboradores por dia.`);
@@ -1572,13 +1658,97 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  confirmarRegerarEscala() {
+    this.confirmModal.set({
+      visible: true,
+      title: 'Regerar Escala Operacional 🔄',
+      message: `Tem certeza que deseja regerar a escala do setor "${this.selectedSetor}" para o mês ${this.selectedMonth}? Quaisquer edições manuais ou rascunhos não salvos serão descartados e substituídos por uma nova rotação calculada.`,
+      confirmText: 'Sim, Regerar Escala',
+      cancelText: 'Cancelar',
+      onConfirm: () => this.regerarEscalaComVariacao()
+    });
+  }
+
+  regerarEscalaComVariacao() {
+    this.regeracaoSeedCounter.update(v => v + 1);
+    const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => (f.setor === this.selectedSetor || f.setores_cobertura?.includes(this.selectedSetor)) && f.ativo);
+    if (funcsDoSetor.length === 0) {
+      this.toastService.warning('Sem Colaboradores Ativos', `Nenhum colaborador ativo cadastrado para o setor "${this.selectedSetor}".`);
+      return;
+    }
+
+    const [ano, mes] = this.selectedMonth.split('-').map(Number);
+    this.generator.invalidateCache(ano, mes);
+
+    const gerada = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes, {
+      permitirDoisDiasConsecutivos: this.permitirDoisDiasConsecutivos(),
+      diasPermitidosFolga: this.diasPermitidosFolga(),
+      feriados: this.feriados(),
+      minFuncionariosPorDia: this.minFuncionariosPorDiaSetor(),
+      minFuncionariosDomingo: this.minFuncionariosDomingoSetor(),
+      minFuncionariosFeriado: this.minFuncionariosFeriadoSetor(),
+      horarioFuncionamento: {
+        segundaASabado: this.horarioFuncionamentoSegSab(),
+        domingoEFeriado: this.horarioFuncionamentoDomingo()
+      },
+      modeloEscala: this.modeloEscalaAtivo(),
+      turnosConfigs: this.turnosConfigs(),
+      regrasConformidade: this.regrasConformidade(),
+      seed: this.regeracaoSeedCounter()
+    });
+
+    this.escalaItens.set(gerada);
+    const key = `${this.activeLoja()?.id || 'loja-02-demo'}|${this.selectedMonth}|${this.selectedSetor}`;
+    this.draftEscalasMap.update((map: Map<string, EscalaItem[]>) => {
+      const newMap = new Map(map);
+      newMap.set(key, gerada);
+
+      // Invalida o mês seguinte para garantir virada de mês (CLT Art 67) consistente
+      const nextMes = mes === 12 ? 1 : mes + 1;
+      const nextAno = mes === 12 ? ano + 1 : ano;
+      const nextKey = `${this.activeLoja()?.id || 'loja-02-demo'}|${nextAno}-${String(nextMes).padStart(2, '0')}|${this.selectedSetor}`;
+      newMap.delete(nextKey);
+      return newMap;
+    });
+
+    const nextMes = mes === 12 ? 1 : mes + 1;
+    const nextAno = mes === 12 ? ano + 1 : ano;
+    this.generator.invalidateCache(nextAno, nextMes);
+
+    this.triggerRecalculoEscala.update((v: number) => v + 1);
+    this.toastService.success('Escala Regerada com Sucesso!', `Uma nova variação foi calculada. O histórico da virada de mês para o mês seguinte foi sincronizado.`);
+  }
+
+  updateActiveSetorMinimums(minDia: number, minDom: number, minFer?: number) {
+    this.minFuncionariosPorDiaSetor.set(minDia);
+    this.minFuncionariosDomingoSetor.set(minDom);
+    if (minFer !== undefined) this.minFuncionariosFeriadoSetor.set(minFer);
+
+    const ferVal = minFer ?? this.minFuncionariosFeriadoSetor();
+    this.setores.update(list => list.map(s => s.nome === this.selectedSetor ? {
+      ...s,
+      min_funcionarios_dia: minDia,
+      min_funcionarios_domingo: minDom,
+      min_funcionarios_feriado: ferVal
+    } : s));
+
+    this.triggerRecalculoEscala.update((v: number) => v + 1);
+  }
+
   openAddSetorModal() {
-    this.sectorModalForm = { nome: '', descricao: '' };
+    this.sectorModalForm = { nome: '', descricao: '', min_funcionarios_dia: 2, min_funcionarios_domingo: 1, min_funcionarios_feriado: 1 };
     this.sectorModal.set({ visible: true, isEdit: false });
   }
 
   openEditSetorModal(setor: Setor) {
-    this.sectorModalForm = { nome: setor.nome, descricao: setor.descricao || '' };
+    const isCaixa = setor.nome.toLowerCase().includes('caixa') && !setor.nome.toLowerCase().includes('fiscal');
+    this.sectorModalForm = {
+      nome: setor.nome,
+      descricao: setor.descricao || '',
+      min_funcionarios_dia: setor.min_funcionarios_dia ?? (isCaixa ? 6 : 2),
+      min_funcionarios_domingo: setor.min_funcionarios_domingo ?? (isCaixa ? 3 : 1),
+      min_funcionarios_feriado: setor.min_funcionarios_feriado ?? (isCaixa ? 3 : 1)
+    };
     this.sectorModal.set({ visible: true, isEdit: true, setorId: setor.id });
   }
 
@@ -1592,18 +1762,56 @@ export class DashboardComponent implements OnInit {
       return;
     }
     const sm = this.sectorModal();
+    const minDia = Number(this.sectorModalForm.min_funcionarios_dia) || 1;
+    const minDom = Number(this.sectorModalForm.min_funcionarios_domingo) || 1;
+    const minFer = Number(this.sectorModalForm.min_funcionarios_feriado) || 1;
+
     try {
       if (sm.isEdit && sm.setorId) {
-        await this.supabase.updateSetor(sm.setorId, this.sectorModalForm.nome.trim(), this.sectorModalForm.descricao.trim());
-        this.toastService.success('Setor Atualizado', `Setor "${this.sectorModalForm.nome}" alterado com sucesso.`);
+        await this.supabase.updateSetor(
+          sm.setorId,
+          this.sectorModalForm.nome.trim(),
+          this.sectorModalForm.descricao.trim(),
+          minDia,
+          minDom,
+          minFer
+        );
+        this.setores.update(list => list.map(s => s.id === sm.setorId ? {
+          ...s,
+          nome: this.sectorModalForm.nome.trim(),
+          descricao: this.sectorModalForm.descricao.trim(),
+          min_funcionarios_dia: minDia,
+          min_funcionarios_domingo: minDom,
+          min_funcionarios_feriado: minFer
+        } : s));
+        this.toastService.success('Setor Atualizado', `Setor "${this.sectorModalForm.nome}" alterado (Mín. dia: ${minDia}, Mín. dom: ${minDom}, Mín. feriado: ${minFer}).`);
       } else {
-        await this.supabase.addSetor(this.sectorModalForm.nome.trim(), this.sectorModalForm.descricao.trim());
+        const novo = await this.supabase.addSetor(
+          this.sectorModalForm.nome.trim(),
+          this.sectorModalForm.descricao.trim(),
+          minDia,
+          minDom,
+          minFer
+        );
+        this.setores.update(list => [...list, {
+          id: novo?.id || 'setor_' + Date.now(),
+          nome: this.sectorModalForm.nome.trim(),
+          descricao: this.sectorModalForm.descricao.trim(),
+          min_funcionarios_dia: minDia,
+          min_funcionarios_domingo: minDom,
+          min_funcionarios_feriado: minFer
+        }]);
         this.toastService.success('Novo Setor Criado', `Setor "${this.sectorModalForm.nome}" adicionado com sucesso.`);
       }
       this.closeSectorModal();
-      await this.refreshAllDataAndCaches();
+      if (this.selectedSetor === this.sectorModalForm.nome) {
+        this.minFuncionariosPorDiaSetor.set(minDia);
+        this.minFuncionariosDomingoSetor.set(minDom);
+        this.minFuncionariosFeriadoSetor.set(minFer);
+      }
+      this.triggerRecalculoEscala.update((v: number) => v + 1);
     } catch (err: any) {
-      this.toastService.error('Erro ao Salvar Setor', err.message);
+      this.toastService.error('Erro ao Salvar Setor', err.message || 'Falha ao salvar setor.');
     }
   }
 

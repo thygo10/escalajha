@@ -298,28 +298,34 @@ export class SupabaseService {
     return this.localSetores();
   }
 
-  async addSetor(nome: string, descricao?: string): Promise<Setor> {
+  async addSetor(nome: string, descricao?: string, min_funcionarios_dia?: number, min_funcionarios_domingo?: number, min_funcionarios_feriado?: number): Promise<Setor> {
+    const payload = { nome, descricao, min_funcionarios_dia, min_funcionarios_domingo, min_funcionarios_feriado };
     try {
-      const { data, error } = await this.client.from('setores').insert({ nome, descricao }).select().single();
-      if (!error && data) return data as Setor;
+      const { data, error } = await this.client.from('setores').insert(payload).select().single();
+      if (!error && data) {
+        const newSetor = data as Setor;
+        this.localSetores.update(list => [...list, newSetor]);
+        return newSetor;
+      }
     } catch (err) {
       console.error('Erro ao criar setor no Supabase:', err);
     }
 
-    const newSetor: Setor = { id: 'setor-' + Date.now(), nome, descricao };
+    const newSetor: Setor = { id: 'setor-' + Date.now(), ...payload };
     this.localSetores.update(list => [...list, newSetor]);
     return newSetor;
   }
 
-  async updateSetor(id: string, novoNome: string, descricao?: string): Promise<void> {
+  async updateSetor(id: string, novoNome: string, descricao?: string, min_funcionarios_dia?: number, min_funcionarios_domingo?: number, min_funcionarios_feriado?: number): Promise<void> {
+    const updates = { nome: novoNome, descricao, min_funcionarios_dia, min_funcionarios_domingo, min_funcionarios_feriado };
     try {
-      await this.client.from('setores').update({ nome: novoNome, descricao }).eq('id', id);
+      await this.client.from('setores').update(updates).eq('id', id);
     } catch (err) {
       console.error('Erro ao atualizar setor no Supabase:', err);
     }
 
     this.localSetores.update(list =>
-      list.map(s => s.id === id ? { ...s, nome: novoNome, descricao } : s)
+      list.map(s => s.id === id ? { ...s, ...updates } : s)
     );
   }
 
