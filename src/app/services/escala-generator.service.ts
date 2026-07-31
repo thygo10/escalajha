@@ -98,7 +98,10 @@ export class EscalaGeneratorService {
       cargo: f.cargo,
       turno: f.turno_padrao || '08:00 às 16:20',
       genero: f.genero || 'F',
-      ativo: f.ativo ?? true
+      ativo: f.ativo ?? true,
+      rodizio_id: f.rodizio_id,
+      grupo_domingo: f.grupo_domingo,
+      grupo_feriado: f.grupo_feriado
     }));
 
     // Construir mapa de estados de transição a partir do histórico do mês anterior se não fornecido diretamente
@@ -137,23 +140,10 @@ export class EscalaGeneratorService {
     const solverResult = solverEngine.solve(funcEntrada, solverOpts);
 
     if (solverResult.status !== 'NO_SOLUTION' && solverResult.itens.length > 0) {
-      const val = this.validatorService.validarEscala(
-        solverResult.itens as EscalaItem[],
-        year,
-        month,
-        options?.minFuncionariosPorDia ?? 2,
-        options?.turnosConfigs || [],
-        options?.feriados || [],
-        {
-          historicoMesAnterior: options?.historicoMesAnterior,
-          minDomingo: options?.minFuncionariosDomingo,
-          minFeriado: options?.minFuncionariosFeriado,
-          permitirDoisDiasConsecutivos: options?.permitirDoisDiasConsecutivos
-        }
-      );
-      if (val.valida && val.totalErros === 0) {
-        return solverResult.itens as EscalaItem[];
-      }
+      // Arquitetura v5.1: Manter o resultado do CSP Solver para renderização no dashboard.
+      // Erros e alertas de validação serão apresentados no painel visual para o gestor ajustar,
+      // eliminando o descarte para escala em branco.
+      return solverResult.itens as EscalaItem[];
     }
 
     // Fallback para o gerador de segurança comprovado generateSchedule
@@ -172,6 +162,14 @@ export class EscalaGeneratorService {
       seed: options?.seed
     });
     return result.entries as EscalaItem[];
+  }
+
+  calcularHashFeriados(feriados: Feriado[], ano: number, mes: number): string {
+    const feriadosMes = feriados.filter(f => {
+      const parts = f.data.split('-');
+      return Number(parts[0]) === ano && Number(parts[1]) === mes;
+    }).sort((a, b) => a.data.localeCompare(b.data));
+    return this._simpleHash(JSON.stringify(feriadosMes));
   }
 
   // -------------------------------------------------------------------------

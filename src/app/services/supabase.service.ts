@@ -215,6 +215,9 @@ export class SupabaseService {
       turno_padrao: func.turno_padrao,
       genero: func.genero || 'F',
       ativo: true,
+      rodizio_id: func.rodizio_id || 'rod_normal_1x2',
+      grupo_domingo: func.grupo_domingo || 'A',
+      grupo_feriado: func.grupo_feriado || 'A',
       setores_cobertura: func.setores_cobertura || []
     };
 
@@ -266,6 +269,9 @@ export class SupabaseService {
           cargo: func.cargo,
           turno_padrao: func.turno_padrao,
           ativo: func.ativo,
+          rodizio_id: func.rodizio_id,
+          grupo_domingo: func.grupo_domingo,
+          grupo_feriado: func.grupo_feriado,
           setores_cobertura: func.setores_cobertura || []
         })
         .eq('id', func.id)

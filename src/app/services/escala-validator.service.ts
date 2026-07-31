@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { EscalaItem, Feriado, ValidacaoEscalaResultado, ValidacaoItem, TurnoConfig, HorarioPresenca, ResumoFuncionarioMetrics, TipoDia, Funcionario } from '../models/types';
+import { EscalaItem, Feriado, ValidacaoEscalaResultado, ValidacaoItem, TurnoConfig, HorarioPresenca, ResumoFuncionarioMetrics, TipoDia, Funcionario, ValidationSeverity } from '../models/types';
 
 @Injectable({
     providedIn: 'root'
@@ -87,13 +87,13 @@ export class EscalaValidatorService {
             if (feriadosFechadosVal.has(dia)) continue;
 
             if (emTrabalho === 0 && itens.length >= 2) {
-                erros.push({ dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: COBERTURA ZERO! Todos os colaboradores estão de folga.`, tipo: 'ERRO_COBERTURA' });
+                erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: COBERTURA ZERO! Todos os colaboradores estão de folga.`, tipo: 'ERRO_COBERTURA' });
             } else if (eFrenteDeCaixa && emTrabalho < 6 && itens.length >= 6) {
-                erros.push({ dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Frente de Caixa possui apenas ${emTrabalho} operador(es) trabalhando. Mínimo OBRIGATÓRIO: 6.`, tipo: 'ERRO_COBERTURA_CAIXA' });
+                erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Frente de Caixa possui apenas ${emTrabalho} operador(es) trabalhando. Mínimo OBRIGATÓRIO: 6.`, tipo: 'ERRO_COBERTURA_CAIXA' });
             } else if (eFiscalDeCaixa && isDomingo && emTrabalho !== 2 && itens.length >= 2) {
-                erros.push({ dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Fiscal de Caixa no domingo exige EXATAMENTE 2 fiscais (1 dupla trabalhando, 1 dupla folgando). Encontrado(s): ${emTrabalho}.`, tipo: 'ERRO_COBERTURA' });
+                erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Fiscal de Caixa no domingo exige EXATAMENTE 2 fiscais (1 dupla trabalhando, 1 dupla folgando). Encontrado(s): ${emTrabalho}.`, tipo: 'ERRO_COBERTURA' });
             } else if (emTrabalho < minPermitidoDia && itens.length >= 2 && itens.length >= minEfetivoValida) {
-                erros.push({ dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Apenas ${emTrabalho} colaborador(es) trabalhando. Mínimo exigido: ${minPermitidoDia}.`, tipo: 'ERRO_COBERTURA' });
+                erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Apenas ${emTrabalho} colaborador(es) trabalhando. Mínimo exigido: ${minPermitidoDia}.`, tipo: 'ERRO_COBERTURA' });
             }
 
             const maxFolgasPadariaPermitido = Math.max(1, Math.ceil(itens.length / 6));
@@ -105,7 +105,7 @@ export class EscalaValidatorService {
                 }).length;
 
                 if (emFolga - folgasInviolaveis > maxFolgasPadariaPermitido) {
-                    erros.push({ dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Padaria possui ${emFolga} colaboradores de folga (${folgasInviolaveis} por trava CLT). Permitido no máximo ${maxFolgasPadariaPermitido} pessoa(s) de folga por dia na produção.`, tipo: 'ERRO_PADARIA_PRODUCAO' });
+                    erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Padaria possui ${emFolga} colaboradores de folga (${folgasInviolaveis} por trava CLT). Permitido no máximo ${maxFolgasPadariaPermitido} pessoa(s) de folga por dia na produção.`, tipo: 'ERRO_PADARIA_PRODUCAO' });
                 }
             }
 
@@ -118,7 +118,6 @@ export class EscalaValidatorService {
                         const hNum = Number.parseInt(faixa.horaStr.split(':')[0], 10);
                         if (hNum >= hIni && hNum < hFim) {
                             const isCritica = hNum < 9 || hNum === 11 || hNum === 12;
-                            // On Sunday opening (08:00) and lunch window (11:00-12:30), 1T:2F rotation yields 3-4 active operators
                             const isSundayWindow = isDomingo && (hNum === 8 || hNum === 11 || hNum === 12);
                             let minReqHora = 6;
                             if (isSundayWindow) {
@@ -127,7 +126,7 @@ export class EscalaValidatorService {
                                 minReqHora = 5;
                             }
                             if (faixa.quantidadeTrabalhando < minReqHora) {
-                                erros.push({ dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Cobertura horária insuficiente às ${faixa.horaStr} (${faixa.quantidadeTrabalhando} colaborador(es) trabalhando). Mínimo exigido: ${minReqHora}.`, tipo: 'ERRO_COBERTURA_HORARIA' });
+                                erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Cobertura horária insuficiente às ${faixa.horaStr} (${faixa.quantidadeTrabalhando} colaborador(es) trabalhando). Mínimo exigido: ${minReqHora}.`, tipo: 'ERRO_COBERTURA_HORARIA' });
                                 break;
                             }
                         }
@@ -158,25 +157,25 @@ export class EscalaValidatorService {
                 if (st === 'F' || st === 'FD' || st === 'FE' || st === 'AF' || st === 'FR') totalFolgasNoMes++;
 
                 if (feriadosAbertos.has(dia) && st === 'T') {
-                    erros.push({ dia, setor: item.setor, mensagem: `${item.nome}: Trabalhou no feriado (Dia ${dia}), mas o status está como 'T' comum em vez de 'TF'.`, tipo: 'ERRO_STATUS_FERIADO' });
+                    erros.push({ severidade: ValidationSeverity.WARNING, dia, setor: item.setor, mensagem: `${item.nome}: Trabalhou no feriado (Dia ${dia}), mas o status está como 'T' comum em vez de 'TF'.`, tipo: 'ERRO_STATUS_FERIADO' });
                 }
 
                 if (st === 'T' || st === 'TD' || st === 'TF') {
                     consecutivos++;
                     if (consecutivos > 6) {
-                        erros.push({ dia, setor: item.setor, mensagem: `${item.nome}: Trabalhou mais de 6 dias consecutivos (Dia ${dia}). Violação CLT Art. 67.`, tipo: 'ERRO_CLT' });
+                        erros.push({ severidade: ValidationSeverity.FATAL, dia, setor: item.setor, mensagem: `${item.nome}: Trabalhou mais de 6 dias consecutivos (Dia ${dia}). Violação CLT Art. 67.`, tipo: 'ERRO_CLT' });
                     }
 
                     if (isDom) {
                         domingosSeguidosGeral++;
                         if (!eExcecaoDomingo) {
                             if (domingosSeguidosGeral >= 2) {
-                                erros.push({ dia, setor: item.setor, mensagem: `${item.nome}: Trabalhou 2 domingos seguidos (Dia ${dia}). Regra do setor exige 1 domingo trabalhado para 2 folgas (1T:2F).`, tipo: 'ERRO_CLT' });
+                                erros.push({ severidade: ValidationSeverity.FATAL, dia, setor: item.setor, mensagem: `${item.nome}: Trabalhou 2 domingos seguidos (Dia ${dia}). Regra do setor exige 1 domingo trabalhado para 2 folgas (1T:2F).`, tipo: 'ERRO_CLT' });
                             }
                         } else if (item.genero === 'F') {
                             domingosSeguidosFeminino++;
                             if (domingosSeguidosFeminino >= 2) {
-                                erros.push({ dia, setor: item.setor, mensagem: `${item.nome} (Feminino - ${item.setor}): Trabalhou 2 domingos seguidos (Dia ${dia}). Violação CLT Art. 386.`, tipo: 'ERRO_CLT' });
+                                erros.push({ severidade: ValidationSeverity.FATAL, dia, setor: item.setor, mensagem: `${item.nome} (Feminino - ${item.setor}): Trabalhou 2 domingos seguidos (Dia ${dia}). Violação CLT Art. 386.`, tipo: 'ERRO_CLT' });
                             }
                         }
                     }
@@ -201,7 +200,7 @@ export class EscalaValidatorService {
                     const descansoMin = (24 * 60 - tHoje.saidaMin) + tAmanha.entradaMin;
 
                     if (descansoMin < 11 * 60) {
-                        erros.push({ dia: dia + 1, setor: item.setor, mensagem: `${item.nome}: Intervalo interjornada entre o dia ${dia} e o dia ${dia + 1} foi de apenas ${(descansoMin / 60).toFixed(1)}h. Mínimo legal exigido (CLT Art. 66): 11h.`, tipo: 'ERRO_CLT_INTERJORNADA_11H' });
+                        erros.push({ severidade: ValidationSeverity.FATAL, dia: dia + 1, setor: item.setor, mensagem: `${item.nome}: Intervalo interjornada entre o dia ${dia} e o dia ${dia + 1} foi de apenas ${(descansoMin / 60).toFixed(1)}h. Mínimo legal exigido (CLT Art. 66): 11h.`, tipo: 'ERRO_CLT_INTERJORNADA_11H' });
                     }
                 }
             }
@@ -225,7 +224,7 @@ export class EscalaValidatorService {
                             }
                         }
                         if (!folgaIntermediaria) {
-                            erros.push({ dia: dDom, setor: item.setor, mensagem: `${item.nome}: Trabalhou 7 dias seguidos entre o Domingo Folgado (Dia ${domAnterior}) e o Domingo Trabalhado (Dia ${dDom}). Violação da Trava FD->TD (Art. 67).`, tipo: 'ERRO_TRANSICAO_DOMINGO' });
+                            erros.push({ severidade: ValidationSeverity.FATAL, dia: dDom, setor: item.setor, mensagem: `${item.nome}: Trabalhou 7 dias seguidos entre o Domingo Folgado (Dia ${domAnterior}) e o Domingo Trabalhado (Dia ${dDom}). Violação da Trava FD->TD (Art. 67).`, tipo: 'ERRO_TRANSICAO_DOMINGO' });
                         }
                     }
                 }
@@ -243,9 +242,9 @@ export class EscalaValidatorService {
             const minFolgasEsperadas = (domingosNoMesVal.length === 5) ? 5 : 4;
 
             if (folgasVoluntariasNoMes > maxPermitidoVoluntario) {
-                erros.push({ dia: 1, setor: item.setor, mensagem: `${item.nome}: Excede o limite de folgas no mês (${folgasVoluntariasNoMes} folgas). Máximo permitido: ${maxPermitidoVoluntario} folgas.`, tipo: 'ERRO_FOLGAS_MES' });
+                erros.push({ severidade: ValidationSeverity.ERROR, dia: 1, setor: item.setor, mensagem: `${item.nome}: Excede o limite de folgas no mês (${folgasVoluntariasNoMes} folgas). Máximo permitido: ${maxPermitidoVoluntario} folgas.`, tipo: 'ERRO_FOLGAS_MES' });
             } else if (totalFolgasNoMes < minFolgasEsperadas && totalDias >= 28) {
-                erros.push({ dia: 1, setor: item.setor, mensagem: `${item.nome}: Possui apenas ${totalFolgasNoMes} folga(s) no mês. Esperado no mínimo: ${minFolgasEsperadas} folgas (mês de ${domingosNoMesVal.length} domingos).`, tipo: 'ERRO_FOLGAS_MES' });
+                erros.push({ severidade: ValidationSeverity.ERROR, dia: 1, setor: item.setor, mensagem: `${item.nome}: Possui apenas ${totalFolgasNoMes} folga(s) no mês. Esperado no mínimo: ${minFolgasEsperadas} folgas (mês de ${domingosNoMesVal.length} domingos).`, tipo: 'ERRO_FOLGAS_MES' });
             }
 
             const diasFolgaOrd = Object.entries(item.dias)
@@ -253,53 +252,56 @@ export class EscalaValidatorService {
                 .map(([d]) => Number(d))
                 .sort((a, b) => a - b);
 
+            const isEstrutural = (s: TipoDia) => s === 'FD' || s === 'FE' || s === 'AF' || s === 'FR';
+
             for (let i = 0; i < diasFolgaOrd.length - 1; i++) {
                 const d1 = diasFolgaOrd[i];
                 const d2 = diasFolgaOrd[i + 1];
-                // Exempt picada when both ends are calendar anchors (FD/FE, not voluntary F)
                 const st1 = item.dias[d1];
                 const st2 = item.dias[d2];
-                if (st1 !== 'F' && st2 !== 'F') continue;
+
+                // Isentar folga picada quando ao menos uma das pontas for folga estrutural
+                if (isEstrutural(st1) || isEstrutural(st2)) continue;
+
                 let diasTrabalhadosEfetivos = 0;
                 for (let d = d1 + 1; d < d2; d++) {
                     const st = item.dias[d];
                     if (st === 'T' || st === 'TD' || st === 'TF') diasTrabalhadosEfetivos++;
                 }
                 if (d2 - d1 === 1 && !permitirDoisDiasConsecutivos) {
-                    const isVol1 = st1 === 'F' || st1 === 'FD';
-                    const isVol2 = st2 === 'F' || st2 === 'FD';
-                    if (isVol1 && isVol2) {
-                        erros.push({ dia: d2, setor: item.setor, mensagem: `${item.nome}: Possui 2 folgas consecutivas não permitidas nos dias ${d1} e ${d2} (${st1} e ${st2}).`, tipo: 'ERRO_CLT' });
+                    if (st1 === 'F' && st2 === 'F') {
+                        erros.push({ severidade: ValidationSeverity.FATAL, dia: d2, setor: item.setor, mensagem: `${item.nome}: Possui 2 folgas consecutivas não permitidas nos dias ${d1} e ${d2} (${st1} e ${st2}).`, tipo: 'ERRO_CLT' });
                     }
                 }
                 const gapDias = d2 - d1 - 1;
                 if (gapDias > 0 && diasTrabalhadosEfetivos === 1) {
-                    erros.push({ dia: d2, setor: item.setor, mensagem: `${item.nome}: Espaçamento irregular ("Folga Picada") entre o dia ${d1} e o dia ${d2} (apenas 1 dia trabalhado em intervalo de 6x1).`, tipo: 'ERRO_CLT' });
+                    erros.push({ severidade: ValidationSeverity.FATAL, dia: d2, setor: item.setor, mensagem: `${item.nome}: Espaçamento irregular ("Folga Picada") entre o dia ${d1} e o dia ${d2} (apenas 1 dia trabalhado em intervalo de 6x1).`, tipo: 'ERRO_CLT' });
                 }
             }
 
             if (turnosConfigs.length > 0) {
                 const tConf = turnosConfigs.find(tc => tc.nome === item.turno);
                 if (tConf?.excedeLimiteDiario) {
-                    erros.push({ dia: 1, setor: item.setor, mensagem: `${item.nome}: Turno "${item.turno}" excede a carga horária diária padrão (${(tConf.cargaHorariaLiquidaMinutos / 60).toFixed(1)}h líquidos).`, tipo: 'ALERTA_CARGA' });
+                    erros.push({ severidade: ValidationSeverity.WARNING, dia: 1, setor: item.setor, mensagem: `${item.nome}: Turno "${item.turno}" excede a carga horária diária padrão (${(tConf.cargaHorariaLiquidaMinutos / 60).toFixed(1)}h líquidos).`, tipo: 'ALERTA_CARGA' });
                 }
             }
         });
 
         const totalErros = erros.filter(e =>
-            e.tipo === 'ERRO_COBERTURA' ||
-            e.tipo === 'ERRO_COBERTURA_CAIXA' ||
-            e.tipo === 'ERRO_COBERTURA_HORARIA' ||
-            e.tipo === 'ERRO_PADARIA_PRODUCAO' ||
-            e.tipo === 'ERRO_FOLGAS_MES' ||
-            e.tipo === 'ERRO_CLT' ||
-            e.tipo === 'ERRO_CLT_INTERJORNADA_11H' ||
-            e.tipo === 'ERRO_CARGA_HORARIA_MENSAL'
+            e.severidade === ValidationSeverity.FATAL || e.severidade === ValidationSeverity.ERROR
         ).length;
-        const totalAlertas = erros.filter(e => e.tipo === 'ALERTA_CARGA' || e.tipo === 'AVISO').length;
+        const totalAlertas = erros.filter(e => e.severidade === ValidationSeverity.WARNING || e.severidade === ValidationSeverity.INFO).length;
 
-        return { valida: totalErros === 0, totalErros, totalAlertas, itensValidados: erros, coberturaPorDia, minimoRequerido: minEfetivoValida };
+        return {
+            valida: totalErros === 0,
+            totalErros,
+            totalAlertas,
+            itensValidados: erros,
+            coberturaPorDia,
+            minimoRequerido: minEfetivoValida
+        };
     }
+
 
     calcularCargaHorariaLiquida(entrada: string, saida: string, intervaloMinutos: number): { minutos: number; horasFormatted: string; excedeLimite: boolean } {
         const [hEnt, mEnt] = entrada.split(':').map(Number);

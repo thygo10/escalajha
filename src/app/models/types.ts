@@ -15,6 +15,7 @@ export interface Setor {
   loja_id?: string;
   nome: string;
   descricao?: string;
+  rodizio_id?: string; // ID da regra de rodízio padrão do setor
   min_funcionarios_dia?: number;
   min_funcionarios_domingo?: number;
   min_funcionarios_feriado?: number;
@@ -37,10 +38,76 @@ export interface Funcionario {
   turno_padrao: string;
   genero: 'M' | 'F'; // Gênero obrigatório
   ativo: boolean; // Soft delete for CLT/LGPD legal compliance
+  rodizio_id?: string; // ID do Rodízio Específico (opcional, fallback pro Setor)
+  grupo_domingo?: string; // Código dinâmico: 'A', 'B', 'C', 'D'...
+  grupo_feriado?: string; // Código dinâmico: 'A', 'B'...
   setores_cobertura?: string[]; // Setores secundários para cobertura de folga / função multisetor
 }
 
 export type TipoDia = 'T' | 'TD' | 'TF' | 'F' | 'FD' | 'FE' | 'AF' | 'FR';
+
+export type StatusEscala = 'ATUAL' | 'DESATUALIZADA' | 'PRECISA_RECALCULAR' | 'VALIDADA';
+
+export enum ValidationSeverity {
+  INFO = 'INFO',
+  WARNING = 'WARNING',
+  ERROR = 'ERROR',
+  FATAL = 'FATAL'
+}
+
+export interface RodizioGrupo {
+  id: string;
+  rodizio_id: string;
+  codigo: string; // 'A', 'B', 'C', 'D'...
+  ordem: number;
+  descricao?: string;
+}
+
+export interface Rodizio {
+  id: string;
+  nome: string;
+  versao: number;              // Ex: 1, 2...
+  inicio_vigencia: string;     // 'YYYY-MM-DD'
+  fim_vigencia?: string;        // 'YYYY-MM-DD' ou null (vigente)
+  domingos_trabalhados: number; 
+  domingos_folga: number;       
+  quantidade_grupos: number;   
+  usa_grupo: boolean;
+  grupos?: RodizioGrupo[];
+  descricao?: string;
+}
+
+export interface FuncionarioRodizioVigencia {
+  id: string;
+  funcionario_id: string;
+  rodizio_id: string;
+  grupo_id?: string;           // Código do grupo
+  inicio_vigencia: string;     // 'YYYY-MM-DD'
+  fim_vigencia?: string;        // 'YYYY-MM-DD' ou null
+}
+
+export interface FuncionarioEstadoRotacao {
+  id?: string;
+  funcionario_id: string;
+  mes_referencia: string; // 'YYYY-MM-01'
+  dias_consecutivos_acumulados: number;
+  domingos_pendentes: number;
+  ultimo_domingo_trabalhado?: string; 
+  ultimo_feriado_trabalhado?: string; 
+  atualizado_em?: string;
+}
+
+export interface EscalaEvento {
+  id?: string;
+  escala_id?: string;
+  loja_id: string;
+  mes_referencia: string;
+  setor: string;
+  tipo_evento: 'CRIADA' | 'VALIDADA' | 'RECALCULADA' | 'FERIADO_ALTERADO' | 'RODIZIO_ALTERADO' | 'CONFLITO_CONCORRENCIA';
+  usuario_id?: string;
+  detalhes?: any;
+  criado_em?: string;
+}
 
 export interface EscalaItem {
   matricula: string;
@@ -56,10 +123,15 @@ export interface Escala {
   loja_id: string;
   mes_referencia: string; // 'YYYY-MM-01'
   setor: string;
+  feriados_hash?: string;
+  regras_hash?: string;
+  versao_concorrencia?: number; // Para Controle de Concorrência Otimista (OCC)
+  status?: StatusEscala;
   dados: {
     ano: number;
     mes: number;
     itens: EscalaItem[];
+    historico_carry_over?: Record<string, FuncionarioEstadoRotacao>;
   };
   atualizado_em?: string;
 }
@@ -68,6 +140,7 @@ export interface SaveEscalaResult {
   ok: boolean;
   persistedRemotely?: boolean;
   pendingSync?: boolean;
+  conflitoConcorrencia?: boolean;
   source?: string;
   success?: boolean;
   data?: any;
@@ -135,6 +208,7 @@ export interface TurnoConfig {
 }
 
 export interface ValidacaoItem {
+  severidade?: ValidationSeverity;
   tipo: string;
   mensagem: string;
   dia?: number;
@@ -212,3 +286,4 @@ export interface ResumoFuncionarioMetrics {
   totalHorasLiquidas?: number;
   mediaDiariaMinutos?: number;
 }
+

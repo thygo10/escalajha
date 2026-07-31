@@ -24,6 +24,9 @@ export interface FuncionarioEntrada {
   turno: string;
   genero: 'M' | 'F';
   ativo: boolean;
+  rodizio_id?: string;
+  grupo_domingo?: string;
+  grupo_feriado?: string;
 }
 
 export class CSPSolverEngine {
@@ -57,19 +60,32 @@ export class CSPSolverEngine {
     const explicacoes: Record<string, Record<number, string>> = {};
     let totalNosExplorados = 0;
 
-    // Mapa de feriados: dia -> nome
-    const feriadosMap = new Map<number, string>();
+    // Mapa de feriados: dia -> { nome, index }
+    const feriadosMap = new Map<number, { nome: string; index: number }>();
+    let feriadoSeqCount = 0;
     if (options.feriados) {
       for (const fer of options.feriados) {
         const d = new Date(fer.data + 'T00:00:00');
         if (d.getFullYear() === year && d.getMonth() + 1 === month) {
-          feriadosMap.set(d.getDate(), fer.nome);
+          feriadoSeqCount++;
+          feriadosMap.set(d.getDate(), { nome: fer.nome, index: feriadoSeqCount });
         }
       }
     }
 
+    // Mapear dias que são domingos e a sua sequência no mês (1º, 2º, 3º...)
+    const domingosSeqMap = new Map<number, number>();
+    let domSeqCount = 0;
+    for (let dia = 1; dia <= diasNoMes; dia++) {
+      const dateObj = new Date(year, month - 1, dia);
+      if (dateObj.getDay() === 0) {
+        domSeqCount++;
+        domingosSeqMap.set(dia, domSeqCount);
+      }
+    }
+
     // -------------------------------------------------------------------------
-    // FASE 1: Alocação Matriz por Colaborador
+    // FASE 1: Alocação Matriz por Colaborador com Grupos A/B/C e A/B
     // -------------------------------------------------------------------------
     ativos.forEach((func, idx) => {
       totalNosExplorados++;
@@ -80,29 +96,18 @@ export class CSPSolverEngine {
       const estadoInicial = carryOverManager.getEstado(funcId);
       const temHistorico = carryOverManager.temHistorico(funcId);
 
-      const grupoFeriado = estadoInicial.grupoUltimoFeriadoTrabalhado === 'A' ? 'B' : 'A';
+      // Determinar Grupo Domingo e Grupo Feriado
+      const grupoDom = func.grupo_domingo || (['A', 'B', 'C'][idx % 3]);
+      const grupoFer = func.grupo_feriado || (['A', 'B'][idx % 2]);
 
-      let regraDomingo: '1x2' | '1x1' | '3x1' = '1x2';
-      if (options.usarRegraDomingoCustomizada) {
-        regraDomingo = func.genero === 'F' ? '1x1' : '3x1';
-      }
+      const isEspecialSector = func.setor?.toLowerCase().includes('padaria') ||
+        func.setor?.toLowerCase().includes('açougue') || func.setor?.toLowerCase().includes('acougue');
 
       // Estado local de rodízio de domingo para este funcionário
       let domingosDescansoRestantes = estadoInicial.domingosDescansoRestantes ?? 0;
       let domingosConsecutivosTrabalhados = estadoInicial.domingosConsecutivosTrabalhados ?? 0;
 
-      // Bootstrap inicial para novos colaboradores sem histórico (Mês 1)
-      if (!temHistorico) {
-        if (regraDomingo === '1x2') {
-          domingosDescansoRestantes = (idx % 3);
-        } else if (regraDomingo === '1x1') {
-          domingosDescansoRestantes = (idx % 2);
-        } else if (regraDomingo === '3x1') {
-          domingosConsecutivosTrabalhados = idx % 4;
-        }
-      }
-
-      // FIX #2: Semear histórico recente com os dias do mês anterior
+      // Historico recente com os dias do mês anterior
       const historicoRecente: TipoDiaSigla[] = [];
       const consecutivosCarry = Math.min(estadoInicial.diasConsecutivosAcumulados || 0, 6);
       for (let i = 0; i < consecutivosCarry; i++) {
@@ -112,32 +117,44 @@ export class CSPSolverEngine {
       let diasConsecutivosAcumulados = consecutivosCarry;
       let horasSemanaAtual = 0;
 
-      // FIX #1: Passe único sequencial dia a dia
       for (let dia = 1; dia <= diasNoMes; dia++) {
         const dateObj = new Date(year, month - 1, dia);
         const diaSemana = dateObj.getDay(); // 0 = Dom
 
-        // Reiniciar contador semanal no domingo
         if (diaSemana === 0) {
           horasSemanaAtual = 0;
         }
 
-        const ehFeriado = feriadosMap.has(dia);
-        const feriadoNome = feriadosMap.get(dia);
+        const feriadoInfo = feriadosMap.get(dia);
+        const ehFeriado = !!feriadoInfo;
 
         let sigla: TipoDiaSigla = 'T';
 
         if (ehFeriado) {
-          const trabalhaFeriado = (idx % 2 === (grupoFeriado === 'A' ? 0 : 1));
+          const seqFer = feriadoInfo.index;
+          // Grupo A trabalha feriados ímpares, Grupo B trabalha feriados pares
+          const trabalhaFeriado = grupoFer === 'A' ? (seqFer % 2 !== 0) : (seqFer % 2 === 0);
           sigla = trabalhaFeriado ? 'TF' : 'F';
         } else if (diaSemana === 0) {
-          // Checagem de elegibilidade de domingo baseada no estado acumulado
+          const seqDom = domingosSeqMap.get(dia)!;
           let podeTrabalharDomingo = false;
-          if (regraDomingo === '1x2' || regraDomingo === '1x1') {
-            podeTrabalharDomingo = domingosDescansoRestantes === 0;
-          } else if (regraDomingo === '3x1') {
-            podeTrabalharDomingo = domingosConsecutivosTrabalhados < 3;
+
+          if (isEspecialSector) {
+            if (func.genero === 'F') {
+              // CLT Art. 386 (Mulheres: 1T:1F quinzenal)
+              podeTrabalharDomingo = grupoDom === 'A' ? (seqDom % 2 !== 0) : (seqDom % 2 === 0);
+            } else {
+              // CCT Açougue/Padaria Homens (2T:1F)
+              const mod3 = (seqDom - 1) % 3;
+              podeTrabalharDomingo = grupoDom === 'A' ? (mod3 !== 2) : (mod3 !== 0);
+            }
+          } else {
+            // Matriz Geral 3 Grupos (1T:2F)
+            // Dom 1: A | Dom 2: B | Dom 3: C | Dom 4: A | Dom 5: B
+            const grupoEsperadoDom = ['A', 'B', 'C'][(seqDom - 1) % 3];
+            podeTrabalharDomingo = (grupoDom === grupoEsperadoDom);
           }
+
           sigla = podeTrabalharDomingo ? 'TD' : 'FD';
         }
 
@@ -158,27 +175,14 @@ export class CSPSolverEngine {
           sigla = (diaSemana === 0) ? 'FD' : 'F';
         }
 
-        // FIX #1: Atualização do estado de domingo APÓS a decisão final do dia (com H2 e H3 já aplicados)
         if (diaSemana === 0) {
           const trabalhouDomingo = HardConstraintsEvaluator.ehDiaTrabalho(sigla);
-          if (regraDomingo === '1x2') {
-            if (trabalhouDomingo) {
-              domingosDescansoRestantes = 2;
-            } else {
-              domingosDescansoRestantes = Math.max(0, domingosDescansoRestantes - 1);
-            }
-          } else if (regraDomingo === '1x1') {
-            if (trabalhouDomingo) {
-              domingosDescansoRestantes = 1;
-            } else {
-              domingosDescansoRestantes = Math.max(0, domingosDescansoRestantes - 1);
-            }
-          } else if (regraDomingo === '3x1') {
-            if (trabalhouDomingo) {
-              domingosConsecutivosTrabalhados++;
-            } else {
-              domingosConsecutivosTrabalhados = 0;
-            }
+          if (trabalhouDomingo) {
+            domingosDescansoRestantes = 2;
+            domingosConsecutivosTrabalhados++;
+          } else {
+            domingosDescansoRestantes = Math.max(0, domingosDescansoRestantes - 1);
+            domingosConsecutivosTrabalhados = 0;
           }
         }
 
@@ -197,7 +201,7 @@ export class CSPSolverEngine {
           diaSemana,
           diasConsecutivosAcumulados,
           func.genero,
-          ehFeriado && sigla === 'F' ? feriadoNome : undefined
+          ehFeriado && sigla === 'F' ? feriadoInfo.nome : undefined
         );
       }
 
@@ -214,7 +218,7 @@ export class CSPSolverEngine {
 
       carryOverManager.setEstado(funcId, {
         diasConsecutivosAcumulados: consecutivosFimMes,
-        grupoUltimoFeriadoTrabalhado: grupoFeriado,
+        grupoUltimoFeriadoTrabalhado: grupoFer as 'A' | 'B',
         domingosDescansoRestantes,
         domingosConsecutivosTrabalhados
       });
