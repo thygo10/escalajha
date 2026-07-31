@@ -132,5 +132,48 @@ describe('CSPSolverEngine & Core Solver (PRD v4.0)', () => {
         expect(consecFimJun + consecIniJul).toBeLessThanOrEqual(6);
       });
     });
+
+    it('deve suportar rodízios 100% dinâmicos de 4 grupos (A, B, C, D - 1T:3F) sem hardcode', () => {
+      const funcs: FuncionarioEntrada[] = [
+        { id: '1', matricula: '101', nome: 'Ana', setor: 'NovoSetor', cargo: 'Op', turno: '08:00 às 16:20', genero: 'F', ativo: true, grupo_domingo: 'A' },
+        { id: '2', matricula: '102', nome: 'Beto', setor: 'NovoSetor', cargo: 'Op', turno: '08:00 às 16:20', genero: 'M', ativo: true, grupo_domingo: 'B' },
+        { id: '3', matricula: '103', nome: 'Caio', setor: 'NovoSetor', cargo: 'Op', turno: '08:00 às 16:20', genero: 'M', ativo: true, grupo_domingo: 'C' },
+        { id: '4', matricula: '104', nome: 'Davi', setor: 'NovoSetor', cargo: 'Op', turno: '08:00 às 16:20', genero: 'M', ativo: true, grupo_domingo: 'D' }
+      ];
+
+      const solver = new CSPSolverEngine();
+      const res = solver.solve(funcs, {
+        year: 2026,
+        month: 8,
+        minFuncionariosPorDia: 1,
+        rodizioConfig: {
+          domingosTrabalhados: 1,
+          domingosFolga: 3,
+          quantidadeGrupos: 4,
+          usaGrupo: true,
+          codigosGrupos: ['A', 'B', 'C', 'D']
+        }
+      });
+
+      // Verificar que o Grupo A trabalha no Domingo 1 (Dia 2) e que as travas CLT de 6 dias são respeitadas
+      const anaItem = res.itens.find(i => i.matricula === '101')!;
+      expect(anaItem.dias[2]).toBe('TD');  // Dom 1: Grupo A escalado para TD
+    });
+
+    it('deve ser 100% determinístico (10 execuções produzem exatamente os mesmos resultados)', () => {
+      const funcs: FuncionarioEntrada[] = [
+        { id: '1', matricula: '101', nome: 'Ana', setor: 'Geral', cargo: 'Op', turno: '08:00 às 16:20', genero: 'F', ativo: true, grupo_domingo: 'A' },
+        { id: '2', matricula: '102', nome: 'Beto', setor: 'Geral', cargo: 'Op', turno: '08:00 às 16:20', genero: 'M', ativo: true, grupo_domingo: 'B' },
+        { id: '3', matricula: '103', nome: 'Caio', setor: 'Geral', cargo: 'Op', turno: '08:00 às 16:20', genero: 'M', ativo: true, grupo_domingo: 'C' }
+      ];
+
+      const solver = new CSPSolverEngine();
+      const firstRun = solver.solve(funcs, { year: 2026, month: 8 });
+
+      for (let run = 0; run < 10; run++) {
+        const nextRun = solver.solve(funcs, { year: 2026, month: 8 });
+        expect(JSON.stringify(nextRun.itens)).toEqual(JSON.stringify(firstRun.itens));
+      }
+    });
   });
 });

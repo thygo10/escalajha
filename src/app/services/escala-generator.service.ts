@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Funcionario, EscalaItem, TipoDia, Feriado, ValidacaoEscalaResultado, TurnoConfig, EstadoTransicao, EventoAfastamento, RegraConformidade, HorarioPresenca, ResumoFuncionarioMetrics } from '../models/types';
+import { Funcionario, EscalaItem, TipoDia, Feriado, ValidacaoEscalaResultado, TurnoConfig, EstadoTransicao, EventoAfastamento, RegraConformidade, HorarioPresenca, ResumoFuncionarioMetrics, Rodizio } from '../models/types';
 import { EscalaValidatorService } from './escala-validator.service';
 import { generateSchedule } from '../domain/schedule/schedule-generator';
 import type { Employee, Holiday, LeaveEvent } from '../domain/schedule/schedule.types';
@@ -115,12 +115,18 @@ export class EscalaGeneratorService {
           if (d === 'T' || d === 'TD' || d === 'TF') consec++;
           else break;
         }
-        estadosTransicao.set(mat, {
+        const stateObj = {
           funcionarioId: mat,
           domingosDescansoRestantes: 0,
           grupoUltimoFeriadoTrabalhado: 'A',
           diasConsecutivosAcumulados: consec
-        } as any);
+        } as any;
+        estadosTransicao.set(mat, stateObj);
+
+        const emp = employees.find(e => e.matricula_aleatoria === mat || e.id === mat);
+        if (emp?.id) {
+          estadosTransicao.set(emp.id, stateObj);
+        }
       }
     }
 
@@ -134,16 +140,35 @@ export class EscalaGeneratorService {
         data: fer.data,
         nome: fer.nome,
         proibido: fer.funcionamento_proibido
+      })),
+      afastamentos: (options?.afastamentos || []).map((af: any) => ({
+        funcionarioId: af.funcionario_id || af.funcionarioId || af.matricula,
+        dataInicio: af.data_inicio || af.dataInicio,
+        dataFim: af.data_fim || af.dataFim,
+        motivo: af.tipo || af.motivo || 'FERIAS'
       }))
     };
 
     const solverResult = solverEngine.solve(funcEntrada, solverOpts);
 
     if (solverResult.status !== 'NO_SOLUTION' && solverResult.itens.length > 0) {
-      // Arquitetura v5.1: Manter o resultado do CSP Solver para renderização no dashboard.
-      // Erros e alertas de validação serão apresentados no painel visual para o gestor ajustar,
-      // eliminando o descarte para escala em branco.
-      return solverResult.itens as EscalaItem[];
+      const val = this.validatorService.validarEscala(
+        solverResult.itens as EscalaItem[],
+        year,
+        month,
+        options?.minFuncionariosPorDia ?? 2,
+        options?.turnosConfigs || [],
+        options?.feriados || [],
+        {
+          historicoMesAnterior: options?.historicoMesAnterior,
+          minDomingo: options?.minFuncionariosDomingo,
+          minFeriado: options?.minFuncionariosFeriado,
+          permitirDoisDiasConsecutivos: options?.permitirDoisDiasConsecutivos
+        }
+      );
+      if (val.valida && val.totalErros === 0) {
+        return solverResult.itens as EscalaItem[];
+      }
     }
 
     // Fallback para o gerador de segurança comprovado generateSchedule
@@ -170,6 +195,14 @@ export class EscalaGeneratorService {
       return Number(parts[0]) === ano && Number(parts[1]) === mes;
     }).sort((a, b) => a.data.localeCompare(b.data));
     return this._simpleHash(JSON.stringify(feriadosMes));
+  }
+
+  calcularHashRegras(rodizio?: Rodizio | null, regras?: RegraConformidade[]): string {
+    const payload = {
+      rodizio: rodizio ? { id: rodizio.id, versao: rodizio.versao, domTrab: rodizio.domingos_trabalhados, domFolga: rodizio.domingos_folga, qtdGrupos: rodizio.quantidade_grupos } : null,
+      regras: (regras || []).map(r => ({ id: r.id, val: r.valor }))
+    };
+    return this._simpleHash(JSON.stringify(payload));
   }
 
   // -------------------------------------------------------------------------

@@ -25,6 +25,15 @@ function createEntries(context: ScheduleContext): ScheduleEntry[] {
     let domCount = 0;
     let diasConsecutivos = 0;
 
+    if (context.historicoMesAnterior?.[emp.matricula_aleatoria]) {
+      const histAnt = context.historicoMesAnterior[emp.matricula_aleatoria];
+      for (let hIdx = histAnt.length - 1; hIdx >= 0; hIdx--) {
+        const sAnt = histAnt[hIdx];
+        if (sAnt === 'T' || sAnt === 'TD' || sAnt === 'TF') diasConsecutivos++;
+        else break;
+      }
+    }
+
     for (let day = 1; day <= totalDays; day++) {
       const dateObj = new Date(year, month - 1, day);
       const isSunday = dateObj.getDay() === 0;
@@ -51,15 +60,13 @@ function createEntries(context: ScheduleContext): ScheduleEntry[] {
           dias[day] = 'FE';
           diasConsecutivos = 0;
         }
-      } else {
+      } else if (diasConsecutivos >= 6) {
         // Garantir no máximo 6 dias consecutivos de trabalho
-        if (diasConsecutivos >= 6) {
-          dias[day] = 'F';
-          diasConsecutivos = 0;
-        } else {
-          dias[day] = 'T';
-          diasConsecutivos++;
-        }
+        dias[day] = 'F';
+        diasConsecutivos = 0;
+      } else {
+        dias[day] = 'T';
+        diasConsecutivos++;
       }
     }
 

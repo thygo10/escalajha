@@ -27,12 +27,22 @@ export interface FuncionarioEstadoRegra {
   diasConsecutivosAcumulados: number; // Carry-over do mês anterior
 }
 
+export interface SolverRodizioConfig {
+  domingosTrabalhados: number;
+  domingosFolga: number;
+  quantidadeGrupos: number;
+  usaGrupo: boolean;
+  codigosGrupos?: string[];
+}
+
 export interface SolverOptions {
   year: number;
   month: number; // 1-12
   minFuncionariosPorDia?: number;
   minFuncionariosDomingo?: number;
   modeloEscala?: '6x1' | '5x1' | 'FLEXIVEL_CSP';
+  rodizioConfig?: SolverRodizioConfig;
+  seed?: number;
   usarRegraDomingoCustomizada?: boolean;
   estadosTransicao?: Map<string, FuncionarioEstadoRegra>;
   feriados?: { data: string; nome: string; proibido?: boolean }[];

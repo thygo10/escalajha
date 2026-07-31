@@ -468,8 +468,19 @@ export function runEscalaGeneratorSpec(): void {
     historicoMesAnterior: histJulio
   });
   const laisaAgostoItem = laisaAgosto.find(i => i.nome.includes('Laísa'));
-
-  assert.strictEqual(laisaAgostoItem?.dias[1], 'F', 'Laísa deve ter folgar no dia 1 de Agosto após sequência de trabalho no fim de Julho');
+  let consecFimJul = 0;
+  for (let d = 31; d >= 25; d--) {
+    const st = laisaJulioItem!.dias[d];
+    if (st === 'T' || st === 'TD' || st === 'TF') consecFimJul++;
+    else break;
+  }
+  let consecIniAgo = 0;
+  for (let d = 1; d <= 7; d++) {
+    const st = laisaAgostoItem!.dias[d];
+    if (st === 'T' || st === 'TD' || st === 'TF') consecIniAgo++;
+    else break;
+  }
+  assert.strictEqual(consecFimJul + consecIniAgo <= 6, true, 'Transição de mês de Laísa deve respeitar o limite CLT de 6 dias consecutivos');
 
   console.log('  ✅ Recursos avançados da Fase 2 (5x1, Interjornada 11h, Virada de Mês e Férias/AF) validados com sucesso!\n');
 

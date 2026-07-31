@@ -1,13 +1,14 @@
 import { Injectable, signal } from '@angular/core';
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
-import { Loja, Funcionario, Escala, Setor, Cargo, Feriado, RegraEscala, SaveEscalaResult } from '../models/types';
+import { Loja, Funcionario, Escala, Setor, Cargo, Feriado, RegraEscala, SaveEscalaResult, Rodizio, FuncionarioEstadoRotacao, EscalaEvento } from '../models/types';
 import { environment } from '../../environments/environment';
 import {
   INITIAL_FUNCIONARIOS,
   INITIAL_SETORES,
   INITIAL_CARGOS,
   INITIAL_FERIADOS,
-  INITIAL_REGRAS
+  INITIAL_REGRAS,
+  INITIAL_RODIZIOS
 } from '../models/mock-data';
 
 @Injectable({
@@ -663,5 +664,82 @@ export class SupabaseService {
       console.error('Erro ao deletar regra no Supabase:', err);
     }
     this.localRegras.update(list => list.filter(r => r.id !== id));
+  }
+
+  // -------------------------------------------------------------------------
+  // ARQUITETURA v5.1: RODÍZIOS, ESTADO DE ROTAÇÃO E EVENTOS DE AUDITORIA
+  // -------------------------------------------------------------------------
+  private readonly localRodizios = signal<Rodizio[]>(INITIAL_RODIZIOS);
+  private readonly localEstadosRotacao = signal<FuncionarioEstadoRotacao[]>([]);
+  private readonly localEventos = signal<EscalaEvento[]>([]);
+
+  async getRodizios(): Promise<Rodizio[]> {
+    try {
+      const { data, error } = await this.client.from('rodizios').select('*, grupos:rodizio_grupos(*)');
+      if (!error && data && data.length > 0) {
+        const rodizios = data as Rodizio[];
+        this.localRodizios.set(rodizios);
+        return rodizios;
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar rodízios no Supabase, usando mock:', err);
+    }
+    return this.localRodizios();
+  }
+
+  async addRodizio(rodizio: Omit<Rodizio, 'id'>): Promise<Rodizio> {
+    const payload = { ...rodizio, id: 'rod_' + Date.now() };
+    try {
+      const { data, error } = await this.client.from('rodizios').insert(payload).select().single();
+      if (!error && data) {
+        const newRod = data as Rodizio;
+        this.localRodizios.update(list => [...list, newRod]);
+        return newRod;
+      }
+    } catch (err) {
+      console.error('Erro ao adicionar rodízio no Supabase:', err);
+    }
+    this.localRodizios.update(list => [...list, payload as Rodizio]);
+    return payload as Rodizio;
+  }
+
+  async getFuncionarioEstadoRotacao(funcionarioId: string, mesReferencia: string): Promise<FuncionarioEstadoRotacao | null> {
+    try {
+      const { data, error } = await this.client
+        .from('funcionario_estado_rotacao')
+        .select('*')
+        .eq('funcionario_id', funcionarioId)
+        .eq('mes_referencia', mesReferencia)
+        .maybeSingle();
+
+      if (!error && data) {
+        return data as FuncionarioEstadoRotacao;
+      }
+    } catch (err) {
+      console.warn('Erro ao buscar estado de rotação no Supabase:', err);
+    }
+    return this.localEstadosRotacao().find(e => e.funcionario_id === funcionarioId && e.mes_referencia === mesReferencia) || null;
+  }
+
+  async saveFuncionarioEstadoRotacao(estado: FuncionarioEstadoRotacao): Promise<void> {
+    try {
+      await this.client.from('funcionario_estado_rotacao').upsert(estado, { onConflict: 'funcionario_id,mes_referencia' });
+    } catch (err) {
+      console.error('Erro ao salvar estado de rotação no Supabase:', err);
+    }
+    this.localEstadosRotacao.update(list => {
+      const filtered = list.filter(e => !(e.funcionario_id === estado.funcionario_id && e.mes_referencia === estado.mes_referencia));
+      return [...filtered, estado];
+    });
+  }
+
+  async logEscalaEvento(evento: EscalaEvento): Promise<void> {
+    const payload = { ...evento, criado_em: new Date().toISOString() };
+    try {
+      await this.client.from('escala_eventos').insert(payload);
+    } catch (err) {
+      console.error('Erro ao registrar evento de auditoria da escala:', err);
+    }
+    this.localEventos.update(list => [payload, ...list]);
   }
 }

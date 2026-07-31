@@ -125,6 +125,7 @@ export interface ScheduleContext {
   turnosConfigs: TurnoConfig[];
   config: ScheduleConfig;
   previousMonthHistory?: Record<string, TipoDia[]>;
+  historicoMesAnterior?: Record<string, TipoDia[]>;
   leaveEvents?: LeaveEvent[];
 }
 
