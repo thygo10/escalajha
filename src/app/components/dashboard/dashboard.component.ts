@@ -330,6 +330,13 @@ export class DashboardComponent implements OnInit {
     return this.resumoMetrics().reduce((acc, curr) => acc + curr.totalFolgas, 0);
   });
 
+  mediaFolgasPorColab = computed<string>(() => {
+    const metrics = this.resumoMetrics();
+    if (metrics.length === 0) return '0';
+    const total = metrics.reduce((acc, curr) => acc + curr.totalFolgas, 0);
+    return (total / metrics.length).toFixed(1);
+  });
+
   // Computado: Curva de Presença de Colaboradores na Loja por Faixa Horária no Dia Selecionado
   presencaPorHorario = computed<HorarioPresenca[]>(() => {
     const itens = this.escalaItens();
@@ -444,19 +451,22 @@ export class DashboardComponent implements OnInit {
     visible: boolean;
     setorNome: string;
     filterStatus: DetalhamentoFilterStatus;
+    filterCargo: string;
     searchQuery: string;
   }>({
     visible: false,
     setorNome: '',
     filterStatus: 'TODOS',
+    filterCargo: '',
     searchQuery: ''
   });
 
-  openSetorDetalhamentoModal(setorNome: string = '', filterStatus: DetalhamentoFilterStatus = 'TODOS') {
+  openSetorDetalhamentoModal(setorNome: string = '', filterStatus: DetalhamentoFilterStatus = 'TODOS', filterCargo: string = '') {
     this.setorDetalhamentoModal.set({
       visible: true,
       setorNome,
       filterStatus,
+      filterCargo,
       searchQuery: ''
     });
   }
@@ -469,6 +479,10 @@ export class DashboardComponent implements OnInit {
     this.setorDetalhamentoModal.update(s => ({ ...s, filterStatus }));
   }
 
+  setSetorDetalhamentoCargoFilter(filterCargo: string) {
+    this.setorDetalhamentoModal.update(s => ({ ...s, filterCargo }));
+  }
+
   setSetorDetalhamentoSearch(query: string) {
     this.setorDetalhamentoModal.update(s => ({ ...s, searchQuery: query }));
   }
@@ -476,7 +490,7 @@ export class DashboardComponent implements OnInit {
   setorDetalhamentoData = computed(() => {
     const modal = this.setorDetalhamentoModal();
     if (!modal.visible) {
-      return { setorNome: '', total: 0, trabalhandoCount: 0, folgandoCount: 0, coberturaPct: 100, colaboradores: [] };
+      return { setorNome: '', total: 0, trabalhandoCount: 0, folgandoCount: 0, coberturaPct: 100, cargosResumo: [], colaboradores: [] };
     }
 
     const setorNome = modal.setorNome;
@@ -487,6 +501,7 @@ export class DashboardComponent implements OnInit {
     const escala = this.escalaCompletaDaLojaCache();
     const hojeDia = this.hojeDia;
     const query = modal.searchQuery.toLowerCase().trim();
+    const resumoMap = new Map(this.resumoMetrics().map(r => [r.matricula, r.totalFolgas]));
 
     const resultList = funcs.map(f => {
       const escalaItem = escala.find(i => i.matricula === f.matricula_aleatoria);
@@ -526,11 +541,32 @@ export class DashboardComponent implements OnInit {
     const trabalhandoCount = total - folgandoCount;
     const coberturaPct = total > 0 ? Math.round((trabalhandoCount / total) * 100) : 100;
 
+    // Resumo por Cargo dentro do Modal
+    const cargosMap = new Map<string, { cargoNome: string; total: number; trabalhandoCount: number; folgandoCount: number; totalFolgasMes: number }>();
+    for (const item of resultList) {
+      const cargo = item.funcionario.cargo || 'Operador';
+      const cItem = cargosMap.get(cargo) || { cargoNome: cargo, total: 0, trabalhandoCount: 0, folgandoCount: 0, totalFolgasMes: 0 };
+      cItem.total += 1;
+      if (item.isFolga) cItem.folgandoCount += 1;
+      else cItem.trabalhandoCount += 1;
+      cItem.totalFolgasMes += (resumoMap.get(item.funcionario.matricula_aleatoria) || 0);
+      cargosMap.set(cargo, cItem);
+    }
+
+    const cargosResumo = Array.from(cargosMap.values()).map(c => ({
+      ...c,
+      mediaFolgas: c.total > 0 ? (c.totalFolgasMes / c.total).toFixed(1) : '0'
+    }));
+
     let filtered = resultList;
     if (modal.filterStatus === 'TRABALHANDO') {
       filtered = filtered.filter(item => !item.isFolga);
     } else if (modal.filterStatus === 'FOLGA') {
       filtered = filtered.filter(item => item.isFolga);
+    }
+
+    if (modal.filterCargo) {
+      filtered = filtered.filter(item => item.funcionario.cargo === modal.filterCargo);
     }
 
     if (query) {
@@ -547,8 +583,53 @@ export class DashboardComponent implements OnInit {
       trabalhandoCount,
       folgandoCount,
       coberturaPct,
+      cargosResumo,
       colaboradores: filtered
     };
+  });
+
+  // Métricas Computadas Divididas por Cargo no Setor Ativo
+  metricsPorCargo = computed(() => {
+    const setorAtivo = this.selectedSetor;
+    const funcs = this.funcionarios().filter(f => f.ativo && (f.setor === setorAtivo || f.setores_cobertura?.includes(setorAtivo)));
+    const escala = this.escalaCompletaDaLojaCache();
+    const diaAlvo = this.diaInspecionadoEfetivo();
+    const resumoMap = new Map(this.resumoMetrics().map(r => [r.matricula, r.totalFolgas]));
+
+    const map = new Map<string, {
+      cargoNome: string;
+      total: number;
+      trabalhandoHoje: number;
+      folgaHoje: number;
+      totalFolgasMes: number;
+    }>();
+
+    for (const f of funcs) {
+      const cargo = f.cargo || 'Não especificado';
+      const item = map.get(cargo) || { cargoNome: cargo, total: 0, trabalhandoHoje: 0, folgaHoje: 0, totalFolgasMes: 0 };
+
+      item.total += 1;
+
+      const esc = escala.find(i => i.matricula === f.matricula_aleatoria);
+      const statusHoje = esc?.dias[diaAlvo];
+      const isFolga = statusHoje === 'F' || statusHoje === 'FD' || statusHoje === 'FE';
+
+      if (isFolga) {
+        item.folgaHoje += 1;
+      } else {
+        item.trabalhandoHoje += 1;
+      }
+
+      const folgasFunc = resumoMap.get(f.matricula_aleatoria) || 0;
+      item.totalFolgasMes += folgasFunc;
+
+      map.set(cargo, item);
+    }
+
+    return Array.from(map.values()).map(item => ({
+      ...item,
+      mediaFolgas: item.total > 0 ? (item.totalFolgasMes / item.total).toFixed(1) : '0'
+    }));
   });
 
   // ============================================================
@@ -606,9 +687,8 @@ export class DashboardComponent implements OnInit {
   /** Mapa pré-computado: dia → abreviação do dia da semana (para tabela de escala) */
   readonly diasSemanaAbrevMap = computed(() => {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
-    const totalDias = new Date(ano, mes, 0).getDate();
     const map = new Map<number, string>();
-    for (let d = 1; d <= totalDias; d++) {
+    for (let d = 1; d <= 31; d++) {
       const dateObj = new Date(ano, mes - 1, d);
       map.set(d, dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase());
     }
@@ -628,9 +708,8 @@ export class DashboardComponent implements OnInit {
   /** Mapa pré-computado: dia → abreviação de 3 letras do dia da semana (UPPER) */
   readonly diasSemanaUpperMap = computed(() => {
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
-    const totalDias = new Date(ano, mes, 0).getDate();
     const map = new Map<number, string>();
-    for (let d = 1; d <= totalDias; d++) {
+    for (let d = 1; d <= 31; d++) {
       const dateObj = new Date(ano, mes - 1, d);
       const name = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
       map.set(d, name.slice(0, 3));
@@ -775,9 +854,7 @@ export class DashboardComponent implements OnInit {
   });
 
   diasDoMes = computed(() => {
-    const [ano, mes] = this.selectedMonth.split('-').map(Number);
-    const total = new Date(ano, mes, 0).getDate();
-    return Array.from({ length: total }, (_, i) => i + 1);
+    return Array.from({ length: 31 }, (_, i) => i + 1);
   });
 
   // Dias da Semana Selecionada para Impressão A4

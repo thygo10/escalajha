@@ -59,11 +59,10 @@
   padding: var(--ds-spacing-6);
   margin-bottom: var(--ds-spacing-6);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease;
+  transition: box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease;
 }
 
 .card:hover {
-  transform: translateY(-4px);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
   border-color: var(--p-primary-color);
 }
@@ -126,7 +125,7 @@
 /* Timeline */
 .timeline-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: var(--ds-spacing-3); margin-top: var(--ds-spacing-4); }
 .timeline-day-card { padding: var(--ds-spacing-3); border-radius: var(--ds-border-radius-sm); border: 1px solid var(--ds-color-semantic-border-light); background: var(--ds-color-semantic-surface-0); display: flex; flex-direction: column; align-items: center; text-align: center; transition: transform 0.15s ease; }
-.timeline-day-card:hover { transform: translateY(-2px); box-shadow: var(--ds-shadow-2); }
+.timeline-day-card:hover { box-shadow: var(--ds-shadow-2); }
 
 /* Badges - Escala Status */
 .badge-trabalho { background-color: #dcfce7 !important; color: #15803d !important; }
@@ -769,3 +768,19 @@
 .p-dark .badge-feriado, .dark-mode .badge-feriado { background-color: rgba(217,119,6,0.2) !important; color: #fcd34d !important; }
 .p-dark .badge-trabalho-feriado, .dark-mode .badge-trabalho-feriado { background-color: rgba(220,38,38,0.2) !important; color: #fca5a5 !important; }
 .p-dark .badge-trabalho-domingo, .dark-mode .badge-trabalho-domingo { background-color: rgba(14,165,233,0.2) !important; color: #7dd3fc !important; }
+
+/* Global reset: Disable motion/displacement on hover and active states across all cards and buttons */
+.card:hover,
+.kpi-card-hover:hover,
+.setor-card:hover,
+.timeline-day-card:hover,
+.ds-card--hoverable:hover,
+.premium-btn:hover,
+.premium-btn:active,
+.premium-input:focus,
+.not-found-btn:hover,
+.btn-primary-solid:active,
+.clickable:hover,
+.kpi-card-mini:hover {
+  transform: none !important;
+}

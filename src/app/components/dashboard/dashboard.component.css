@@ -1,5 +1,12 @@
 /* Dashboard Component Layout & Utilities */
 
+.kpi-card-hover {
+  transition: box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.kpi-card-hover:hover {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
 .loja-selector-wrapper {
   margin-bottom: 20px;
   padding: 0 4px;
@@ -148,12 +155,11 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease;
 }
 
 .setor-card:hover {
   box-shadow: 0 8px 24px rgba(11, 42, 82, 0.08);
-  transform: translateY(-2px);
 }
 
 .setor-card-header {
@@ -1157,7 +1163,6 @@
 
 .btn-accent-gold:hover {
   background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
-  transform: translateY(-1px);
 }
 
 .validation-audit-card {
@@ -1436,10 +1441,9 @@ th.col-feriado, td.col-feriado {
 
 .clickable {
   cursor: pointer !important;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: box-shadow 0.15s ease;
 }
 .clickable:hover {
-  transform: translateY(-2px);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
 }
 
@@ -1532,10 +1536,10 @@ th.col-feriado, td.col-feriado {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  transition: transform 0.15s ease;
+  transition: opacity 0.15s ease;
 }
 .kpi-card-mini:hover {
-  transform: translateY(-2px);
+  opacity: 0.95;
 }
 .kpi-card-mini.green {
   background: #ecfdf5;

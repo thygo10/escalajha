@@ -9,7 +9,26 @@
       <h2 class="text-2xl font-semibold m-0 text-color">Painel de Escalas & Gestão de Folgas</h2>
     </div>
 
-    <div class="flex align-items-center gap-2">
+    <div class="flex align-items-center gap-3">
+      <!-- BARRA DE PESQUISA NO HEADER -->
+      <div class="p-inputgroup max-w-20rem">
+        <span class="p-inputgroup-addon">
+          <i class="pi pi-search"></i>
+        </span>
+        <label for="headerSearchInput" class="sr-only">Pesquisar colaboradores</label>
+        <input
+          id="headerSearchInput"
+          pInputText
+          type="text"
+          [ngModel]="searchQueryDashboard()"
+          (ngModelChange)="searchQueryDashboard.set($event); searchQuery.set($event)"
+          placeholder="Pesquisar..."
+        />
+        @if (searchQueryDashboard() || searchQuery()) {
+          <button type="button" pButton icon="pi pi-times" class="p-button-text p-button-secondary" (click)="searchQueryDashboard.set(''); searchQuery.set('')" title="Limpar Busca"></button>
+        }
+      </div>
+
       @if (activeTab() === 'escala' || activeTab() === 'dashboard') {
         <button pButton type="button" (click)="openPrintOptionsModal()" class="p-button-outlined p-button-secondary p-button-sm font-bold flex align-items-center gap-2" style="border-radius: 8px;">
           <i class="pi pi-print"></i>
@@ -23,7 +42,7 @@
     <!-- 4 WIDGETS DE ESTATÍSTICAS ESTILO SAKAI NG -->
     <div class="grid mb-4 no-print">
       <div class="col-12 md:col-6 lg:col-3">
-        <button type="button" class="card mb-0 cursor-pointer p-ripple p-4 w-full flex flex-column align-items-center text-center h-full" (click)="openSetorDetalhamentoModal('', 'FOLGA')" title="Clique para ver quem está de folga hoje" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius); transition: transform 0.25s, box-shadow 0.25s; background: var(--p-surface-card); color: inherit; font-family: inherit; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;">
+        <button type="button" class="card kpi-card-hover mb-0 cursor-pointer p-ripple p-4 w-full flex flex-column align-items-center text-center h-full" (click)="openSetorDetalhamentoModal('', 'FOLGA')" title="Clique para ver quem está de folga hoje" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius); transition: transform 0.25s, box-shadow 0.25s; background: var(--p-surface-card); color: inherit; font-family: inherit; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;">
           <div class="flex align-items-center justify-content-center bg-blue-100 dark:bg-blue-900/30 border-round mb-3" style="width: 3.5rem; height: 3.5rem">
             <i class="pi pi-calendar-times text-blue-700 text-2xl"></i>
           </div>
@@ -34,7 +53,7 @@
       </div>
 
       <div class="col-12 md:col-6 lg:col-3">
-        <button type="button" class="card mb-0 cursor-pointer p-ripple p-4 w-full flex flex-column align-items-center text-center h-full" (click)="openSetorDetalhamentoModal('', 'TODOS')" title="Clique para ver toda a equipe" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius); transition: transform 0.25s, box-shadow 0.25s; background: var(--p-surface-card); color: inherit; font-family: inherit; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;">
+        <button type="button" class="card kpi-card-hover mb-0 cursor-pointer p-ripple p-4 w-full flex flex-column align-items-center text-center h-full" (click)="openSetorDetalhamentoModal('', 'TODOS')" title="Clique para ver toda a equipe" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius); transition: transform 0.25s, box-shadow 0.25s; background: var(--p-surface-card); color: inherit; font-family: inherit; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;">
           <div class="flex align-items-center justify-content-center bg-green-100 dark:bg-green-900/30 border-round mb-3" style="width: 3.5rem; height: 3.5rem">
             <i class="pi pi-user text-green-700 text-2xl"></i>
           </div>
@@ -45,7 +64,7 @@
       </div>
 
       <div class="col-12 md:col-6 lg:col-3">
-        <button type="button" class="card mb-0 cursor-pointer p-ripple p-4 w-full flex flex-column align-items-center text-center h-full" (click)="openSetorDetalhamentoModal('', 'TODOS')" title="Total de Colaboradores" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius); transition: transform 0.25s, box-shadow 0.25s; background: var(--p-surface-card); color: inherit; font-family: inherit; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;">
+        <button type="button" class="card kpi-card-hover mb-0 cursor-pointer p-ripple p-4 w-full flex flex-column align-items-center text-center h-full" (click)="openSetorDetalhamentoModal('', 'TODOS')" title="Total de Colaboradores" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius); transition: transform 0.25s, box-shadow 0.25s; background: var(--p-surface-card); color: inherit; font-family: inherit; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;">
           <div class="flex align-items-center justify-content-center bg-orange-100 dark:bg-orange-900/30 border-round mb-3" style="width: 3.5rem; height: 3.5rem">
             <i class="pi pi-users text-orange-700 text-2xl"></i>
           </div>
@@ -56,7 +75,7 @@
       </div>
 
       <div class="col-12 md:col-6 lg:col-3">
-        <button type="button" class="card mb-0 cursor-pointer p-ripple p-4 w-full flex flex-column align-items-center text-center h-full" (click)="activeTab.set('regras')" title="Clique para ver as regras de conformidade" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius); transition: transform 0.25s, box-shadow 0.25s; background: var(--p-surface-card); color: inherit; font-family: inherit; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;">
+        <button type="button" class="card kpi-card-hover mb-0 cursor-pointer p-ripple p-4 w-full flex flex-column align-items-center text-center h-full" (click)="activeTab.set('regras')" title="Clique para ver as regras de conformidade" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius); transition: transform 0.25s, box-shadow 0.25s; background: var(--p-surface-card); color: inherit; font-family: inherit; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;">
           <div class="flex align-items-center justify-content-center bg-purple-100 dark:bg-purple-900/30 border-round mb-3" style="width: 3.5rem; height: 3.5rem">
             <i class="pi pi-shield text-purple-700 text-2xl"></i>
           </div>
@@ -343,9 +362,9 @@
                   <i class="pi pi-calendar text-blue-500 text-2xl"></i>
                 </div>
                 <div class="flex flex-column">
-                  <span class="text-sm text-muted-color font-medium">Total de Folgas no Mês</span>
+                  <span class="text-sm text-muted-color font-medium">Total de Folgas no Setor</span>
                   <h4 class="m-0 font-semibold text-xl text-color">{{ totalFolgasEscala() }} folgas</h4>
-                  <span class="text-xs text-muted-color">No setor {{ selectedSetor }}</span>
+                  <span class="text-xs text-muted-color">Média de {{ mediaFolgasPorColab() }} folgas/colab em {{ selectedSetor }}</span>
                 </div>
               </div>
             </div>
@@ -374,6 +393,50 @@
                   <span class="text-xs text-muted-color">Setor {{ selectedSetor }}</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- DETALHAMENTO DE FOLGAS & PRESENÇA DIVIDIDOS POR CARGO -->
+          <div class="card p-3 mb-4 no-print" style="border: 1px solid var(--p-surface-border); border-radius: var(--p-content-border-radius);">
+            <div class="flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <h4 class="m-0 font-semibold text-base text-color flex align-items-center gap-2">
+                <i class="pi pi-users text-primary"></i>
+                <span>Divisão de Folgas & Presença por Cargo — {{ selectedSetor }}</span>
+              </h4>
+              <span class="text-xs text-muted-color">Clique no cargo para inspecionar a equipe</span>
+            </div>
+
+            <div class="grid">
+              @for (mc of metricsPorCargo(); track mc.cargoNome) {
+                <div class="col-12 md:col-6 lg:col-4">
+                  <button
+                    type="button"
+                    class="p-3 border-round border surface-card cursor-pointer hover:border-primary transition-colors text-left w-full h-full border-none"
+                    (click)="openSetorDetalhamentoModal(selectedSetor, 'TODOS', mc.cargoNome)"
+                    title="Clique para filtrar a equipe deste cargo"
+                    style="background: transparent; color: inherit; font-family: inherit;"
+                  >
+                    <div class="flex justify-content-between align-items-center mb-2">
+                      <strong class="text-sm font-semibold text-color">{{ mc.cargoNome }}</strong>
+                      <p-tag [value]="mc.total + ' colaboradores'" severity="secondary" styleClass="text-xs font-bold"></p-tag>
+                    </div>
+
+                    <div class="flex gap-2 mb-2 flex-wrap text-xs">
+                      <span class="p-1 px-2 border-round bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-semibold">
+                        🟢 {{ mc.trabalhandoHoje }} Trabalhando Hoje
+                      </span>
+                      <span class="p-1 px-2 border-round bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold">
+                        🔵 {{ mc.folgaHoje }} Folgando Hoje
+                      </span>
+                    </div>
+
+                    <div class="flex justify-content-between align-items-center pt-2 border-top-1 border-100 text-xs">
+                      <span class="text-muted-color">Folgas no Mês:</span>
+                      <span class="font-bold text-color">{{ mc.totalFolgasMes }} folgas (Média {{ mc.mediaFolgas }}/colab)</span>
+                    </div>
+                  </button>
+                </div>
+              }
             </div>
           </div>
 
@@ -1039,6 +1102,7 @@
   <!-- MODAL DE IMPRESSÃO A4 (PrimeNG p-dialog) -->
   <p-dialog
     [visible]="printModalVisible()"
+    (visibleChange)="printModalVisible.set($event)"
     (onHide)="printModalVisible.set(false)"
     [modal]="true"
     header="Opções de Impressão A4"
@@ -1092,6 +1156,7 @@
   <!-- MODAL DE REGRA (PrimeNG p-dialog) -->
   <p-dialog
     [visible]="regraModal().visible"
+    (visibleChange)="!$event && closeRegraModal()"
     (onHide)="closeRegraModal()"
     [modal]="true"
     [header]="regraModal().isEdit ? 'Editar Regra de Escala' : 'Cadastrar Nova Regra'"
@@ -1145,6 +1210,7 @@
     @let f = quickBlurModal().func!;
     <p-dialog
       [visible]="quickBlurModal().visible"
+      (visibleChange)="!$event && closeQuickBlurModal()"
       (onHide)="closeQuickBlurModal()"
       [modal]="true"
       [header]="'Perfil Rápido — ' + f.primeiro_nome"
@@ -1193,6 +1259,7 @@
   <!-- MODAL DE CONFIRMAÇÃO (PrimeNG p-dialog) -->
   <p-dialog
     [visible]="confirmModal().visible"
+    (visibleChange)="!$event && closeConfirmModal()"
     (onHide)="closeConfirmModal()"
     [modal]="true"
     [header]="confirmModal().title || 'Confirmação'"
@@ -1216,6 +1283,7 @@
     @let ef = editingFunc()!;
     <p-dialog
       [visible]="!!editingFunc()"
+      (visibleChange)="!$event && editingFunc.set(null)"
       (onHide)="editingFunc.set(null)"
       [modal]="true"
       [header]="'Editar Colaborador — ' + ef.primeiro_nome"
@@ -1281,6 +1349,7 @@
   <!-- MODAL DE SETOR (PrimeNG p-dialog) -->
   <p-dialog
     [visible]="sectorModal().visible"
+    (visibleChange)="!$event && closeSectorModal()"
     (onHide)="closeSectorModal()"
     [modal]="true"
     [header]="sectorModal().isEdit ? 'Editar Setor' : 'Adicionar Setor'"
@@ -1324,6 +1393,7 @@
   <!-- MODAL DE CARGO (PrimeNG p-dialog) -->
   <p-dialog
     [visible]="cargoModal().visible"
+    (visibleChange)="!$event && closeCargoModal()"
     (onHide)="closeCargoModal()"
     [modal]="true"
     [header]="cargoModal().isEdit ? 'Editar Cargo' : 'Adicionar Cargo'"
@@ -1359,6 +1429,7 @@
   <!-- MODAL DE FERIADO (PrimeNG p-dialog) -->
   <p-dialog
     [visible]="feriadoModal().visible"
+    (visibleChange)="!$event && closeFeriadoModal()"
     (onHide)="closeFeriadoModal()"
     [modal]="true"
     [header]="feriadoModal().isEdit ? 'Editar Feriado' : 'Cadastrar Feriado'"
@@ -1420,6 +1491,7 @@
   <!-- MODAL: ESCALA GUIADA INTELIGENTE (PrimeNG p-dialog) -->
   <p-dialog
     [visible]="isEscalaGuiadaModalOpen()"
+    (visibleChange)="isEscalaGuiadaModalOpen.set($event)"
     (onHide)="isEscalaGuiadaModalOpen.set(false)"
     [modal]="true"
     header="Assistente de Configuração de Escala Guiada ✨"
@@ -1623,6 +1695,7 @@
   <!-- MODAL: GERENCIAR TURNOS E INTERVALOS (PrimeNG p-dialog) -->
   <p-dialog
     [visible]="isTurnosModalOpen()"
+    (visibleChange)="isTurnosModalOpen.set($event)"
     (onHide)="fecharModalTurnos()"
     [modal]="true"
     header="Cadastrar Turno e Intervalo Intrajornada"
@@ -1674,6 +1747,7 @@
   <!-- MODAL DE DETALHAMENTO E INSPEÇÃO DA EQUIPE POR SETOR (PrimeNG p-dialog) -->
   <p-dialog
     [visible]="setorDetalhamentoModal().visible"
+    (visibleChange)="!$event && closeSetorDetalhamentoModal()"
     (onHide)="closeSetorDetalhamentoModal()"
     [modal]="true"
     [header]="setorDetalhamentoData().setorNome + ' — Inspeção da Equipe (' + dataAtualFormatted() + ')'"
@@ -1734,6 +1808,33 @@
           />
         </div>
       </div>
+
+      <!-- SELETOR DE CARGO / FUNÇÃO DENTRO DO MODAL -->
+      @if (setorDetalhamentoData().cargosResumo.length > 0) {
+        <div class="flex align-items-center gap-2 flex-wrap mb-3 p-2 bg-50 border-round border">
+          <span class="text-xs font-semibold text-muted-color">Filtrar por Cargo:</span>
+          <p-tag
+            value="Todos os Cargos"
+            [severity]="setorDetalhamentoModal().filterCargo === '' ? 'primary' : 'secondary'"
+            class="cursor-pointer"
+            role="button"
+            tabindex="0"
+            (click)="setSetorDetalhamentoCargoFilter('')"
+            (keydown.enter)="setSetorDetalhamentoCargoFilter('')"
+          ></p-tag>
+          @for (c of setorDetalhamentoData().cargosResumo; track c.cargoNome) {
+            <p-tag
+              [value]="c.cargoNome + ' (' + c.total + ' colab | 🟢 ' + c.trabalhandoCount + ' | 🔵 ' + c.folgandoCount + ')'"
+              [severity]="setorDetalhamentoModal().filterCargo === c.cargoNome ? 'primary' : 'secondary'"
+              class="cursor-pointer"
+              role="button"
+              tabindex="0"
+              (click)="setSetorDetalhamentoCargoFilter(c.cargoNome)"
+              (keydown.enter)="setSetorDetalhamentoCargoFilter(c.cargoNome)"
+            ></p-tag>
+          }
+        </div>
+      }
 
       <!-- LISTA DE COLABORADORES DO SETOR -->
       <div class="table-responsive setor-table-container">
