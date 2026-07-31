@@ -29,12 +29,12 @@ export class AppMenuComponent implements OnInit {
       {
         label: 'GESTÃO DE ESCALAS',
         items: [
-          { label: 'Matriz & Gerador de Escalas', icon: 'pi pi-fw pi-calendar', routerLink: ['/dashboard'], queryParams: { tab: 'escala' } },
-          { label: 'Auditoria CLT & CCT', icon: 'pi pi-fw pi-shield', routerLink: ['/dashboard'], queryParams: { tab: 'regras' } }
+          { label: 'Gerador de Escalas', icon: 'pi pi-fw pi-calendar', routerLink: ['/dashboard'], queryParams: { tab: 'escala' } },
+          { label: 'Auditoria', icon: 'pi pi-fw pi-shield', routerLink: ['/dashboard'], queryParams: { tab: 'regras' } }
         ]
       },
       {
-        label: 'CADASTROS & OPERAÇÃO',
+        label: 'CADASTROS',
         items: [
           { label: 'Setores & Turnos', icon: 'pi pi-fw pi-building', routerLink: ['/dashboard'], queryParams: { tab: 'setores' } },
           { label: 'Colaboradores', icon: 'pi pi-fw pi-users', routerLink: ['/dashboard'], queryParams: { tab: 'funcionarios' } },
@@ -42,9 +42,9 @@ export class AppMenuComponent implements OnInit {
         ]
       },
       {
-        label: 'GOVERNANÇA & SISTEMA',
+        label: 'REGRAS',
         items: [
-          { label: 'Regras Trabalhistas', icon: 'pi pi-fw pi-sliders-h', routerLink: ['/dashboard'], queryParams: { tab: 'regras' } }
+          { label: 'Trabalhistas', icon: 'pi pi-fw pi-sliders-h', routerLink: ['/dashboard'], queryParams: { tab: 'regras' } }
         ]
       }
     ];

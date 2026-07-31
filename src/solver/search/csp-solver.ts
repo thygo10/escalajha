@@ -199,10 +199,15 @@ export class CSPSolverEngine {
             }
           }
 
-          // Se o colaborador vai trabalhar no domingo, dar a folga útil no dia da semana correspondente ao seu índice (Segunda=1, Terça=2... Sábado=6)
-          const diaFolgaSemanal = 1 + (idx % 6);
+          // Se o colaborador vai trabalhar no domingo, dar a folga útil no meio da semana (Terça=2, Quarta=3, Quinta=4, Sexta=5)
+          // Isso garante que Segunda (1) e Sábado (6) sejam sempre dias úteis, isolando completamente as folgas do domingo
+          const diaFolgaSemanal = 2 + (idx % 4);
           if (trabalhaProximoDomingo && diaSemana === diaFolgaSemanal) {
-            sigla = 'F';
+            const stAnt = diasMatriz[dia - 1];
+            const ehTrabAnt = !stAnt || stAnt === 'T' || stAnt === 'TD' || stAnt === 'TF';
+            if (ehTrabAnt) {
+              sigla = 'F';
+            }
           }
         }
 
