@@ -182,14 +182,26 @@
                   </div>
 
                   <!-- Sub-métricas -->
-                  <div class="flex gap-2 mb-3">
-                    <button pButton type="button" class="p-button-outlined p-button-success p-button-xs py-1 px-2 text-xs" (click)="openSetorDetalhamentoModal(setor.nome, 'TRABALHANDO')" title="Ver quem está trabalhando hoje">
-                      <span class="w-2 h-2 border-circle bg-green-500 mr-1 inline-block"></span>
-                      {{ getFuncionariosPorSetor(setor.nome).length - getFolgasPorSetorFiltradas(setor.nome).length }} Trabalhando
+                  <div class="flex align-items-center gap-2 mb-3 flex-wrap">
+                    <button
+                      type="button"
+                      class="flex align-items-center gap-2 px-3 py-1.5 border-round text-xs font-semibold cursor-pointer border transition-all"
+                      style="background: var(--p-green-50, #f0fdf4); color: var(--p-green-700, #15803d); border-color: var(--p-green-200, #bbf7d0); white-space: nowrap;"
+                      (click)="openSetorDetalhamentoModal(setor.nome, 'TRABALHANDO')"
+                      title="Ver quem está trabalhando hoje"
+                    >
+                      <span class="w-2 h-2 border-circle bg-green-500 inline-block shrink-0"></span>
+                      <span><strong>{{ getFuncionariosPorSetor(setor.nome).length - getFolgasPorSetorFiltradas(setor.nome).length }}</strong> Trabalhando</span>
                     </button>
-                    <button pButton type="button" class="p-button-outlined p-button-info p-button-xs py-1 px-2 text-xs" (click)="openSetorDetalhamentoModal(setor.nome, 'FOLGA')" title="Ver quem está de folga hoje">
-                      <span class="w-2 h-2 border-circle bg-blue-500 mr-1 inline-block"></span>
-                      {{ getFolgasPorSetorFiltradas(setor.nome).length }} Folgando
+                    <button
+                      type="button"
+                      class="flex align-items-center gap-2 px-3 py-1.5 border-round text-xs font-semibold cursor-pointer border transition-all"
+                      style="background: var(--p-blue-50, #eff6ff); color: var(--p-blue-700, #1d4ed8); border-color: var(--p-blue-200, #bfdbfe); white-space: nowrap;"
+                      (click)="openSetorDetalhamentoModal(setor.nome, 'FOLGA')"
+                      title="Ver quem está de folga hoje"
+                    >
+                      <span class="w-2 h-2 border-circle bg-blue-500 inline-block shrink-0"></span>
+                      <span><strong>{{ getFolgasPorSetorFiltradas(setor.nome).length }}</strong> Folgando</span>
                     </button>
                   </div>
 
@@ -330,18 +342,6 @@
                 </div>
               </div>
 
-              <div class="flex align-items-center gap-2">
-                <p-checkbox
-                  id="chkConsecutivos"
-                  [binary]="true"
-                  [ngModel]="permitirDoisDiasConsecutivos()"
-                  (ngModelChange)="permitirDoisDiasConsecutivos.set($event)"
-                ></p-checkbox>
-                <label for="chkConsecutivos" class="text-sm font-semibold text-muted-color flex align-items-center gap-1 cursor-pointer">
-                  Permitir 2 folgas consecutivas
-                  <i class="pi pi-info-circle text-muted-color" [pTooltip]="'Permitir 2 folgas consecutivas quando necessário para fechar a escala'"></i>
-                </label>
-              </div>
             </div>
           </div>
 
@@ -1596,10 +1596,7 @@
               </div>
             </div>
 
-            <div class="chk-consecutivos-wrapper mt-3 flex align-center gap-2">
-              <input type="checkbox" id="guiadaConsecutivos" [ngModel]="guiadaPermitirDoisConsecutivos()" (ngModelChange)="guiadaPermitirDoisConsecutivos.set($event)" class="chk-input" />
-              <label for="guiadaConsecutivos" class="chk-lbl text-sm">Permitir 2 folgas consecutivas quando necessário para fechar a escala</label>
-            </div>
+
           </div>
         }
 

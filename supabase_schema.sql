@@ -34,9 +34,45 @@ create table if not exists public.usuario_lojas (
 -- Tabela de Setores Operacionais
 create table if not exists public.setores (
   id uuid primary key default gen_random_uuid(),
+  loja_id uuid references public.lojas(id) on delete cascade,
   nome text unique not null,
   descricao text,
+  rodizio_id text,
+  min_funcionarios_dia int,
+  min_funcionarios_domingo int,
+  min_funcionarios_feriado int,
   created_at timestamptz default now()
+);
+
+-- MIGRATION: Garantir colunas em public.setores
+ALTER TABLE public.setores ADD COLUMN IF NOT EXISTS loja_id uuid references public.lojas(id) on delete cascade;
+ALTER TABLE public.setores ADD COLUMN IF NOT EXISTS rodizio_id text;
+ALTER TABLE public.setores ADD COLUMN IF NOT EXISTS min_funcionarios_dia int;
+ALTER TABLE public.setores ADD COLUMN IF NOT EXISTS min_funcionarios_domingo int;
+ALTER TABLE public.setores ADD COLUMN IF NOT EXISTS min_funcionarios_feriado int;
+
+-- Tabelas de Regras de Rodízio e Grupos Persistidos
+create table if not exists public.rodizios (
+  id text primary key,
+  nome text not null,
+  versao int not null default 1,
+  inicio_vigencia date not null,
+  fim_vigencia date,
+  domingos_trabalhados int not null,
+  domingos_folga int not null,
+  quantidade_grupos int not null,
+  usa_grupo boolean not null default true,
+  descricao text,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.rodizio_grupos (
+  id text primary key,
+  rodizio_id text not null references public.rodizios(id) on delete cascade,
+  codigo text not null,
+  ordem int not null,
+  descricao text,
+  unique (rodizio_id, codigo)
 );
 
 -- Tabela de Cargos e Funções Interligados com Setores
@@ -60,13 +96,21 @@ create table if not exists public.funcionarios (
   cargo text not null,
   turno_padrao text default '08:00 às 16:20',
   genero text default 'F' check (genero in ('M', 'F', 'OUTRO')),
+  rodizio_id text,
+  grupo_domingo text,
+  grupo_feriado text,
+  grupo text,
   setores_cobertura text[] default '{}', -- Cobertura de folga / função multisetor
   ativo boolean default true not null, -- Exclusão Lógica para conformidade CLT/LGPD
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
--- MIGRATION: Garantir coluna setores_cobertura em tabelas existentes
+-- MIGRATIONS: Garantir colunas em tabelas existentes
+ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS rodizio_id text;
+ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS grupo_domingo text;
+ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS grupo_feriado text;
+ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS grupo text;
 ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS setores_cobertura text[] DEFAULT '{}';
 
 -- Trigger de Atualização Automática do campo updated_at
@@ -137,13 +181,22 @@ create table if not exists public.funcionario_estados_regra (
   id uuid primary key default gen_random_uuid(),
   loja_id uuid references public.lojas(id) on delete cascade not null,
   funcionario_id uuid references public.funcionarios(id) on delete cascade not null,
+  mes_referencia date not null default date_trunc('month', now())::date,
   ultimo_domingo_trabalhado date,
   domingos_descanso_restantes int default 0,
+  ultimo_feriado_trabalhado date,
   grupo_ultimo_feriado_trabalhado varchar(1) default 'A',
   dias_consecutivos_acumulados int default 0,
   updated_at timestamptz default now(),
-  constraint unique_funcionario_estado unique (funcionario_id)
+  constraint unique_funcionario_estado unique (funcionario_id, mes_referencia)
 );
+
+ALTER TABLE public.funcionario_estados_regra ADD COLUMN IF NOT EXISTS mes_referencia date DEFAULT date_trunc('month', now())::date;
+UPDATE public.funcionario_estados_regra SET mes_referencia = date_trunc('month', now())::date WHERE mes_referencia IS NULL;
+ALTER TABLE public.funcionario_estados_regra ALTER COLUMN mes_referencia SET NOT NULL;
+ALTER TABLE public.funcionario_estados_regra ADD COLUMN IF NOT EXISTS ultimo_feriado_trabalhado date;
+ALTER TABLE public.funcionario_estados_regra DROP CONSTRAINT IF EXISTS unique_funcionario_estado;
+ALTER TABLE public.funcionario_estados_regra ADD CONSTRAINT unique_funcionario_estado UNIQUE (funcionario_id, mes_referencia);
 
 -- Tabela de Execuções e Telemetria do Solver
 create table if not exists public.solver_runs (
@@ -200,6 +253,16 @@ alter table public.solver_runs enable row level security;
 alter table public.constraint_failures enable row level security;
 alter table public.escala_versions enable row level security;
 alter table public.audit_log enable row level security;
+alter table public.rodizios enable row level security;
+alter table public.rodizio_grupos enable row level security;
+
+drop policy if exists "rodizios_select_policy" on public.rodizios;
+create policy "rodizios_select_policy" on public.rodizios
+  for select using (auth.uid() is not null);
+
+drop policy if exists "rodizio_grupos_select_policy" on public.rodizio_grupos;
+create policy "rodizio_grupos_select_policy" on public.rodizio_grupos
+  for select using (auth.uid() is not null);
 
 
 
@@ -513,5 +576,26 @@ begin
   on conflict (titulo) do update set
     descricao = excluded.descricao,
     categoria = excluded.categoria;
+
+  -- Inserir Rodízios Padrão
+  insert into public.rodizios (id, nome, versao, inicio_vigencia, domingos_trabalhados, domingos_folga, quantidade_grupos, usa_grupo, descricao) values
+    ('rod_normal_1x2', 'Rodízio Geral CLT / CCT (1T : 2F)', 1, '2026-01-01', 1, 2, 3, true, 'Trabalha 1 domingo e folga nos 2 domingos seguintes (Grupos A, B e C).'),
+    ('rod_especial_2x1', 'Rodízio CCT Açougue & Padaria (2T : 1F)', 1, '2026-01-01', 2, 1, 2, true, 'Regra de exceção da CCT para produções de Açougue e Padaria.')
+  on conflict (id) do update set
+    nome = excluded.nome,
+    domingos_trabalhados = excluded.domingos_trabalhados,
+    domingos_folga = excluded.domingos_folga,
+    quantidade_grupos = excluded.quantidade_grupos;
+
+  insert into public.rodizio_grupos (id, rodizio_id, codigo, ordem, descricao) values
+    ('rg_norm_a', 'rod_normal_1x2', 'A', 1, 'Grupo A (Trabalha 1º domingo)'),
+    ('rg_norm_b', 'rod_normal_1x2', 'B', 2, 'Grupo B (Trabalha 2º domingo)'),
+    ('rg_norm_c', 'rod_normal_1x2', 'C', 3, 'Grupo C (Trabalha 3º domingo)'),
+    ('rg_esp_a', 'rod_especial_2x1', 'A', 1, 'Grupo A Especial'),
+    ('rg_esp_b', 'rod_especial_2x1', 'B', 2, 'Grupo B Especial')
+  on conflict (id) do update set
+    codigo = excluded.codigo,
+    ordem = excluded.ordem,
+    descricao = excluded.descricao;
 
 end $$;

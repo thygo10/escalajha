@@ -64,7 +64,7 @@ export class EscalaValidatorService {
         let minEfetivoValida = minRequerido;
         if (eFrenteDeCaixa) {
             minEfetivoValida = Math.max(minRequerido, 6);
-        } else if (eAdm || itens.length <= 4) {
+        } else if (eAdm) {
             minEfetivoValida = 1;
         }
 
@@ -80,7 +80,7 @@ export class EscalaValidatorService {
                 minPermitidoDia = minFeriado;
             } else if (isDomingo) {
                 minPermitidoDia = minDomingo ?? (eFrenteDeCaixa ? 3 : Math.max(1, Math.floor(itens.length / 3)));
-            } else if (eAdm || itens.length <= 4) {
+            } else if (eAdm) {
                 minPermitidoDia = 1;
             }
 
@@ -92,7 +92,7 @@ export class EscalaValidatorService {
                 erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Frente de Caixa possui apenas ${emTrabalho} operador(es) trabalhando. Mínimo OBRIGATÓRIO: 6.`, tipo: 'ERRO_COBERTURA_CAIXA' });
             } else if (eFiscalDeCaixa && isDomingo && emTrabalho !== 2 && itens.length >= 2) {
                 erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Fiscal de Caixa no domingo exige EXATAMENTE 2 fiscais (1 dupla trabalhando, 1 dupla folgando). Encontrado(s): ${emTrabalho}.`, tipo: 'ERRO_COBERTURA' });
-            } else if (emTrabalho < minPermitidoDia && itens.length >= 2 && itens.length >= minEfetivoValida) {
+            } else if (emTrabalho < minPermitidoDia && itens.length >= 2 && itens.length >= minPermitidoDia) {
                 erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Apenas ${emTrabalho} colaborador(es) trabalhando. Mínimo exigido: ${minPermitidoDia}.`, tipo: 'ERRO_COBERTURA' });
             }
 
@@ -230,19 +230,14 @@ export class EscalaValidatorService {
                 }
             });
 
-            const folgasVoluntariasNoMes = Object.values(item.dias).filter(st => st === 'F' || st === 'FD').length;
+            const folgasProgramaveisNoMes = Object.values(item.dias).filter(st => st === 'F' || st === 'FD').length;
             const domingosFolgaValCount = Object.values(item.dias).filter(st => st === 'FD').length;
-            let maxPermitidoVoluntario = (domingosNoMesVal.length === 5 ? 7 : 6) + feriadosFechadosVal.size;
-            if (domingosFolgaValCount >= 3) {
-                maxPermitidoVoluntario = Math.max(maxPermitidoVoluntario, domingosFolgaValCount + 4);
-            }
-            if (historicoMesAnterior && Object.hasOwn(historicoMesAnterior, item.matricula)) {
-                maxPermitidoVoluntario += 1;
-            }
             const minFolgasEsperadas = (domingosNoMesVal.length === 5) ? 5 : 4;
 
-            if (folgasVoluntariasNoMes > maxPermitidoVoluntario) {
-                erros.push({ severidade: ValidationSeverity.ERROR, dia: 1, setor: item.setor, mensagem: `${item.nome}: Excede o limite de folgas no mês (${folgasVoluntariasNoMes} folgas). Máximo permitido: ${maxPermitidoVoluntario} folgas.`, tipo: 'ERRO_FOLGAS_MES' });
+            const maxFolgasProgramaveisPermitidas = domingosNoMesVal.length === 5 ? 6 : 5;
+
+            if (folgasProgramaveisNoMes > maxFolgasProgramaveisPermitidas) {
+                erros.push({ severidade: ValidationSeverity.ERROR, dia: 1, setor: item.setor, mensagem: `${item.nome}: Excede o teto máximo de ${maxFolgasProgramaveisPermitidas} folgas programáveis no mês (possui ${folgasProgramaveisNoMes} folgas 'F'/'FD'). Violação do PRD RH-01.`, tipo: 'ERRO_FOLGAS_MES' });
             } else if (totalFolgasNoMes < minFolgasEsperadas && totalDias >= 28) {
                 erros.push({ severidade: ValidationSeverity.ERROR, dia: 1, setor: item.setor, mensagem: `${item.nome}: Possui apenas ${totalFolgasNoMes} folga(s) no mês. Esperado no mínimo: ${minFolgasEsperadas} folgas (mês de ${domingosNoMesVal.length} domingos).`, tipo: 'ERRO_FOLGAS_MES' });
             }

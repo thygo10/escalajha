@@ -1,5 +1,4 @@
 import type { ScheduleRule, ScheduleEntry, ScheduleContext, Violation } from '../schedule.types';
-import { isTrabalho } from '../schedule.types';
 import { isSunday } from '../../shared/year-month';
 
 export class SundayRotationRule implements ScheduleRule {

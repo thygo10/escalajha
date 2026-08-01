@@ -60,6 +60,10 @@ export interface SolverEscalaItem {
   turno: string;
   genero: 'M' | 'F';
   cargoExercido?: string;
+  cargo?: string;
+  rodizio_id?: string;
+  grupo_domingo?: string;
+  grupo_feriado?: string;
   dias: Record<number, TipoDiaSigla>;
 }
 

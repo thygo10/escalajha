@@ -41,6 +41,7 @@ export interface Funcionario {
   rodizio_id?: string; // ID do Rodízio Específico (opcional, fallback pro Setor)
   grupo_domingo?: string; // Código dinâmico: 'A', 'B', 'C', 'D'...
   grupo_feriado?: string; // Código dinâmico: 'A', 'B'...
+  grupo?: string; // Grupo Geral / Feriado ('A' | 'B')
   setores_cobertura?: string[]; // Setores secundários para cobertura de folga / função multisetor
 }
 
@@ -88,13 +89,17 @@ export interface FuncionarioRodizioVigencia {
 
 export interface FuncionarioEstadoRotacao {
   id?: string;
+  loja_id?: string;
   funcionario_id: string;
   mes_referencia: string; // 'YYYY-MM-01'
   dias_consecutivos_acumulados: number;
-  domingos_pendentes: number;
+  domingos_pendentes?: number;
+  domingos_descanso_restantes?: number;
   ultimo_domingo_trabalhado?: string; 
   ultimo_feriado_trabalhado?: string; 
+  grupo_ultimo_feriado_trabalhado?: string;
   atualizado_em?: string;
+  updated_at?: string;
 }
 
 export interface EscalaEvento {
@@ -115,6 +120,12 @@ export interface EscalaItem {
   setor: string;
   turno: string;
   genero: 'M' | 'F';
+  cargo?: string;
+  rodizio_id?: string;
+  grupo_domingo?: string;
+  grupo_feriado?: string;
+  grupo?: string;
+  setores_cobertura?: string[];
   dias: Record<number, TipoDia>; 
 }
 
@@ -286,4 +297,3 @@ export interface ResumoFuncionarioMetrics {
   totalHorasLiquidas?: number;
   mediaDiariaMinutos?: number;
 }
-

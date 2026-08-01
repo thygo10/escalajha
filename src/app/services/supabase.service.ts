@@ -192,14 +192,20 @@ export class SupabaseService {
 
       if (!error && data && data.length > 0) {
         const funcs = data as Funcionario[];
-        this.localFuncionarios.set(funcs);
-        return funcs;
+        const { funcionariosAtualizados, count } = this.garantirBackfillGruposFuncionarios(funcs);
+        this.localFuncionarios.set(funcionariosAtualizados);
+        if (count > 0) {
+          await this.persistirBackfillGruposFuncionarios(funcionariosAtualizados, funcs);
+        }
+        return funcionariosAtualizados;
       }
     } catch (err) {
       console.error('Erro ao buscar funcionarios no Supabase:', err);
     }
     const funcs = this.localFuncionarios().filter(f => f.ativo);
-    return funcs.length > 0 ? funcs : INITIAL_FUNCIONARIOS;
+    const baseList = funcs.length > 0 ? funcs : INITIAL_FUNCIONARIOS;
+    const { funcionariosAtualizados } = this.garantirBackfillGruposFuncionarios(baseList);
+    return funcionariosAtualizados;
   }
 
   async addFuncionario(func: Omit<Funcionario, 'id' | 'matricula_aleatoria'>): Promise<Funcionario> {
@@ -219,6 +225,7 @@ export class SupabaseService {
       rodizio_id: func.rodizio_id || 'rod_normal_1x2',
       grupo_domingo: func.grupo_domingo || 'A',
       grupo_feriado: func.grupo_feriado || 'A',
+      grupo: func.grupo || func.grupo_feriado || 'A',
       setores_cobertura: func.setores_cobertura || []
     };
 
@@ -273,6 +280,7 @@ export class SupabaseService {
           rodizio_id: func.rodizio_id,
           grupo_domingo: func.grupo_domingo,
           grupo_feriado: func.grupo_feriado,
+          grupo: func.grupo || func.grupo_feriado,
           setores_cobertura: func.setores_cobertura || []
         })
         .eq('id', func.id)
@@ -290,6 +298,105 @@ export class SupabaseService {
 
     this.localFuncionarios.update(list => list.map(f => (f.id === func.id || (!!func.matricula_aleatoria && f.matricula_aleatoria === func.matricula_aleatoria)) ? { ...f, ...func } : f));
     return func;
+  }
+
+  garantirBackfillGruposFuncionarios(funcionarios: Funcionario[]): { funcionariosAtualizados: Funcionario[]; count: number } {
+    let count = 0;
+    const setoresMap = new Map<string, { domCount: Record<string, number>; ferCount: Record<string, number> }>();
+
+    funcionarios.forEach(f => {
+      const setorKey = f.setor || 'Geral';
+      if (!setoresMap.has(setorKey)) {
+        setoresMap.set(setorKey, {
+          domCount: { A: 0, B: 0, C: 0 },
+          ferCount: { A: 0, B: 0 }
+        });
+      }
+      const st = setoresMap.get(setorKey)!;
+      if (f.grupo_domingo && st.domCount[f.grupo_domingo] !== undefined) {
+        st.domCount[f.grupo_domingo]++;
+      }
+      if (f.grupo_feriado && st.ferCount[f.grupo_feriado] !== undefined) {
+        st.ferCount[f.grupo_feriado]++;
+      }
+    });
+
+    const result = funcionarios.map(f => {
+      let modificado = false;
+      const setorKey = f.setor || 'Geral';
+      const st = setoresMap.get(setorKey)!;
+
+      const rodizio_id = f.rodizio_id || (this.isSetorRodizioEspecial(f.setor) ? 'rod_especial_2x1' : 'rod_normal_1x2');
+      if (!f.rodizio_id) modificado = true;
+
+      let grupo_domingo = f.grupo_domingo;
+      if (!grupo_domingo) {
+        const gruposDom = rodizio_id === 'rod_especial_2x1' ? ['A', 'B'] : ['A', 'B', 'C'];
+        grupo_domingo = gruposDom.reduce((minG, g) => (st.domCount[g] || 0) < (st.domCount[minG] || 0) ? g : minG, gruposDom[0]);
+        st.domCount[grupo_domingo] = (st.domCount[grupo_domingo] || 0) + 1;
+        modificado = true;
+      }
+
+      let grupo_feriado = f.grupo_feriado;
+      if (!grupo_feriado) {
+        const gruposFer = ['A', 'B'];
+        grupo_feriado = gruposFer.reduce((minG, g) => (st.ferCount[g] || 0) < (st.ferCount[minG] || 0) ? g : minG, gruposFer[0]);
+        st.ferCount[grupo_feriado] = (st.ferCount[grupo_feriado] || 0) + 1;
+        modificado = true;
+      }
+
+      const grupo = f.grupo || grupo_feriado;
+      if (!f.grupo) modificado = true;
+
+      if (modificado) {
+        count++;
+        return {
+          ...f,
+          rodizio_id,
+          grupo_domingo,
+          grupo_feriado,
+          grupo
+        };
+      }
+      return f;
+    });
+
+    return { funcionariosAtualizados: result, count };
+  }
+
+  private async persistirBackfillGruposFuncionarios(atualizados: Funcionario[], originais: Funcionario[]): Promise<void> {
+    const originalById = new Map(originais.map(f => [f.id || f.matricula_aleatoria, f]));
+    const changed = atualizados.filter(f => {
+      const original = originalById.get(f.id || f.matricula_aleatoria);
+      return !!original && (
+        original.rodizio_id !== f.rodizio_id ||
+        original.grupo_domingo !== f.grupo_domingo ||
+        original.grupo_feriado !== f.grupo_feriado ||
+        original.grupo !== f.grupo
+      );
+    });
+
+    for (const f of changed) {
+      if (!f.id || f.id.startsWith('local-')) continue;
+      try {
+        await this.client
+          .from('funcionarios')
+          .update({
+            rodizio_id: f.rodizio_id,
+            grupo_domingo: f.grupo_domingo,
+            grupo_feriado: f.grupo_feriado,
+            grupo: f.grupo
+          })
+          .eq('id', f.id);
+      } catch (err) {
+        console.warn('Backfill de grupos nÃ£o persistiu no Supabase para funcionario:', f.id, err);
+      }
+    }
+  }
+
+  private isSetorRodizioEspecial(setor: string): boolean {
+    const s = setor.toLowerCase();
+    return s.includes('padaria') || s.includes('acougue') || s.includes('aÃ§ougue');
   }
 
   // Setores CRUD
@@ -706,7 +813,7 @@ export class SupabaseService {
   async getFuncionarioEstadoRotacao(funcionarioId: string, mesReferencia: string): Promise<FuncionarioEstadoRotacao | null> {
     try {
       const { data, error } = await this.client
-        .from('funcionario_estado_rotacao')
+        .from('funcionario_estados_regra')
         .select('*')
         .eq('funcionario_id', funcionarioId)
         .eq('mes_referencia', mesReferencia)
@@ -723,7 +830,7 @@ export class SupabaseService {
 
   async saveFuncionarioEstadoRotacao(estado: FuncionarioEstadoRotacao): Promise<void> {
     try {
-      await this.client.from('funcionario_estado_rotacao').upsert(estado, { onConflict: 'funcionario_id,mes_referencia' });
+      await this.client.from('funcionario_estados_regra').upsert(estado, { onConflict: 'funcionario_id,mes_referencia' });
     } catch (err) {
       console.error('Erro ao salvar estado de rotação no Supabase:', err);
     }

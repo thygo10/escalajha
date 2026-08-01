@@ -20,6 +20,11 @@ export interface ScheduleEntry {
   setor: string;
   turno: string;
   genero: 'M' | 'F';
+  cargo?: string;
+  rodizioId?: string;
+  grupoDomingo?: string;
+  grupoFeriado?: string;
+  setoresCobertura?: string[];
   dias: Record<number, TipoDia>;
 }
 
@@ -33,6 +38,10 @@ export interface Employee {
   turno_padrao: string;
   genero: 'M' | 'F';
   ativo: boolean;
+  rodizio_id?: string;
+  grupo_domingo?: string;
+  grupo_feriado?: string;
+  grupo?: string;
   setores_cobertura?: string[];
 }
 

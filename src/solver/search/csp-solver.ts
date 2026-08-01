@@ -60,15 +60,15 @@ export class CSPSolverEngine {
     const explicacoes: Record<string, Record<number, string>> = {};
     let totalNosExplorados = 0;
 
-    // Mapa de feriados: dia -> { nome, index }
-    const feriadosMap = new Map<number, { nome: string; index: number }>();
+    // Mapa de feriados: dia -> { nome, index, proibido }
+    const feriadosMap = new Map<number, { nome: string; index: number; proibido: boolean }>();
     let feriadoSeqCount = 0;
     if (options.feriados) {
       for (const fer of options.feriados) {
         const d = new Date(fer.data + 'T00:00:00');
         if (d.getFullYear() === year && d.getMonth() + 1 === month) {
           feriadoSeqCount++;
-          feriadosMap.set(d.getDate(), { nome: fer.nome, index: feriadoSeqCount });
+          feriadosMap.set(d.getDate(), { nome: fer.nome, index: feriadoSeqCount, proibido: !!fer.proibido });
         }
       }
     }
@@ -158,6 +158,8 @@ export class CSPSolverEngine {
 
         if (siglaAfast) {
           sigla = siglaAfast;
+        } else if (feriadoInfo?.proibido) {
+          sigla = 'FE';
         } else if (ehFeriado) {
           const seqFer = feriadoInfo.index;
           // Alternância dinâmica de feriado baseada no índice numérico do grupo (50/50 ou N grupos)
@@ -286,6 +288,10 @@ export class CSPSolverEngine {
         turno: func.turno,
         genero: func.genero,
         cargoExercido: func.cargo,
+        cargo: func.cargo,
+        rodizio_id: func.rodizio_id,
+        grupo_domingo: func.grupo_domingo,
+        grupo_feriado: func.grupo_feriado,
         dias: diasMatriz
       });
     });

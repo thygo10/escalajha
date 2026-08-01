@@ -57,6 +57,11 @@ export function generateSchedule(input: GenerateScheduleInput): GenerateSchedule
     setor: emp.setor,
     turno: emp.turno_padrao,
     genero: emp.genero,
+    cargo: emp.cargo,
+    rodizioId: emp.rodizio_id,
+    grupoDomingo: emp.grupo_domingo,
+    grupoFeriado: emp.grupo_feriado || emp.grupo,
+    setoresCobertura: emp.setores_cobertura,
     dias: {},
   }));
 
@@ -141,6 +146,25 @@ function applyFixedAnchors(
   seed: number = 0,
 ): ScheduleEntry[] {
   const sundays = getSundays(month);
+  const openHolidayOrder = new Map<number, number>();
+  Array.from(openHolidays).sort((a, b) => a - b).forEach((day, idx) => {
+    openHolidayOrder.set(day, idx);
+  });
+
+  const normalizeGroupIndex = (group: string | undefined, fallbackIdx: number, groups: string[]): number => {
+    const normalized = group?.trim().toUpperCase();
+    const found = normalized ? groups.indexOf(normalized) : -1;
+    return found >= 0 ? found : fallbackIdx % groups.length;
+  };
+
+  const sundayGroupsFor = (item: ScheduleEntry): string[] => {
+    const sector = item.setor.toLowerCase();
+    const usesSpecialRodizio = item.rodizioId === 'rod_especial_2x1' ||
+      sector.includes('padaria') ||
+      sector.includes('acougue') ||
+      sector.includes('aÃ§ougue');
+    return usesSpecialRodizio ? ['A', 'B'] : ['A', 'B', 'C'];
+  };
   // Sort by shift start time so early shifts get even Sunday distribution,
   // ensuring morning coverage on Sundays (validator checks from 08:00).
   const shiftStartMin = items.map(item => {
@@ -157,8 +181,9 @@ function applyFixedAnchors(
       } else if (sundays.includes(day)) {
         const sunIdx = sundays.indexOf(day);
         // 1T:2F rotation — use priority-sorted position for equitable distribution, offset by seed when regenerating
-        const state = (sunIdx + sortedPos + seed) % 3;
-        const shouldRest = (state !== 0);
+        const sundayGroups = sundayGroupsFor(item);
+        const groupIdx = normalizeGroupIndex(item.grupoDomingo, sortedPos + seed, sundayGroups);
+        const shouldRest = (sunIdx + seed) % sundayGroups.length !== groupIdx;
 
         if (shouldRest) {
           newDias[day] = 'FD';
@@ -168,7 +193,9 @@ function applyFixedAnchors(
           newDias[day] = 'TD';
         }
       } else if (openHolidays.has(day)) {
-        newDias[day] = 'TF';
+        const holidayIdx = openHolidayOrder.get(day) || 0;
+        const groupIdx = normalizeGroupIndex(item.grupoFeriado || item.grupoDomingo, sortedPos + seed, ['A', 'B']);
+        newDias[day] = ((holidayIdx + seed) % 2 === groupIdx) ? 'TF' : 'F';
       }
     }
     return { ...item, dias: newDias };
@@ -211,9 +238,6 @@ function allocateRestOfDays(
   // FE (closed holidays) don't count as a voluntary rest so we add them.
   // Total capped at 5 real folgas (F/FD) regardless of FD count.
   const getMaxFolgas = (emp: ScheduleEntry): number => {
-    if (isExceptionSector) {
-      return totalDays >= 30 ? 5 : 4;
-    }
     const feCount = Object.values(emp.dias).filter(st => st === 'FE').length;
     // Base: 5 for months >= 30 days, else 4. FE days are free (loja fechada).
     // Hard cap: never more than 5 voluntary rests (F or FD) + FEs
@@ -517,7 +541,8 @@ function allocateRestOfDays(
   //   For Operadores de Caixa (isFrontEnd): exactly 50% rest (F) and 50% work (TF).
   //   If missing candidates, complete randomly.
   // ──────────────────────────────────────────────────
-  if (openHolidays.size > 0) {
+  const usesHolidayGroups = items.some(emp => !!emp.grupoFeriado);
+  if (openHolidays.size > 0 && !usesHolidayGroups) {
     for (let d = 1; d <= totalDays; d++) {
       if (!openHolidays.has(d) || isSunday(month, d)) continue;
 

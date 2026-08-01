@@ -47,10 +47,25 @@ export class EscalaGeneratorService {
     const payload = {
       ano: year,
       mes: month,
-      funcs: employees.map(f => ({ id: f.matricula_aleatoria, turno: f.turno_padrao, ativo: f.ativo, setor: f.setor })),
+      funcs: employees.map(f => ({
+        id: f.matricula_aleatoria,
+        turno: f.turno_padrao,
+        ativo: f.ativo,
+        setor: f.setor,
+        rodizio: f.rodizio_id,
+        grupoDom: f.grupo_domingo,
+        grupoFer: f.grupo_feriado || f.grupo
+      })),
       feriados: options?.feriados || [],
       turnos: options?.turnosConfigs || [],
-      historico: options?.historicoMesAnterior || {}
+      historico: options?.historicoMesAnterior || {},
+      minDia: options?.minFuncionariosPorDia,
+      minDom: options?.minFuncionariosDomingo,
+      minFer: options?.minFuncionariosFeriado,
+      diasPermitidos: options?.diasPermitidosFolga,
+      permitirDoisConsecutivos: options?.permitirDoisDiasConsecutivos,
+      modelo: options?.modeloEscala,
+      seed: options?.seed
     };
     return this._simpleHash(JSON.stringify(payload));
   }
@@ -101,7 +116,7 @@ export class EscalaGeneratorService {
       ativo: f.ativo ?? true,
       rodizio_id: f.rodizio_id,
       grupo_domingo: f.grupo_domingo,
-      grupo_feriado: f.grupo_feriado
+      grupo_feriado: f.grupo_feriado || f.grupo
     }));
 
     // Construir mapa de estados de transição a partir do histórico do mês anterior se não fornecido diretamente
@@ -135,6 +150,9 @@ export class EscalaGeneratorService {
       year,
       month,
       minFuncionariosPorDia: options?.minFuncionariosPorDia,
+      minFuncionariosDomingo: options?.minFuncionariosDomingo,
+      rodizioConfig: this.getRodizioConfigForEmployees(employees),
+      usarRegraDomingoCustomizada: employees.some(f => this.isSetorExcecaoDomingo(f.setor)),
       estadosTransicao: estadosTransicao as any,
       feriados: (options?.feriados || []).map(fer => ({
         data: fer.data,
@@ -187,6 +205,33 @@ export class EscalaGeneratorService {
       seed: options?.seed
     });
     return result.entries as EscalaItem[];
+  }
+
+  private getRodizioConfigForEmployees(employees: Funcionario[]): SolverOptions['rodizioConfig'] {
+    const first = employees.find(f => f.ativo) || employees[0];
+    const rodizioId = first?.rodizio_id || (first && this.isSetorExcecaoDomingo(first.setor) ? 'rod_especial_2x1' : 'rod_normal_1x2');
+    if (rodizioId === 'rod_especial_2x1') {
+      return {
+        domingosTrabalhados: 2,
+        domingosFolga: 1,
+        quantidadeGrupos: 2,
+        usaGrupo: true,
+        codigosGrupos: ['A', 'B']
+      };
+    }
+
+    return {
+      domingosTrabalhados: 1,
+      domingosFolga: 2,
+      quantidadeGrupos: 3,
+      usaGrupo: true,
+      codigosGrupos: ['A', 'B', 'C']
+    };
+  }
+
+  private isSetorExcecaoDomingo(setor: string): boolean {
+    const s = setor.toLowerCase();
+    return s.includes('padaria') || s.includes('acougue') || s.includes('aÃ§ougue');
   }
 
   calcularHashFeriados(feriados: Feriado[], ano: number, mes: number): string {

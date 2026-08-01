@@ -1,4 +1,3 @@
-import type { ScheduleEntry, ScheduleContext } from '../schedule.types';
 import { createYearMonth } from '../../shared/year-month';
 import { INITIAL_FUNCIONARIOS, INITIAL_FERIADOS } from '../../../models/mock-data';
 
