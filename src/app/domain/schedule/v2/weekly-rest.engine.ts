@@ -20,7 +20,7 @@ function getDayOfWeek(ym: YearMonth, day: number): number {
 export function assignWeeklyRests(
   month: YearMonth,
   diasMap: Record<number, TipoDia>,
-  grupoFolgaSemanal: string
+  grupoFolgaCompensatoria: string
 ): Record<number, TipoDia> {
   const totalDays = totalDaysInMonth(month);
   const result: Record<number, TipoDia> = { ...diasMap };
@@ -33,7 +33,7 @@ export function assignWeeklyRests(
     }
   }
 
-  const preferredWeekday = GROUP_DAY_MAP[(grupoFolgaSemanal || 'S1').toUpperCase()] ?? 5; // Default Sexta
+  const preferredWeekday = GROUP_DAY_MAP[(grupoFolgaCompensatoria || 'S1').toUpperCase()] ?? 5; // Default Sexta
 
   sundayDays.forEach((sunDay) => {
     const isWorked = result[sunDay] === 'TD' || result[sunDay] === 'T';

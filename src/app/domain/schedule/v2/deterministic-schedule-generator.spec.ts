@@ -18,7 +18,7 @@ describe('Motor Determinístico EscalaJHA v2 - Testes Obrigatórios', () => {
       ativo: true,
       grupo_domingo: 'A',
       grupo_feriado: 'A',
-      grupo_folga_semanal: 'S5' // Sexta-feira
+      grupo_folga_compensatoria: 'S5' // Sexta-feira
     },
     {
       id: 'emp-2',
@@ -32,7 +32,7 @@ describe('Motor Determinístico EscalaJHA v2 - Testes Obrigatórios', () => {
       ativo: true,
       grupo_domingo: 'B',
       grupo_feriado: 'B',
-      grupo_folga_semanal: 'S1' // Segunda-feira
+      grupo_folga_compensatoria: 'S1' // Segunda-feira
     },
     {
       id: 'emp-3',
@@ -46,7 +46,7 @@ describe('Motor Determinístico EscalaJHA v2 - Testes Obrigatórios', () => {
       ativo: true,
       grupo_domingo: 'C',
       grupo_feriado: 'A',
-      grupo_folga_semanal: 'S3' // Quarta-feira
+      grupo_folga_compensatoria: 'S3' // Quarta-feira
     }
   ];
 

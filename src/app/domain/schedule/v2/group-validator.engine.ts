@@ -5,7 +5,7 @@ export interface GroupValidationResult {
   validatedEmployees: Array<Funcionario & {
     grupo_domingo: string;
     grupo_feriado: string;
-    grupo_folga_semanal: string;
+    grupo_folga_compensatoria: string;
   }>;
   warnings: string[];
   errors: string[];
@@ -15,7 +15,7 @@ const WEEKLY_REST_GROUPS = ['S1', 'S2', 'S3', 'S4', 'S5'];
 
 /**
  * Valida o cadastro dos funcionários para a geração determinística da escala.
- * Se algum funcionário não possuir grupo_domingo ou grupo_feriado ou grupo_folga_semanal,
+ * Se algum funcionário não possuir grupo_domingo ou grupo_feriado ou grupo_folga_compensatoria,
  * atribui deterministicamente um fallback baseado no índice e registra um warning.
  */
 export function validateAndNormalizeEmployeeGroups(employees: Funcionario[]): GroupValidationResult {
@@ -51,7 +51,7 @@ export function validateAndNormalizeEmployeeGroups(employees: Funcionario[]): Gr
     }
 
     // 3. Grupo Folga Semanal (S1=Segunda, S2=Terça, S3=Quarta, S4=Quinta, S5=Sexta)
-    let grupoFolga = (emp.grupo_folga_semanal || '').trim().toUpperCase();
+    let grupoFolga = (emp.grupo_folga_compensatoria || '').trim().toUpperCase();
     if (!grupoFolga || !WEEKLY_REST_GROUPS.includes(grupoFolga)) {
       // Se tiver emp.grupo antigo (A -> S1, B -> S2, etc.), converte
       if (emp.grupo === 'A') grupoFolga = 'S1';
@@ -59,7 +59,7 @@ export function validateAndNormalizeEmployeeGroups(employees: Funcionario[]): Gr
       else {
         // Fallback determinístico por índice distribuído entre S1..S5
         const fallback = WEEKLY_REST_GROUPS[index % WEEKLY_REST_GROUPS.length];
-        warnings.push(`Funcionário ${emp.primeiro_nome} (ID: ${emp.id || emp.matricula_aleatoria}) não possui grupo_folga_semanal definido. Atribuído fallback: '${fallback}'.`);
+        warnings.push(`Funcionário ${emp.primeiro_nome} (ID: ${emp.id || emp.matricula_aleatoria}) não possui grupo_folga_compensatoria definido. Atribuído fallback: '${fallback}'.`);
         grupoFolga = fallback;
       }
     }
@@ -68,7 +68,7 @@ export function validateAndNormalizeEmployeeGroups(employees: Funcionario[]): Gr
       ...emp,
       grupo_domingo: grupoDomingo,
       grupo_feriado: grupoFeriado,
-      grupo_folga_semanal: grupoFolga
+      grupo_folga_compensatoria: grupoFolga
     };
   });
 

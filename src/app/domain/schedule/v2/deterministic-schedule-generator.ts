@@ -75,7 +75,7 @@ export function generateDeterministicSchedule(input: GeneratorV2Input): Generato
 
     // Passo 3.3: Folgas Compensatórias Semanais
     // Regra Ouro DSR: Folga na semana APENAS quando trabalhou no domingo daquela semana
-    const diasWithWeeklyRest = assignWeeklyRests(month, diasMap, emp.grupo_folga_semanal);
+    const diasWithWeeklyRest = assignWeeklyRests(month, diasMap, emp.grupo_folga_compensatoria);
 
     // Passo 3.4: Regra Soberana - Máximo 6 Dias Consecutivos (Art. 67 CLT)
     const consecutiveResult = enforceMaxConsecutiveDays(
@@ -120,7 +120,7 @@ export function generateDeterministicSchedule(input: GeneratorV2Input): Generato
       cargo: emp.cargo,
       grupoDomingo: emp.grupo_domingo,
       grupoFeriado: emp.grupo_feriado,
-      grupoFolgaSemanal: emp.grupo_folga_semanal,
+      grupoFolgaCompensatoria: emp.grupo_folga_compensatoria,
       dias: consecutiveResult.dias,
       motivosAlteracao: consecutiveResult.motivosAlteracao
     });

@@ -7,5 +7,5 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-  CREATE TYPE grupo_compensatorio_enum AS ENUM ('S1', 'S2', 'S3', 'S4', 'S5');
+  CREATE TYPE grupo_folga_compensatoria_enum AS ENUM ('S1', 'S2', 'S3', 'S4', 'S5');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;

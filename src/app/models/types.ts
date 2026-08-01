@@ -133,7 +133,7 @@ export interface EscalaItem {
   rodizio_id?: string;
   grupo_domingo?: string;
   grupo_feriado?: string;
-  grupo_folga_semanal?: string;
+  grupo_folga_compensatoria?: string;
   grupo?: string;
   setores_cobertura?: string[];
   dias: Record<number, TipoDia>; 
