@@ -34,6 +34,7 @@ export interface Funcionario {
   primeiro_nome: string; // LGPD Data Minimization
   matricula_aleatoria: string; // Random 6-digit number
   setor: string;
+  setor_id?: string;
   cargo: string;
   turno_padrao: string;
   genero: 'M' | 'F'; // Gênero obrigatório
@@ -41,6 +42,7 @@ export interface Funcionario {
   rodizio_id?: string; // ID do Rodízio Específico (opcional, fallback pro Setor)
   grupo_domingo?: string; // Código dinâmico: 'A', 'B', 'C', 'D'...
   grupo_feriado?: string; // Código dinâmico: 'A', 'B'...
+  grupo_folga_semanal?: 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | string; // Preferred weekday rest: S1=Seg, S2=Ter, S3=Qua, S4=Qui, S5=Sex
   grupo?: string; // Grupo Geral / Feriado ('A' | 'B')
   setores_cobertura?: string[]; // Setores secundários para cobertura de folga / função multisetor
 }
@@ -124,12 +126,14 @@ export interface EscalaItem {
   matricula: string;
   nome: string;
   setor: string;
+  setor_id?: string;
   turno: string;
   genero: 'M' | 'F';
   cargo?: string;
   rodizio_id?: string;
   grupo_domingo?: string;
   grupo_feriado?: string;
+  grupo_folga_semanal?: string;
   grupo?: string;
   setores_cobertura?: string[];
   dias: Record<number, TipoDia>; 

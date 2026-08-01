@@ -89,7 +89,7 @@ export class EscalaValidatorService {
 
             if (emTrabalho === 0 && itens.length >= 2) {
                 erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: COBERTURA ZERO! Todos os colaboradores estão de folga.`, tipo: 'ERRO_COBERTURA' });
-            } else if (eFrenteDeCaixa && emTrabalho < 6 && itens.length >= 6) {
+            } else if (eFrenteDeCaixa && !isDomingo && emTrabalho < 6 && itens.length >= 6) {
                 erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Frente de Caixa possui apenas ${emTrabalho} operador(es) trabalhando. Mínimo OBRIGATÓRIO: 6.`, tipo: 'ERRO_COBERTURA_CAIXA' });
             } else if (eFiscalDeCaixa && isDomingo && emTrabalho !== 2 && itens.length >= 2) {
                 erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Fiscal de Caixa no domingo exige EXATAMENTE 2 fiscais (1 dupla trabalhando, 1 dupla folgando). Encontrado(s): ${emTrabalho}.`, tipo: 'ERRO_COBERTURA' });
@@ -98,10 +98,10 @@ export class EscalaValidatorService {
             }
 
             const maxFolgasPadariaPermitido = Math.max(1, Math.ceil(itens.length / 6));
-            if (ePadaria && !isDomingo && !feriadosFechadosVal.has(dia) && !feriadosAbertos.has(dia) && emFolga > maxFolgasPadariaPermitido && itens.length > 1) {
-                const folgasInviolaveis = itens.filter(i => {
-                    if (i.dias[dia] !== 'F') return false;
-                    const itemCopy: EscalaItem = { ...i, dias: { ...i.dias, [dia]: 'T' as TipoDia } };
+            if (ePadaria && !isDomingo && !feriadosFechadosVal.has(dia) && !isFeriadoAberto) {
+                const folgasInviolaveis = itens.filter(item => {
+                    const itemCopy = JSON.parse(JSON.stringify(item));
+                    itemCopy.dias[dia] = 'F';
                     return this.simularConsecutivos(itemCopy, dia, totalDias) > 6;
                 }).length;
 
@@ -119,11 +119,8 @@ export class EscalaValidatorService {
                         const hNum = Number.parseInt(faixa.horaStr.split(':')[0], 10);
                         if (hNum >= hIni && hNum < hFim) {
                             const isCritica = hNum < 9 || hNum === 11 || hNum === 12;
-                            const isSundayWindow = isDomingo && (hNum === 8 || hNum === 11 || hNum === 12);
-                            let minReqHora = 6;
-                            if (isSundayWindow) {
-                                minReqHora = 3;
-                            } else if (isCritica) {
+                            let minReqHora = isDomingo ? 3 : 6;
+                            if (!isDomingo && isCritica) {
                                 minReqHora = 5;
                             }
                             if (faixa.quantidadeTrabalhando < minReqHora) {

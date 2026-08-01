@@ -110,6 +110,8 @@ create table if not exists public.funcionarios (
 ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS rodizio_id text;
 ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS grupo_domingo text;
 ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS grupo_feriado text;
+ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS grupo_folga_semanal text;
+ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS setor_id uuid references public.setores(id);
 ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS grupo text;
 ALTER TABLE public.funcionarios ADD COLUMN IF NOT EXISTS setores_cobertura text[] DEFAULT '{}';
 

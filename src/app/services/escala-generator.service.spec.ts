@@ -38,9 +38,12 @@ export function runEscalaGeneratorSpec(): void {
       const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => (f.setor === setor || f.setores_cobertura?.includes(setor)) && f.ativo);
       if (funcsSetor.length === 0) continue;
 
+      const minDia = setor === 'Frente de Caixa' ? 6 : 2;
+      const minDom = setor === 'Frente de Caixa' ? 3 : 2;
       const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, {
         feriados: INITIAL_FERIADOS,
-        minFuncionariosPorDia: 2,
+        minFuncionariosPorDia: minDia,
+        minFuncionariosDomingo: minDom,
         minFuncionariosFeriado: Math.min(funcsSetor.length, 2),
         turnosConfigs: [
           { id: 't1', nome: '07:00 às 15:50 (Almoço 11:00 às 12:30)', entrada: '07:00', saida: '15:50', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false },
@@ -60,7 +63,7 @@ export function runEscalaGeneratorSpec(): void {
         { id: 't4', nome: '12:40 às 21:30 (Almoço 15:30 às 17:00)', entrada: '12:40', saida: '21:30', intervaloMinutos: 90, cargaHorariaLiquidaMinutos: 440, excedeLimiteDiario: false }
       ];
 
-      const val = service.validarEscala(itens, ano, mes, 2, defaultTurnosConfigs, INITIAL_FERIADOS);
+      const val = service.validarEscala(itens, ano, mes, minDia, defaultTurnosConfigs, INITIAL_FERIADOS, { minDomingo: minDom });
 
       if (!val.valida) {
         console.error(`❌ ERRO Mês ${mes}/${ano} - Setor "${setor}":`, JSON.stringify(val.itensValidados, null, 2));

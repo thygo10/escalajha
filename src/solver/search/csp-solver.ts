@@ -12,9 +12,7 @@ import {
 
 import { checkStructuralFeasibility } from '../phase0/structural-checker';
 import { RuleCarryOverManager } from '../state/rule-carry-over';
-import { HardConstraintsEvaluator } from '../constraints/hard-constraints';
-import { ScheduleExplainer } from '../explainer/explainer';
-import { calcularFolgasEsperadasNoMes, getAbsoluteSundayIndex, getAbsoluteHolidayIndex } from '../../app/domain/shared/year-month';
+import { getAbsoluteSundayIndex, getAbsoluteHolidayIndex } from '../../app/domain/shared/year-month';
 
 export interface FuncionarioEntrada {
   id: string;
@@ -134,7 +132,7 @@ export class CSPSolverEngine {
           sigla = 'FE';
         } else if (ehFeriado) {
           const absFerIdx = feriadoInfo.index;
-          const effGroupIdx = ferGroupIdx < 0 ? 0 : ferGroupIdx;
+          const effGroupIdx = Math.max(0, ferGroupIdx);
           const trabalhaFeriado = (absFerIdx % 2 === effGroupIdx);
           sigla = trabalhaFeriado ? 'TF' : 'F';
         } else if (diaSemana === 0) {
@@ -146,10 +144,10 @@ export class CSPSolverEngine {
             trabalhaDomingo = (absSunIdx % qtdGruposDom) !== 2;
           } else if (func.genero === 'F' && options.usarRegraDomingoCustomizada) {
             // CLT Art. 386 (Mulheres: quinzenal 1T:1F)
-            trabalhaDomingo = ((absSunIdx + (domGroupIdx < 0 ? 0 : domGroupIdx)) % 2 !== 0);
+            trabalhaDomingo = ((absSunIdx + Math.max(0, domGroupIdx)) % 2 !== 0);
           } else {
             // 1T:2F Padrão
-            const effGroupIdx = domGroupIdx < 0 ? 0 : domGroupIdx;
+            const effGroupIdx = Math.max(0, domGroupIdx);
             trabalhaDomingo = (absSunIdx % qtdGruposDom) === (effGroupIdx % qtdGruposDom);
           }
 
@@ -160,7 +158,7 @@ export class CSPSolverEngine {
           let trabalhaProximoDomingo = false;
           if (domNoFimDaSemana <= diasNoMes) {
             const absSunIdx = getAbsoluteSundayIndex(year, month, domNoFimDaSemana);
-            const effGroupIdx = domGroupIdx < 0 ? 0 : domGroupIdx;
+            const effGroupIdx = Math.max(0, domGroupIdx);
             trabalhaProximoDomingo = (absSunIdx % qtdGruposDom) === (effGroupIdx % qtdGruposDom);
           }
 
