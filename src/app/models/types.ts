@@ -42,7 +42,7 @@ export interface Funcionario {
   rodizio_id?: string; // ID do Rodízio Específico (opcional, fallback pro Setor)
   grupo_domingo?: string; // Código dinâmico: 'A', 'B', 'C', 'D'...
   grupo_feriado?: string; // Código dinâmico: 'A', 'B'...
-  grupo_folga_semanal?: 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | string; // Preferred weekday rest: S1=Seg, S2=Ter, S3=Qua, S4=Qui, S5=Sex
+  grupo_folga_compensatoria?: 'S1' | 'S2' | 'S3' | 'S4' | 'S5'; // Compensatory weekly rest group
   grupo?: string; // Grupo Geral / Feriado ('A' | 'B')
   setores_cobertura?: string[]; // Setores secundários para cobertura de folga / função multisetor
 }

@@ -18,7 +18,7 @@ export interface EmployeeMonthState {
   lastHolidayWorked?: string;      // YYYY-MM-DD
   grupoDomingo: string;
   grupoFeriado: string;
-  grupoFolgaSemanal: string;
+  grupoFolgaCompensatoria: string;
 }
 
 export interface ScheduleV2Item {
@@ -32,7 +32,7 @@ export interface ScheduleV2Item {
   cargo?: string;
   grupoDomingo: string;
   grupoFeriado: string;
-  grupoFolgaSemanal: string;
+  grupoFolgaCompensatoria: string;
   dias: Record<number, TipoDia>;
   motivosAlteracao?: Record<number, string>;
 }

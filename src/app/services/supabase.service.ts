@@ -70,7 +70,7 @@ export class SupabaseService {
       this.authReady.set(true);
       // Garante que a loja ativa seja sempre populada mesmo que não haja sessão do Supabase
       if (!this.activeLoja()) {
-        this.loadUserLojas().catch(() => {});
+        this.loadUserLojas().catch(() => { });
       }
     });
 
@@ -396,7 +396,7 @@ export class SupabaseService {
 
   private isSetorRodizioEspecial(setor: string): boolean {
     const s = setor.toLowerCase();
-    return s.includes('padaria') || s.includes('acougue') || s.includes('aÃ§ougue');
+    return s.includes('padaria') || s.includes('acougue') || s.includes('açougue');
   }
 
   // Setores CRUD
@@ -498,7 +498,7 @@ export class SupabaseService {
       console.error('Erro ao deletar cargo no Supabase:', err);
     }
 
-    this.localSetores.update(list => list.filter(s => s.id !== id));
+    this.localCargos.update(list => list.filter(c => c.id !== id));
   }
 
   // Escalas CRUD com Supabase + Persistence Fallback em localStorage
@@ -516,7 +516,7 @@ export class SupabaseService {
 
       if (!error && data) {
         const dbEscala = data as Escala;
-        try { localStorage.setItem(storageKey, JSON.stringify(dbEscala)); } catch {}
+        try { localStorage.setItem(storageKey, JSON.stringify(dbEscala)); } catch { }
         return dbEscala;
       }
     } catch (err) {
@@ -529,7 +529,7 @@ export class SupabaseService {
       if (local) {
         const parsed = JSON.parse(local) as Escala;
         const itens = parsed.dados?.itens || [];
-        const hasStaleFolgas = itens.some((i: any) => {
+        const hasStaleFolgas = itens.some((i: { dias?: Record<number, string> }) => {
           const fCount = Object.values(i.dias || {}).filter(st => st === 'F' || st === 'FD').length;
           return fCount > 6;
         });
@@ -638,7 +638,7 @@ export class SupabaseService {
     const storageKey = `jh_escala_${lojaId}_${mesRef}_${setor}`;
     try {
       localStorage.removeItem(storageKey);
-    } catch {}
+    } catch { }
 
     try {
       await this.client
@@ -664,7 +664,7 @@ export class SupabaseService {
         }
       }
       keysToRemove.forEach(k => localStorage.removeItem(k));
-    } catch {}
+    } catch { }
 
     try {
       await this.client
