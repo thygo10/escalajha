@@ -190,13 +190,13 @@ export class EscalaGeneratorService {
     }
 
     // Fallback para o gerador de segurança comprovado generateSchedule
+    const first = employees.find(f => f.ativo) || employees[0];
     const result = generateSchedule({
       employees: employees as Employee[],
       month: { year, month } as YearMonth,
       holidays: (options?.feriados || []) as Holiday[],
-      turnosConfigs: (options?.turnosConfigs || []) as any,
-      minFuncionariosPorDia: options?.minFuncionariosPorDia,
-      minFuncionariosDomingo: options?.minFuncionariosDomingo,
+      minFuncionariosPorDia: options?.minFuncionariosPorDia ?? (first?.setor === 'Frente de Caixa' ? 6 : 2),
+      minFuncionariosDomingo: options?.minFuncionariosDomingo ?? (first?.setor === 'Frente de Caixa' ? 3 : (first?.setor === 'Fiscal de Caixa' ? 2 : 1)),
       minFuncionariosFeriado: options?.minFuncionariosFeriado,
       horarioFuncionamento: options?.horarioFuncionamento,
       modeloEscala: options?.modeloEscala,

@@ -93,11 +93,17 @@ export interface FuncionarioEstadoRotacao {
   funcionario_id: string;
   mes_referencia: string; // 'YYYY-MM-01'
   dias_consecutivos_acumulados: number;
+  dias_consecutivos?: number;
   domingos_pendentes?: number;
   domingos_descanso_restantes?: number;
   ultimo_domingo_trabalhado?: string; 
+  ultimo_domingo_absoluto_trabalhado?: number;
   ultimo_feriado_trabalhado?: string; 
+  ultimo_feriado_absoluto_trabalhado?: string;
   grupo_ultimo_feriado_trabalhado?: string;
+  ultima_folga?: string;
+  ultimo_mes_processado?: string;
+  versao_motor?: string;
   atualizado_em?: string;
   updated_at?: string;
 }

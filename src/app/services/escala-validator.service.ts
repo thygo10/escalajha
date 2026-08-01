@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { EscalaItem, Feriado, ValidacaoEscalaResultado, ValidacaoItem, TurnoConfig, HorarioPresenca, ResumoFuncionarioMetrics, TipoDia, Funcionario, ValidationSeverity } from '../models/types';
+import { calcularFolgasEsperadasNoMes } from '../domain/shared/year-month';
 
 @Injectable({
     providedIn: 'root'
@@ -64,7 +65,7 @@ export class EscalaValidatorService {
         let minEfetivoValida = minRequerido;
         if (eFrenteDeCaixa) {
             minEfetivoValida = Math.max(minRequerido, 6);
-        } else if (eAdm) {
+        } else if (eAdm || setorNomeClean.includes('manuten') || setorNomeClean.includes('empilhadeir')) {
             minEfetivoValida = 1;
         }
 
@@ -231,10 +232,7 @@ export class EscalaValidatorService {
             });
 
             const folgasProgramaveisNoMes = Object.values(item.dias).filter(st => st === 'F' || st === 'FD').length;
-            const domingosFolgaValCount = Object.values(item.dias).filter(st => st === 'FD').length;
-            const minFolgasEsperadas = (domingosNoMesVal.length === 5) ? 5 : 4;
-
-            const maxFolgasProgramaveisPermitidas = domingosNoMesVal.length === 5 ? 6 : 5;
+            const { minFolgas: minFolgasEsperadas, maxFolgas: maxFolgasProgramaveisPermitidas } = calcularFolgasEsperadasNoMes(ano, mes);
 
             if (folgasProgramaveisNoMes > maxFolgasProgramaveisPermitidas) {
                 erros.push({ severidade: ValidationSeverity.ERROR, dia: 1, setor: item.setor, mensagem: `${item.nome}: Excede o teto máximo de ${maxFolgasProgramaveisPermitidas} folgas programáveis no mês (possui ${folgasProgramaveisNoMes} folgas 'F'/'FD'). Violação do PRD RH-01.`, tipo: 'ERRO_FOLGAS_MES' });

@@ -437,6 +437,8 @@ export class DashboardComponent implements OnInit {
   novoCargo = signal<string>('Operadora de Caixa');
   novoTurno = '07:00 às 15:50 (Almoço 11:00 às 12:30)';
   novoGenero: 'M' | 'F' = 'F';
+  novoGrupoDomingo = signal<string>('A');
+  novoGrupoFeriado = signal<string>('A');
   novoSetoresCobertura = signal<string[]>([]);
 
   dataAtualFormatted = computed(() => {
@@ -1333,7 +1335,15 @@ export class DashboardComponent implements OnInit {
             diasPermitidosFolga: this.diasPermitidosFolga(),
             feriados: this.feriados(),
             minFuncionariosPorDia: this.minFuncionariosPorDiaSetor(),
+            minFuncionariosDomingo: this.minFuncionariosDomingoSetor(),
+            minFuncionariosFeriado: this.minFuncionariosFeriadoSetor(),
+            horarioFuncionamento: {
+              segundaASabado: this.horarioFuncionamentoSegSab(),
+              domingoEFeriado: this.horarioFuncionamentoDomingo()
+            },
+            modeloEscala: this.modeloEscalaAtivo(),
             turnosConfigs: this.turnosConfigs(),
+            regrasConformidade: this.regrasConformidade(),
             historicoMesAnterior: histAnt
           });
           this.escalaItens.set(gerada);
@@ -1685,6 +1695,8 @@ export class DashboardComponent implements OnInit {
         cargo: this.novoCargo(),
         turno_padrao: this.novoTurno,
         genero: this.novoGenero,
+        grupo_domingo: this.novoGrupoDomingo(),
+        grupo_feriado: this.novoGrupoFeriado(),
         ativo: true,
         setores_cobertura: this.novoSetoresCobertura()
       });

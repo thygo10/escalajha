@@ -1,5 +1,5 @@
 import { type ScheduleEntry, type Employee, type Holiday, type TipoDia, type TurnoConfig, type Violation, type GenerateScheduleResult, type ScheduleScore, type CoverageGap, type ScheduleRule, isTrabalho, isFolgaNormal } from './schedule.types';
-import { type YearMonth, totalDaysInMonth, getSundays, isSunday } from '../shared/year-month';
+import { type YearMonth, totalDaysInMonth, getSundays, isSunday, calcularFolgasEsperadasNoMes, getAbsoluteSundayIndex, getAbsoluteHolidayIndex } from '../shared/year-month';
 import { extractLunchInterval } from '../shared/shift-window';
 
 import type { HorarioFuncionamento } from '../../models/types';
@@ -146,13 +146,10 @@ function applyFixedAnchors(
   seed: number = 0,
 ): ScheduleEntry[] {
   const sundays = getSundays(month);
-  const openHolidayOrder = new Map<number, number>();
-  Array.from(openHolidays).sort((a, b) => a - b).forEach((day, idx) => {
-    openHolidayOrder.set(day, idx);
-  });
 
   const normalizeGroupIndex = (group: string | undefined, fallbackIdx: number, groups: string[]): number => {
     const normalized = group?.trim().toUpperCase();
+    if (normalized === 'AB') return -2; // Marcação especial Grupo AB Coringa
     const found = normalized ? groups.indexOf(normalized) : -1;
     return found >= 0 ? found : fallbackIdx % groups.length;
   };
@@ -162,28 +159,44 @@ function applyFixedAnchors(
     const usesSpecialRodizio = item.rodizioId === 'rod_especial_2x1' ||
       sector.includes('padaria') ||
       sector.includes('acougue') ||
-      sector.includes('aÃ§ougue');
+      sector.includes('açougue');
     return usesSpecialRodizio ? ['A', 'B'] : ['A', 'B', 'C'];
   };
-  // Sort by shift start time so early shifts get even Sunday distribution,
-  // ensuring morning coverage on Sundays (validator checks from 08:00).
+
   const shiftStartMin = items.map(item => {
     const m = item.turno ? /(\d{2}):(\d{2})/.exec(item.turno) : null;
     return m ? Number(m[1]) * 60 + Number(m[2]) : 999;
   });
   const priorityOrder = items.map((_, i) => i).sort((a, b) => shiftStartMin[a] - shiftStartMin[b]);
+
   return items.map((item, origIdx) => {
     const newDias: Record<number, TipoDia> = { ...item.dias };
     const sortedPos = priorityOrder.indexOf(origIdx);
+
     for (let day = 1; day <= totalDays; day++) {
       if (closedHolidays.has(day)) {
         newDias[day] = 'FE';
       } else if (sundays.includes(day)) {
-        const sunIdx = sundays.indexOf(day);
-        // 1T:2F rotation — use priority-sorted position for equitable distribution, offset by seed when regenerating
         const sundayGroups = sundayGroupsFor(item);
         const groupIdx = normalizeGroupIndex(item.grupoDomingo, sortedPos + seed, sundayGroups);
-        const shouldRest = (sunIdx + seed) % sundayGroups.length !== groupIdx;
+        const absSunIdx = getAbsoluteSundayIndex(month.year, month.month, day);
+
+        let shouldRest = false;
+        if (groupIdx === -2) {
+          // Grupo AB Coringa: Folga no domingo C, trabalha em A e B para cobertura reforçada
+          shouldRest = (absSunIdx % sundayGroups.length) === 2;
+        } else if (sundayGroups.length === 2) {
+          if (item.genero === 'F') {
+            // Mulheres em setores 2T:1F (Padaria/Açougue) usam 1T:2F para cumprir CLT 386
+            shouldRest = (absSunIdx % 3) !== (groupIdx % 3);
+          } else {
+            // Homens em setores 2T:1F (Padaria/Açougue)
+            shouldRest = (absSunIdx % 3) === (groupIdx % 3);
+          }
+        } else {
+          // 1T:2F Padrão (Grupos A, B, C) — 1 trabalhado a cada 3 domingos (respeita CLT 386 por definição)
+          shouldRest = (absSunIdx % 3) !== (groupIdx % 3);
+        }
 
         if (shouldRest) {
           newDias[day] = 'FD';
@@ -193,9 +206,13 @@ function applyFixedAnchors(
           newDias[day] = 'TD';
         }
       } else if (openHolidays.has(day)) {
-        const holidayIdx = openHolidayOrder.get(day) || 0;
+        const holidayDateStr = `${month.year}-${String(month.month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const absHolidayIdx = getAbsoluteHolidayIndex(holidayDateStr, Array.from(openHolidays).map(d => ({
+          data: `${month.year}-${String(month.month).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+        })));
         const groupIdx = normalizeGroupIndex(item.grupoFeriado || item.grupoDomingo, sortedPos + seed, ['A', 'B']);
-        newDias[day] = ((holidayIdx + seed) % 2 === groupIdx) ? 'TF' : 'F';
+        const effGroupIdx = groupIdx < 0 ? 0 : groupIdx;
+        newDias[day] = ((absHolidayIdx + seed) % 2 === effGroupIdx) ? 'TF' : 'F';
       }
     }
     return { ...item, dias: newDias };
@@ -219,30 +236,21 @@ function allocateRestOfDays(
 ): void {
   const sectorName = items[0]?.setor?.toLowerCase() || '';
   const isFrontEnd = sectorName.includes('caixa') && !sectorName.includes('fiscal');
+  const isFiscal = sectorName.includes('fiscal');
   const getMinEffectiveForDay = (d: number): number => {
     const isDom = isSunday(month, d);
     const isOpenHol = openHolidays.has(d);
     if (isOpenHol && minFuncionariosFeriado !== undefined) return minFuncionariosFeriado;
     if (isDom && minFuncionariosDomingo !== undefined) return minFuncionariosDomingo;
+    if (isDom && isFiscal) return 2;
     if (isDom && isFrontEnd) return Math.max(minFuncionariosDomingo ?? 3, 3);
     return isFrontEnd ? Math.max(minFuncionariosPorDia ?? 2, 6) : (minFuncionariosPorDia ?? 2);
   };
-  const isExceptionSector = sectorName.includes('padaria') || sectorName.includes('acougue') || sectorName.includes('açougue');
-  // Exception sectors (bakery/açougue) keep min=4 even with 5 Sundays
-  // due to production constraint (max 1 voluntary rest/day)
-  // All sectors use min=4; anchor rests (FD/FE) + Phase 1 streak-breaking
-  // naturally provide sufficient rest counts without forcing extras
-  const minFolgas = 4;
+  const { minFolgas, maxFolgas } = calcularFolgasEsperadasNoMes(month.year, month.month);
 
-  // Per-employee max folgas: absolute limit of 5 per month (PRD rule).
-  // FE (closed holidays) don't count as a voluntary rest so we add them.
-  // Total capped at 5 real folgas (F/FD) regardless of FD count.
   const getMaxFolgas = (emp: ScheduleEntry): number => {
     const feCount = Object.values(emp.dias).filter(st => st === 'FE').length;
-    // Base: 5 for months >= 30 days, else 4. FE days are free (loja fechada).
-    // Hard cap: never more than 5 voluntary rests (F or FD) + FEs
-    const base = totalDays >= 30 ? 5 : 4;
-    return base + feCount;
+    return maxFolgas + feCount;
   };
 
   // Helper that includes previous month consecutive count
@@ -306,16 +314,16 @@ function allocateRestOfDays(
         }
       }
 
-      // Day 7+ of streak → mandatory rest on regular 'T'
       if (consec > 6) {
         if (emp.dias[d] === 'T' || (emp.dias[d] === 'TF' && !isSunday(month, d))) {
           const nextIsRest = (d + 1 <= totalDays && isFolgaNormal(emp.dias[d + 1])) || (d + 2 <= totalDays && isFolgaNormal(emp.dias[d + 2]));
+          const isTFHoliday = emp.dias[d] === 'TF';
           let restTarget = d;
-          if (nextIsRest) {
-            let bestBack = 3;
-            for (const back of [3, 4, 2, 5]) {
+          if (nextIsRest || isTFHoliday) {
+            let bestBack = isTFHoliday ? 1 : 3;
+            for (const back of [1, 2, 3, 4, 5]) {
               const candidate = d - back;
-              if (candidate >= 1 && emp.dias[candidate] === 'T') {
+              if (candidate >= 1 && emp.dias[candidate] === 'T' && !isSunday(month, candidate) && !openHolidays.has(candidate)) {
                 const hasAdjOrPicada = isFolgaNormal(emp.dias[candidate - 1]) ||
                   isFolgaNormal(emp.dias[candidate + 1]) ||
                   isFolgaNormal(emp.dias[candidate - 2]) ||
@@ -365,30 +373,36 @@ function allocateRestOfDays(
 
       if (resting.length === 0) break;
 
-      const { emp: chosen } = resting[0];
+      let revertedAny = false;
+      for (const { emp: chosen } of resting) {
+        // Check if reverting won't create a >6 streak
+        const prevConsec = countConsecBefore(chosen, d);
+        let nextConsec = 0;
+        for (let nd = d + 1; nd <= totalDays; nd++) {
+          if (isTrabalho(chosen.dias[nd])) nextConsec++;
+          else break;
+        }
 
-      // Check if reverting won't create a >6 streak
-      const prevConsec = countConsecBefore(chosen, d);
-      let nextConsec = 0;
-      for (let nd = d + 1; nd <= totalDays; nd++) {
-        if (isTrabalho(chosen.dias[nd])) nextConsec++;
-        else break;
-      }
-
-      if (prevConsec + 1 + nextConsec <= 6) {
-        chosen.dias[d] = openHolidays.has(d) ? 'TF' : 'T';
-        activeCount++;
-      } else if (d + 1 <= totalDays && chosen.dias[d + 1] === 'T' && !isFolgaNormal(chosen.dias[d + 2]) && !isFolgaNormal(chosen.dias[d + 3])) {
-        // Swap: revert today, rest tomorrow
-        chosen.dias[d] = openHolidays.has(d) ? 'TF' : 'T';
-        chosen.dias[d + 1] = 'F';
-        if (getMaxConsecutiveWorkDays(chosen, totalDays, prevConsecMap?.get(chosen.matricula)) <= 6) {
+        if (prevConsec + 1 + nextConsec <= 6) {
+          chosen.dias[d] = openHolidays.has(d) ? 'TF' : 'T';
           activeCount++;
-        } else {
-          chosen.dias[d + 1] = openHolidays.has(d + 1) ? 'TF' : 'T';
-          chosen.dias[d] = 'F';
+          revertedAny = true;
+          break;
+        } else if (d + 1 <= totalDays && chosen.dias[d + 1] === 'T' && !isFolgaNormal(chosen.dias[d + 2]) && !isFolgaNormal(chosen.dias[d + 3])) {
+          // Swap: revert today, rest tomorrow
+          chosen.dias[d] = openHolidays.has(d) ? 'TF' : 'T';
+          chosen.dias[d + 1] = 'F';
+          if (getMaxConsecutiveWorkDays(chosen, totalDays, prevConsecMap?.get(chosen.matricula)) <= 6) {
+            activeCount++;
+            revertedAny = true;
+            break;
+          } else {
+            chosen.dias[d + 1] = openHolidays.has(d + 1) ? 'TF' : 'T';
+            chosen.dias[d] = 'F';
+          }
         }
       }
+      if (!revertedAny) break;
     }
   }
 
@@ -492,6 +506,15 @@ function allocateRestOfDays(
         if (wouldCausePicada(emp, d)) continue;
         const workingCount = items.filter(i => isTrabalho(i.dias[d])).length;
         if (workingCount <= getMinEffectiveForDay(d)) continue;
+
+        if (emp.setoresCobertura && emp.setoresCobertura.length > 0) {
+          let secondaryOk = true;
+          for (const sec of emp.setoresCobertura) {
+            const secTrab = items.filter(i => (i.setor === sec || i.setoresCobertura?.includes(sec)) && isTrabalho(i.dias[d])).length;
+            if (secTrab <= 2) { secondaryOk = false; break; }
+          }
+          if (!secondaryOk) continue;
+        }
 
         // Bakery: max 1 rest per day
         const isBakery = emp.setor?.toLowerCase().includes('padaria');
@@ -879,7 +902,6 @@ function repairCoverageGaps(
 
   for (let d = 1; d <= totalDays; d++) {
     const isDomingo = isSunday(month, d);
-    if (openHolidays.has(d)) continue;
     const hIni = isDomingo ? 8 : 7;
     const hFim = isDomingo ? 20 : 21;
 
@@ -891,7 +913,8 @@ function repairCoverageGaps(
         if (hNum >= hIni && hNum < hFim) {
           const isCritica = hNum < 9 || hNum === 11 || hNum === 12;
           const isSundayWindow = isDomingo && (hNum === 8 || hNum === 11 || hNum === 12);
-          const minReq = isFrontEnd ? (isSundayWindow ? 3 : (isCritica ? 5 : 6)) : minEffective;
+          const isFiscal = sectorName.includes('fiscal') || hasFiscal;
+          const minReq = (isFiscal && isDomingo) ? 2 : (isFrontEnd ? (isSundayWindow ? 3 : (isCritica ? 5 : 6)) : minEffective);
           if (faixa.quantidadeTrabalhando < minReq) {
             piorFaixa = faixa;
             break;
@@ -912,8 +935,8 @@ function repairCoverageGaps(
 
         let maxTest = 0;
 
-        // Test: revert d to T, check max consec
-        emp.dias[d] = 'T';
+        // Test: revert d to T/TF, check max consec
+        emp.dias[d] = openHolidays.has(d) ? 'TF' : 'T';
         maxTest = getMaxConsecutiveWorkDays(emp, totalDays, prevConsecMap?.get(emp.matricula));
         emp.dias[d] = 'F';
         if (maxTest <= 6) {
@@ -923,10 +946,10 @@ function repairCoverageGaps(
 
         // maxConsec > 6: try swap — revert d, add rest at d+1
         if (d + 1 <= totalDays && emp.dias[d + 1] === 'T' && !isFolgaNormal(emp.dias[d + 2]) && !isFolgaNormal(emp.dias[d + 3])) {
-          emp.dias[d] = 'T';
+          emp.dias[d] = openHolidays.has(d) ? 'TF' : 'T';
           emp.dias[d + 1] = 'F';
           maxTest = getMaxConsecutiveWorkDays(emp, totalDays, prevConsecMap?.get(emp.matricula));
-          emp.dias[d + 1] = 'T';
+          emp.dias[d + 1] = openHolidays.has(d + 1) ? 'TF' : 'T';
           emp.dias[d] = 'F';
           if (maxTest <= 6) {
             candidates.push({ emp, swapDay: d + 1 });
@@ -1017,11 +1040,15 @@ function wouldCausePicada(emp: ScheduleEntry, day: number): boolean {
   return false;
 }
 
-function getConsecutiveWorkDaysBefore(emp: ScheduleEntry, day: number): number {
+function countConsecBefore(emp: ScheduleEntry, day: number, prevConsecMap?: Map<string, number>): number {
   let count = 0;
+  let hitRest = false;
   for (let d = day - 1; d >= 1; d--) {
     if (isTrabalho(emp.dias[d])) count++;
-    else break;
+    else { hitRest = true; break; }
+  }
+  if (!hitRest) {
+    count += (prevConsecMap?.get(emp.matricula) || 0);
   }
   return count;
 }

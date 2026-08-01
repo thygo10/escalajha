@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
-import { Loja, Funcionario, Escala, Setor, Cargo, Feriado, RegraEscala, SaveEscalaResult, Rodizio, FuncionarioEstadoRotacao, EscalaEvento } from '../models/types';
+import { Loja, Funcionario, Escala, Setor, Cargo, Feriado, RegraEscala, SaveEscalaResult, Rodizio, FuncionarioEstadoRotacao, EscalaEvento, TipoDia } from '../models/types';
 import { environment } from '../../environments/environment';
 import {
   INITIAL_FUNCIONARIOS,
@@ -498,7 +498,7 @@ export class SupabaseService {
       console.error('Erro ao deletar cargo no Supabase:', err);
     }
 
-    this.localCargos.update(list => list.filter(c => c.id !== id));
+    this.localSetores.update(list => list.filter(s => s.id !== id));
   }
 
   // Escalas CRUD com Supabase + Persistence Fallback em localStorage
@@ -527,7 +527,17 @@ export class SupabaseService {
     try {
       const local = localStorage.getItem(storageKey);
       if (local) {
-        return JSON.parse(local) as Escala;
+        const parsed = JSON.parse(local) as Escala;
+        const itens = parsed.dados?.itens || [];
+        const hasStaleFolgas = itens.some((i: any) => {
+          const fCount = Object.values(i.dias || {}).filter(st => st === 'F' || st === 'FD').length;
+          return fCount > 6;
+        });
+        if (!hasStaleFolgas) {
+          return parsed;
+        } else {
+          localStorage.removeItem(storageKey);
+        }
       }
     } catch (e) {
       console.error('Erro ao carregar escala do localStorage:', e);
@@ -665,7 +675,6 @@ export class SupabaseService {
       console.warn('Erro ao limpar escalas do Supabase:', err);
     }
   }
-
 
   // Feriados CRUD 100% via Supabase
   async getFeriados(): Promise<Feriado[]> {
@@ -829,15 +838,53 @@ export class SupabaseService {
   }
 
   async saveFuncionarioEstadoRotacao(estado: FuncionarioEstadoRotacao): Promise<void> {
+    const payload = {
+      ...estado,
+      versao_motor: estado.versao_motor || 'v2.0',
+      atualizado_em: new Date().toISOString()
+    };
     try {
-      await this.client.from('funcionario_estados_regra').upsert(estado, { onConflict: 'funcionario_id,mes_referencia' });
+      await this.client.from('funcionario_estados_regra').upsert(payload, { onConflict: 'funcionario_id,mes_referencia' });
     } catch (err) {
       console.error('Erro ao salvar estado de rotação no Supabase:', err);
     }
     this.localEstadosRotacao.update(list => {
       const filtered = list.filter(e => !(e.funcionario_id === estado.funcionario_id && e.mes_referencia === estado.mes_referencia));
-      return [...filtered, estado];
+      return [...filtered, payload];
     });
+  }
+
+  async carregarHistoricoMesAnterior(lojaId: string, ano: number, mes: number): Promise<Record<string, TipoDia[]>> {
+    const prevMes = mes === 1 ? 12 : mes - 1;
+    const prevAno = mes === 1 ? ano - 1 : ano;
+    const mesRef = `${prevAno}-${String(prevMes).padStart(2, '0')}-01`;
+
+    const res: Record<string, TipoDia[]> = {};
+    try {
+      const { data, error } = await this.client
+        .from('escala_mensal')
+        .select('*')
+        .eq('loja_id', lojaId)
+        .eq('mes_referencia', mesRef);
+
+      if (!error && data && data.length > 0) {
+        for (const row of data) {
+          const itens = row.dados?.itens || row.itens;
+          if (Array.isArray(itens)) {
+            itens.forEach((item: any) => {
+              if (item.matricula && item.dias) {
+                const sortedDays = Object.keys(item.dias).map(Number).sort((a, b) => a - b);
+                const last7 = sortedDays.slice(-7).map(d => item.dias[d]);
+                res[item.matricula] = last7;
+              }
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar histórico do mês anterior:', err);
+    }
+    return res;
   }
 
   async logEscalaEvento(evento: EscalaEvento): Promise<void> {

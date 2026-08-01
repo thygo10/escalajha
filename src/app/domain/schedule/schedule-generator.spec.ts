@@ -286,6 +286,8 @@ describe('Suite 7: Coverage minimums', () => {
         employees: funcsFiscal,
         month: ym,
         holidays: INITIAL_FERIADOS,
+        minFuncionariosPorDia: 2,
+        minFuncionariosDomingo: 2
       });
 
       for (let d = 1; d <= totalDays; d++) {

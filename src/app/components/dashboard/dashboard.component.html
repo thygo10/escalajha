@@ -639,6 +639,16 @@
               <p-select id="novoGeneroSelect" [options]="[{label: 'Masculino', value: 'M'}, {label: 'Feminino', value: 'F'}]" [(ngModel)]="novoGenero" name="novoGenero" optionLabel="label" optionValue="value" required></p-select>
             </div>
 
+            <div class="col-12 md:col-6 lg:col-2 mb-3">
+              <label for="novoGrupoDomingoSelect" class="block text-sm font-semibold text-muted-color mb-1">Grupo Domingo</label>
+              <p-select id="novoGrupoDomingoSelect" [options]="[{label: 'Grupo A', value: 'A'}, {label: 'Grupo B', value: 'B'}, {label: 'Grupo C', value: 'C'}, {label: 'Grupo AB (Coringa)', value: 'AB'}]" [ngModel]="novoGrupoDomingo()" (ngModelChange)="novoGrupoDomingo.set($event)" name="novoGrupoDomingo" optionLabel="label" optionValue="value" required></p-select>
+            </div>
+
+            <div class="col-12 md:col-6 lg:col-2 mb-3">
+              <label for="novoGrupoFeriadoSelect" class="block text-sm font-semibold text-muted-color mb-1">Grupo Feriado</label>
+              <p-select id="novoGrupoFeriadoSelect" [options]="[{label: 'Grupo A', value: 'A'}, {label: 'Grupo B', value: 'B'}]" [ngModel]="novoGrupoFeriado()" (ngModelChange)="novoGrupoFeriado.set($event)" name="novoGrupoFeriado" optionLabel="label" optionValue="value" required></p-select>
+            </div>
+
             <div class="col-12 lg:col-2 mb-3 flex align-items-end">
               <button pButton type="submit" class="p-button-primary w-full" label="Adicionar"></button>
             </div>
@@ -678,6 +688,7 @@
                 <th scope="col" style="font-weight: 600;">Setor</th>
                 <th scope="col" style="font-weight: 600;">Cargo / Função</th>
                 <th scope="col" style="font-weight: 600;">Turno Padrão</th>
+                <th scope="col" style="font-weight: 600;" class="text-center">Rodízio (Dom/Fer)</th>
                 <th scope="col" style="width: 180px; font-weight: 600;" class="text-center">Ações</th>
               </tr>
             </ng-template>
@@ -697,6 +708,10 @@
                 </td>
                 <td class="text-sm">{{ f.cargo }}</td>
                 <td class="text-sm text-muted-color">{{ f.turno_padrao }}</td>
+                <td class="text-center text-xs">
+                  <p-tag [value]="'Dom: ' + (f.grupo_domingo || 'A')" severity="warn" styleClass="mr-1 text-xs font-bold"></p-tag>
+                  <p-tag [value]="'Fer: ' + (f.grupo_feriado || 'A')" severity="help" styleClass="text-xs font-bold"></p-tag>
+                </td>
                 <td class="text-center">
                   <div class="flex justify-content-center gap-2">
                     <button pButton type="button" (click)="navigateToFuncProfile(f)" class="p-button-outlined p-button-warning p-button-xs" label="Perfil"></button>
@@ -1316,6 +1331,16 @@
         <div class="flex flex-column gap-1">
           <label for="editGeneroSelect" class="text-sm font-semibold text-muted-color">Gênero (Regras CLT/CCT)</label>
           <p-select id="editGeneroSelect" [options]="[{label: 'Masculino', value: 'M'}, {label: 'Feminino', value: 'F'}]" [(ngModel)]="ef.genero" optionLabel="label" optionValue="value" required></p-select>
+        </div>
+
+        <div class="flex flex-column gap-1">
+          <label for="editGrupoDomingoSelect" class="text-sm font-semibold text-muted-color">Grupo de Domingo (Escala 1T:2F / AB Coringa)</label>
+          <p-select id="editGrupoDomingoSelect" [options]="[{label: 'Grupo A (Domingo A)', value: 'A'}, {label: 'Grupo B (Domingo B)', value: 'B'}, {label: 'Grupo C (Domingo C)', value: 'C'}, {label: 'Grupo AB (Coringa de Cobertura)', value: 'AB'}]" [(ngModel)]="ef.grupo_domingo" optionLabel="label" optionValue="value" placeholder="Selecione" required></p-select>
+        </div>
+
+        <div class="flex flex-column gap-1">
+          <label for="editGrupoFeriadoSelect" class="text-sm font-semibold text-muted-color">Grupo de Feriado (Escala de Feriado Aberto)</label>
+          <p-select id="editGrupoFeriadoSelect" [options]="[{label: 'Grupo A (Feriado Par)', value: 'A'}, {label: 'Grupo B (Feriado Ímpar)', value: 'B'}]" [(ngModel)]="ef.grupo_feriado" optionLabel="label" optionValue="value" placeholder="Selecione" required></p-select>
         </div>
 
         <div class="flex flex-column gap-2">
