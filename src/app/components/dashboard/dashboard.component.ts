@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { SupabaseService } from '../../services/supabase.service';
-import { EscalaGeneratorService } from '../../services/escala-generator.service';
+import { EscalaV2AdapterService } from '../../services/escala-v2-adapter.service';
 import { DsToastService } from '../../../design-system/components/toast/toast.service';
 import { Loja, Funcionario, Escala, EscalaItem, TipoDia, Setor, Cargo, Feriado, RegraEscala, DiaHistoricoTrabalho, TurnoConfig, IntervaloOption, ValidacaoEscalaResultado, ModeloEscala, RegraConformidade, HorarioPresenca, ResumoFuncionarioMetrics } from '../../models/types';
 import { DsIconComponent } from '../../../design-system/components/icon/icon.component';
@@ -66,7 +66,7 @@ interface ConfirmModalData {
 })
 export class DashboardComponent implements OnInit {
   private readonly supabase = inject(SupabaseService);
-  private readonly generator = inject(EscalaGeneratorService);
+  private readonly generator = inject(EscalaV2AdapterService);
   public readonly toastService = inject(DsToastService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);

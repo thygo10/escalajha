@@ -22,7 +22,7 @@ export function initializeEmployeeStates(
       lastHolidayWorked: prev.lastHolidayWorked,
       grupoDomingo: emp.grupo_domingo,
       grupoFeriado: emp.grupo_feriado,
-      grupoFolgaCompensatoria: emp.grupo_folga_compensatoria
+      grupoFolgaCompensatoria: emp.grupo_folga_compensatoria as GrupoFolgaCompensatoria
     };
   }
 

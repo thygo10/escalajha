@@ -182,10 +182,16 @@ export class CSPSolverEngine {
         if (s === 'T' || s === 'TD' || s === 'TF') {
           consec++;
           if (consec > 6) {
-            if (s === 'T') {
-              diasMatriz[d] = 'F';
-              consec = 0;
-            }
+if (s === 'TD') {
+  diasMatriz[d] = 'FD';
+  consec = 0;
+} else if (s === 'TF') {
+  diasMatriz[d] = 'FE';
+  consec = 0;
+} else {
+  diasMatriz[d] = 'F';
+  consec = 0;
+}
           }
         } else {
           consec = 0;

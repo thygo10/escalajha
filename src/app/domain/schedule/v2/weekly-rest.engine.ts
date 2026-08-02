@@ -14,8 +14,16 @@ function getDayOfWeek(ym: YearMonth, day: number): number {
 }
 
 /**
- * Atribui a folga compensatória semanal (entre Segunda e Sexta)
- * APENAS nas semanas em que o funcionário TRABALHOU no domingo.
+ * Atribui a folga compensatória/semanal (DSR - Descanso Semanal Remunerado).
+ *
+ * REGRA CENTRAL (CLT Art. 67 + CCT):
+ * Toda semana de trabalho deve ter EXATAMENTE 1 folga.
+ *
+ * - Se o domingo daquela semana já for FD → o domingo É a folga da semana. NÃO inserir outra.
+ * - Se o domingo daquela semana for TD (trabalhou) → inserir folga compensatória
+ *   no dia preferencial do grupo (S1..S5) naquela semana.
+ *
+ * Semana = Segunda a Domingo (a folga pode cair em qualquer dia Seg-Sáb).
  */
 export function assignWeeklyRests(
   month: YearMonth,
@@ -25,7 +33,9 @@ export function assignWeeklyRests(
   const totalDays = totalDaysInMonth(month);
   const result: Record<number, TipoDia> = { ...diasMap };
 
-  // Identifica todos os domingos do mês
+  const preferredWeekday = GROUP_DAY_MAP[(grupoFolgaCompensatoria || 'S1').toUpperCase()] ?? 5; // Default Sexta
+
+  // Identifica todos os domingos do mês (cada domingo é o marcador de 1 semana)
   const sundayDays: number[] = [];
   for (let d = 1; d <= totalDays; d++) {
     if (isSunday(month, d)) {
@@ -33,65 +43,71 @@ export function assignWeeklyRests(
     }
   }
 
-  const preferredWeekday = GROUP_DAY_MAP[(grupoFolgaCompensatoria || 'S1').toUpperCase()] ?? 5; // Default Sexta
-
   sundayDays.forEach((sunDay) => {
-    const isWorked = result[sunDay] === 'TD' || result[sunDay] === 'T';
+    const sundayTipo = result[sunDay];
+    const isSundayRest = sundayTipo === 'FD' || sundayTipo === 'F' || sundayTipo === 'FE';
 
-    if (isWorked) {
-      // Funcionário TRABALHOU no domingo -> adquire direito a 1 folga compensatória na semana.
-      // Identifica os dias úteis (Segunda a Sexta) da semana referente a esse domingo.
-      // Priorizamos a janela de Segunda a Sexta que ANTECEDE o domingo (semana de Seg a Dom),
-      // pois se o domingo anterior foi FD (folga), o período entre a última folga e este domingo
-      // acumulou 6 dias consecutivos. Dar a folga na sexta antes do domingo previne o 7º dia!
+    if (isSundayRest) {
+      // Domingo JÁ É a folga semanal. Não inserir outra folga nessa semana.
+      return;
+    }
 
-      const candidateWeekdaysPreceding: number[] = [];
-      for (let offset = 6; offset >= 1; offset--) {
-        const candidate = sunDay - offset;
-        if (candidate >= 1 && !isSunday(month, candidate)) {
-          const dow = getDayOfWeek(month, candidate);
-          if (dow >= 1 && dow <= 5) { // Segunda (1) a Sexta (5)
-            candidateWeekdaysPreceding.push(candidate);
-          }
+    // Domingo trabalhado (TD ou T): precisa de folga compensatória na semana.
+    // Candidatos = dias Seg-Sáb que PRECEDEM esse domingo (mesma semana).
+    const candidatesPreceding: number[] = [];
+    for (let offset = 6; offset >= 1; offset--) {
+      const candidate = sunDay - offset;
+      if (candidate >= 1) {
+        const dow = getDayOfWeek(month, candidate);
+        if (dow >= 1 && dow <= 6) { // Seg(1) a Sáb(6)
+          candidatesPreceding.push(candidate);
         }
       }
+    }
 
-      const candidateWeekdaysFollowing: number[] = [];
-      for (let offset = 1; offset <= 5; offset++) {
-        const candidate = sunDay + offset;
-        if (candidate <= totalDays && !isSunday(month, candidate)) {
-          const dow = getDayOfWeek(month, candidate);
-          if (dow >= 1 && dow <= 5) {
-            candidateWeekdaysFollowing.push(candidate);
-          }
+    // Candidatos da semana seguinte (folga pós-domingo), como fallback
+    const candidatesFollowing: number[] = [];
+    for (let offset = 1; offset <= 6; offset++) {
+      const candidate = sunDay + offset;
+      if (candidate <= totalDays && !isSunday(month, candidate)) {
+        const dow = getDayOfWeek(month, candidate);
+        if (dow >= 1 && dow <= 6) {
+          candidatesFollowing.push(candidate);
         }
       }
+    }
 
-      // Escolhe a janela válida (Preceding primeiro se tiver pelo menos 3 dias úteis no mês, senão Following)
-      let candidateWeekdays = candidateWeekdaysPreceding;
-      if (candidateWeekdaysPreceding.length < 3 && candidateWeekdaysFollowing.length > 0) {
-        candidateWeekdays = candidateWeekdaysFollowing;
-      }
+    // Prefer semana que precede se tiver pelo menos 3 dias disponíveis
+    let candidates = candidatesPreceding.length >= 3
+      ? candidatesPreceding
+      : (candidatesFollowing.length > 0 ? candidatesFollowing : candidatesPreceding);
 
-      if (candidateWeekdays.length > 0) {
-        // Tenta encontrar o dia preferencial do grupo na janela selecionada
-        let targetDay = candidateWeekdays.find(d => getDayOfWeek(month, d) === preferredWeekday);
+    if (candidates.length === 0) return;
 
-        // Se o dia preferencial não estiver disponível na janela primária, tenta na janela secundária
-        if (!targetDay) {
-          const secondaryCandidates = candidateWeekdays === candidateWeekdaysPreceding ? candidateWeekdaysFollowing : candidateWeekdaysPreceding;
-          targetDay = secondaryCandidates.find(d => getDayOfWeek(month, d) === preferredWeekday);
-        }
+    // 1ª escolha: dia preferencial do grupo nessa janela
+    let targetDay = candidates.find(d =>
+      getDayOfWeek(month, d) === preferredWeekday &&
+      result[d] !== 'FE' && result[d] !== 'FD' && result[d] !== 'F'
+    );
 
-        // Se ainda assim não encontrou ou o dia for feriado FE, pega o primeiro dia útil disponível
-        if (!targetDay || result[targetDay] === 'FE') {
-          targetDay = candidateWeekdays.find(d => result[d] !== 'FE' && result[d] !== 'FD');
-        }
+    // 2ª escolha: dia preferencial na janela oposta
+    if (!targetDay) {
+      const secondary = candidates === candidatesPreceding ? candidatesFollowing : candidatesPreceding;
+      targetDay = secondary.find(d =>
+        getDayOfWeek(month, d) === preferredWeekday &&
+        result[d] !== 'FE' && result[d] !== 'FD' && result[d] !== 'F'
+      );
+    }
 
-        if (targetDay && result[targetDay] !== 'FE') {
-          result[targetDay] = 'F';
-        }
-      }
+    // 3ª escolha: qualquer dia útil disponível na janela primária
+    if (!targetDay) {
+      targetDay = candidates.find(d =>
+        result[d] !== 'FE' && result[d] !== 'FD' && result[d] !== 'F'
+      );
+    }
+
+    if (targetDay) {
+      result[targetDay] = 'F';
     }
   });
 
