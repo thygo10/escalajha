@@ -28,6 +28,9 @@ export interface Cargo {
   descricao?: string;
 }
 
+export const GRUPOS_FOLGA_COMPENSATORIA = ['S1', 'S2', 'S3', 'S4', 'S5'] as const;
+export type GrupoFolgaCompensatoria = typeof GRUPOS_FOLGA_COMPENSATORIA[number];
+
 export interface Funcionario {
   id?: string;
   loja_id: string;
@@ -42,7 +45,7 @@ export interface Funcionario {
   rodizio_id?: string; // ID do Rodízio Específico (opcional, fallback pro Setor)
   grupo_domingo?: string; // Código dinâmico: 'A', 'B', 'C', 'D'...
   grupo_feriado?: string; // Código dinâmico: 'A', 'B'...
-  grupo_folga_compensatoria?: 'S1' | 'S2' | 'S3' | 'S4' | 'S5'; // Compensatory weekly rest group
+  grupo_folga_compensatoria?: GrupoFolgaCompensatoria; // Compensatory weekly rest group
   grupo?: string; // Grupo Geral / Feriado ('A' | 'B')
   setores_cobertura?: string[]; // Setores secundários para cobertura de folga / função multisetor
 }

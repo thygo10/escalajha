@@ -1,4 +1,4 @@
-import { Funcionario, Feriado, TipoDia } from '../../../models/types';
+import { Funcionario, Feriado, TipoDia, GrupoFolgaCompensatoria } from '../../../models/types';
 import { YearMonth } from '../../shared/year-month';
 
 export interface SectorRuleConfig {
@@ -18,7 +18,7 @@ export interface EmployeeMonthState {
   lastHolidayWorked?: string;      // YYYY-MM-DD
   grupoDomingo: string;
   grupoFeriado: string;
-  grupoFolgaCompensatoria: string;
+  grupoFolgaCompensatoria: GrupoFolgaCompensatoria;
 }
 
 export interface ScheduleV2Item {
@@ -32,7 +32,7 @@ export interface ScheduleV2Item {
   cargo?: string;
   grupoDomingo: string;
   grupoFeriado: string;
-  grupoFolgaCompensatoria: string;
+  grupoFolgaCompensatoria: GrupoFolgaCompensatoria;
   dias: Record<number, TipoDia>;
   motivosAlteracao?: Record<number, string>;
 }

@@ -1,17 +1,15 @@
-import { Funcionario } from '../../../models/types';
+import { Funcionario, GrupoFolgaCompensatoria, GRUPOS_FOLGA_COMPENSATORIA } from '../../../models/types';
 
 export interface GroupValidationResult {
   isValid: boolean;
   validatedEmployees: Array<Funcionario & {
     grupo_domingo: string;
     grupo_feriado: string;
-    grupo_folga_compensatoria: string;
+    grupo_folga_compensatoria: GrupoFolgaCompensatoria;
   }>;
   warnings: string[];
   errors: string[];
 }
-
-const WEEKLY_REST_GROUPS = ['S1', 'S2', 'S3', 'S4', 'S5'];
 
 /**
  * Valida o cadastro dos funcionários para a geração determinística da escala.
@@ -50,15 +48,15 @@ export function validateAndNormalizeEmployeeGroups(employees: Funcionario[]): Gr
       grupoFeriado = fallback;
     }
 
-    // 3. Grupo Folga Semanal (S1=Segunda, S2=Terça, S3=Quarta, S4=Quinta, S5=Sexta)
+    // 3. Grupo Folga Compensatória (S1=Segunda, S2=Terça, S3=Quarta, S4=Quinta, S5=Sexta)
     let grupoFolga = (emp.grupo_folga_compensatoria || '').trim().toUpperCase();
-    if (!grupoFolga || !WEEKLY_REST_GROUPS.includes(grupoFolga)) {
+    if (!grupoFolga || !(GRUPOS_FOLGA_COMPENSATORIA as readonly string[]).includes(grupoFolga)) {
       // Se tiver emp.grupo antigo (A -> S1, B -> S2, etc.), converte
       if (emp.grupo === 'A') grupoFolga = 'S1';
       else if (emp.grupo === 'B') grupoFolga = 'S2';
       else {
         // Fallback determinístico por índice distribuído entre S1..S5
-        const fallback = WEEKLY_REST_GROUPS[index % WEEKLY_REST_GROUPS.length];
+        const fallback = GRUPOS_FOLGA_COMPENSATORIA[index % GRUPOS_FOLGA_COMPENSATORIA.length];
         warnings.push(`Funcionário ${emp.primeiro_nome} (ID: ${emp.id || emp.matricula_aleatoria}) não possui grupo_folga_compensatoria definido. Atribuído fallback: '${fallback}'.`);
         grupoFolga = fallback;
       }
@@ -68,7 +66,7 @@ export function validateAndNormalizeEmployeeGroups(employees: Funcionario[]): Gr
       ...emp,
       grupo_domingo: grupoDomingo,
       grupo_feriado: grupoFeriado,
-      grupo_folga_compensatoria: grupoFolga
+      grupo_folga_compensatoria: grupoFolga as GrupoFolgaCompensatoria
     };
   });
 
