@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Funcionario, EscalaItem, TipoDia, ValidacaoEscalaResultado, TurnoConfig, Feriado, HorarioPresenca, ResumoFuncionarioMetrics, HorarioFuncionamento } from '../models/types';
 import { generateDeterministicSchedule } from '../domain/schedule/v2/deterministic-schedule-generator';
-import { GeneratorV2Input, ScheduleV2Item } from '../domain/schedule/v2/schedule-v2.types';
+import { GeneratorV2Input, ScheduleV2Item, SectorRuleConfig } from '../domain/schedule/v2/schedule-v2.types';
 import { EscalaGeneratorService } from './escala-generator.service';
 
 /**
@@ -59,13 +59,28 @@ export class EscalaV2AdapterService {
       seed?: number;
     }>
   ): EscalaItem[] {
+    const hasExplicitCoverage =
+      options?.minFuncionariosPorDia !== undefined ||
+      options?.minFuncionariosDomingo !== undefined ||
+      options?.minFuncionariosFeriado !== undefined;
+
+    const sectorRule: SectorRuleConfig | undefined = hasExplicitCoverage
+      ? {
+          setor: employees[0]?.setor ?? 'Setor',
+          minFuncionariosDia: options?.minFuncionariosPorDia,
+          minFuncionariosDomingo: options?.minFuncionariosDomingo,
+          minFuncionariosFeriado: options?.minFuncionariosFeriado
+        }
+      : undefined;
+
     const input: GeneratorV2Input = {
       employees: employees as any,
       month: { year, month },
       holidays: (options?.feriados ?? []) as any,
-      sectorRule: options?.regrasConformidade ? { regrasConformidade: options.regrasConformidade } : undefined,
-      previousStates: options?.historicoMesAnterior
-    } as any;
+      sectorRule,
+      leaveEvents: (options?.afastamentos ?? []) as any,
+      previousStates: this.buildPreviousStates(options?.historicoMesAnterior)
+    };
 
     const v2Result = generateDeterministicSchedule(input);
 
@@ -138,5 +153,27 @@ export class EscalaV2AdapterService {
 
   extrairHistoricoMesAnterior(itens: EscalaItem[]): Record<string, TipoDia[]> {
     return this.legacy.extrairHistoricoMesAnterior(itens);
+  }
+
+  /**
+   * Converte o histórico do mês anterior (últimos dias por matrícula) no estado
+   * inter-meses esperado pelo motor V2 (dias consecutivos acumulados no fim do mês).
+   */
+  private buildPreviousStates(
+    historico?: Record<string, TipoDia[]>
+  ): Record<string, { consecutiveDaysAtStart: number }> | undefined {
+    if (!historico) return undefined;
+
+    const res: Record<string, { consecutiveDaysAtStart: number }> = {};
+    for (const [mat, dias] of Object.entries(historico)) {
+      let consec = 0;
+      for (let i = dias.length - 1; i >= 0; i--) {
+        const d = dias[i];
+        if (d === 'T' || d === 'TD' || d === 'TF') consec++;
+        else break;
+      }
+      res[mat] = { consecutiveDaysAtStart: consec };
+    }
+    return res;
   }
 }

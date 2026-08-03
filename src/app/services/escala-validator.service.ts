@@ -91,8 +91,8 @@ export class EscalaValidatorService {
                 erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: COBERTURA ZERO! Todos os colaboradores estão de folga.`, tipo: 'ERRO_COBERTURA' });
             } else if (eFrenteDeCaixa && !isDomingo && emTrabalho < 6 && itens.length >= 6) {
                 erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Frente de Caixa possui apenas ${emTrabalho} operador(es) trabalhando. Mínimo OBRIGATÓRIO: 6.`, tipo: 'ERRO_COBERTURA_CAIXA' });
-            } else if (eFiscalDeCaixa && isDomingo && emTrabalho !== 2 && itens.length >= 2) {
-                erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Fiscal de Caixa no domingo exige EXATAMENTE 2 fiscais (1 dupla trabalhando, 1 dupla folgando). Encontrado(s): ${emTrabalho}.`, tipo: 'ERRO_COBERTURA' });
+            } else if (eFiscalDeCaixa && isDomingo && emTrabalho < minPermitidoDia && itens.length >= 2) {
+                erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Fiscal de Caixa no domingo exige no mínimo ${minPermitidoDia} fiscal(ais) trabalhando (configuração min_funcionarios_domingo). Encontrado(s): ${emTrabalho}.`, tipo: 'ERRO_COBERTURA' });
             } else if (emTrabalho < minPermitidoDia && itens.length >= 2 && itens.length >= minPermitidoDia) {
                 erros.push({ severidade: ValidationSeverity.ERROR, dia, setor: setorNomeOriginal, mensagem: `Dia ${dia}: Apenas ${emTrabalho} colaborador(es) trabalhando. Mínimo exigido: ${minPermitidoDia}.`, tipo: 'ERRO_COBERTURA' });
             }

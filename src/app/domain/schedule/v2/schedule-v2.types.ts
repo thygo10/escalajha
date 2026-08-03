@@ -37,12 +37,24 @@ export interface ScheduleV2Item {
   motivosAlteracao?: Record<number, string>;
 }
 
+export interface V2LeaveEvent {
+  matricula: string;
+  tipo: 'FERIAS' | 'ATESTADO' | 'LICENCA';
+  data_inicio: string; // 'YYYY-MM-DD'
+  data_fim: string;   // 'YYYY-MM-DD'
+  observacao?: string;
+}
+
 export interface GeneratorV2Input {
   employees: Funcionario[];
   month: YearMonth;
   holidays?: Feriado[];
   turnosConfigs?: any[];
   sectorRule?: SectorRuleConfig;
+  minFuncionariosDia?: number;
+  minFuncionariosDomingo?: number;
+  minFuncionariosFeriado?: number;
+  leaveEvents?: V2LeaveEvent[];
   previousStates?: Record<string, Partial<EmployeeMonthState>>;
 }
 

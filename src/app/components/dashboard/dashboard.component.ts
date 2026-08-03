@@ -1827,7 +1827,7 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  regerarEscalaComVariacao() {
+  async regerarEscalaComVariacao() {
     this.regeracaoSeedCounter.update(v => v + 1);
     const funcsDoSetor = this.funcionarios().filter((f: Funcionario) => (f.setor === this.selectedSetor || f.setores_cobertura?.includes(this.selectedSetor)) && f.ativo);
     if (funcsDoSetor.length === 0) {
@@ -1836,6 +1836,10 @@ export class DashboardComponent implements OnInit {
     }
 
     const [ano, mes] = this.selectedMonth.split('-').map(Number);
+
+    const histAnt = await this.obterHistoricoMesAnterior(ano, mes, this.selectedSetor);
+    this.historicoMesAnteriorAtivo.set(histAnt);
+
     this.generator.invalidateCache(ano, mes);
 
     const gerada = this.generator.gerarEscalaMensal(funcsDoSetor, ano, mes, {
@@ -1852,6 +1856,7 @@ export class DashboardComponent implements OnInit {
       modeloEscala: this.modeloEscalaAtivo(),
       turnosConfigs: this.turnosConfigs(),
       regrasConformidade: this.regrasConformidade(),
+      historicoMesAnterior: histAnt,
       seed: this.regeracaoSeedCounter()
     });
 

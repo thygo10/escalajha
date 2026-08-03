@@ -11,7 +11,7 @@ export function initializeEmployeeStates(
 
   for (const emp of employees) {
     const key = emp.id || emp.matricula_aleatoria;
-    const prev = previousStates?.[key] || {};
+    const prev = previousStates?.[key] ?? previousStates?.[emp.matricula_aleatoria] ?? {};
 
     result[key] = {
       employeeId: key,

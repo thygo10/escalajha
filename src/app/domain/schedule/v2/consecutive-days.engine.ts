@@ -40,15 +40,36 @@ export function enforceMaxConsecutiveDays(
 
       if (currentConsecutive >= 7) {
         // VIOLAÇÃO CLT! É o 7º dia consecutivo de trabalho.
-        // É OBRIGATÓRIO conceder folga neste dia.
-        if (currentTipo === 'TD') {
-          resultDias[d] = 'FD';
-        } else {
-          resultDias[d] = 'F';
+        // É OBRIGATÓRIO conceder folga para quebrar a sequência.
+        // Prioridade: folga retroativa num dia 'T' limpo (sem folgas adjacentes,
+        // sem folga picada, sem domingo), começando do próprio dia d. A âncora
+        // (domingo trabalhado TD / feriado TF) NUNCA é convertida se houver alternativa.
+        let targetDay = -1;
+        for (let back = 0; back <= 5; back++) {
+          const candidate = d - back;
+          if (candidate < 1) break;
+          if (resultDias[candidate] !== 'T') continue;
+          const hasAdjacentRest = isRestDay(resultDias[candidate - 1]) || isRestDay(resultDias[candidate + 1]);
+          const hasPicada = isRestDay(resultDias[candidate - 2]) || isRestDay(resultDias[candidate + 2]);
+          if (hasAdjacentRest || hasPicada) continue;
+          targetDay = candidate;
+          break;
         }
 
-        motivos[d] = 'Ajuste obrigatório CLT Art. 67: Limite de 6 dias consecutivos superado.';
-        currentConsecutive = 0;
+        if (targetDay > 0) {
+          resultDias[targetDay] = 'F';
+          motivos[targetDay] = 'Ajuste obrigatório CLT Art. 67: Limite de 6 dias consecutivos superado.';
+          currentConsecutive = d - targetDay;
+        } else if (currentTipo === 'TD' || currentTipo === 'TF') {
+          // Sem alternativa retroativa: converter a âncora (último recurso)
+          resultDias[d] = currentTipo === 'TD' ? 'FD' : 'F';
+          motivos[d] = 'Ajuste obrigatório CLT Art. 67: Limite de 6 dias consecutivos superado (sem dia retroativo disponível).';
+          currentConsecutive = 0;
+        } else {
+          resultDias[d] = 'F';
+          motivos[d] = 'Ajuste obrigatório CLT Art. 67: Limite de 6 dias consecutivos superado.';
+          currentConsecutive = 0;
+        }
       }
     } else {
       // Dia de descanso/afastamento reseta o contador

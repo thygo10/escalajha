@@ -1,5 +1,5 @@
 import { Feriado, TipoDia } from '../../../models/types';
-import { YearMonth } from '../../shared/year-month';
+import { YearMonth, isSunday, getAbsoluteHolidayIndex } from '../../shared/year-month';
 
 export interface HolidayAssignment {
   day: number;
@@ -9,6 +9,11 @@ export interface HolidayAssignment {
 
 /**
  * Calcula a atribuição de feriados para o mês conforme os Grupos A e B.
+ * - Feriado fechado (loja fechada): FE para todos, vence qualquer atribuição.
+ * - Feriado aberto em dia útil: alternância global A/B por índice absoluto
+ *   do feriado aberto (1º aberto do ano = A trabalha, 2º = B trabalha, ...).
+ * - Feriado aberto em domingo: a rotação 1T:2F de domingo tem precedência;
+ *   nenhuma atribuição é emitida (o domingo já decidiu TD/FD).
  */
 export function calculateHolidayAssignments(
   month: YearMonth,
@@ -29,7 +34,7 @@ export function calculateHolidayAssignments(
     return hYear === month.year && hMonth === month.month;
   });
 
-  monthHolidays.forEach((h, index) => {
+  monthHolidays.forEach(h => {
     const dayNumber = Number.parseInt(h.data.split('-')[2], 10);
 
     if (h.funcionamento_proibido) {
@@ -39,17 +44,14 @@ export function calculateHolidayAssignments(
         tipo: 'FE',
         feriadoNome: h.nome
       });
+    } else if (isSunday(month, dayNumber)) {
+      // Domingo + feriado aberto: rotação de domingo tem precedência
+      return;
     } else {
-      // Feriado Aberto: Alternância por grupo (A vs B)
-      // index 0-based
-      const isGroupAWorked = index % 2 === 0;
-      let isWorked = false;
-
-      if (normalizedGroup === 'A') {
-        isWorked = isGroupAWorked;
-      } else {
-        isWorked = !isGroupAWorked;
-      }
+      // Feriado Aberto em dia útil: Alternância global A/B (igual motor v1)
+      const absHolidayIdx = getAbsoluteHolidayIndex(h.data, holidays as Array<{ data: string; funcionamento_proibido?: boolean }>);
+      const groupIdx = normalizedGroup === 'B' ? 1 : 0;
+      const isWorked = (absHolidayIdx % 2) === groupIdx;
 
       assignments.push({
         day: dayNumber,

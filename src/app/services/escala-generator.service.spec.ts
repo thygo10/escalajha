@@ -1,18 +1,27 @@
 import { describe, it } from 'vitest';
 import assert from 'node:assert';
-import { INITIAL_FUNCIONARIOS, INITIAL_FERIADOS } from '../models/mock-data';
+import { INITIAL_FUNCIONARIOS, INITIAL_FERIADOS, INITIAL_SETORES } from '../models/mock-data';
 import { EscalaGeneratorService } from './escala-generator.service';
 import { EscalaValidatorService } from './escala-validator.service'; // 💡 Importando o Validador
+import { EscalaV2AdapterService } from './escala-v2-adapter.service';
 import { EscalaItem, Feriado, Funcionario, TipoDia } from '../models/types';
 
 /**
  * Suíte de Testes Senior QA & Dev: EscalaGeneratorService
  * Audita a geração de escalas para 100% dos setores, todas as regras CLT/CCT e cenários de exceção.
+ *
+ * Geração: motor determinístico V2 (único usado em produção pelo dashboard, via
+ * EscalaV2AdapterService). Validação: EscalaValidatorService (regras CLT/CCT).
  */
 export function runEscalaGeneratorSpec(): void {
   // 💡 Injetando a dependência do validador manualmente no serviço gerador
   const validator = new EscalaValidatorService();
   const service = new EscalaGeneratorService(validator);
+  const v2 = new EscalaV2AdapterService(service);
+
+  // Geração pelo motor V2 determinístico (o motor V1 guloso ficou legado)
+  const gerar = (funcs: Funcionario[], y: number, m: number, opts?: any): EscalaItem[] =>
+    v2.gerarEscalaMensal(funcs, y, m, opts);
 
   const ano = 2026;
 
@@ -38,9 +47,12 @@ export function runEscalaGeneratorSpec(): void {
       const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => (f.setor === setor || f.setores_cobertura?.includes(setor)) && f.ativo);
       if (funcsSetor.length === 0) continue;
 
-      const minDia = setor === 'Frente de Caixa' ? 6 : 2;
-      const minDom = setor === 'Frente de Caixa' ? 3 : 2;
-      const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, {
+      // Mínimos por setor: config real (INITIAL_SETORES); Frente de Caixa usa
+      // a regra comercial do dashboard (mínimo 3 no domingo)
+      const setorConfig = INITIAL_SETORES.find(s => s.nome === setor);
+      const minDia = setor === 'Frente de Caixa' ? 6 : (setorConfig?.min_funcionarios_dia ?? 2);
+      const minDom = setor === 'Frente de Caixa' ? 3 : (setorConfig?.min_funcionarios_domingo ?? 1);
+      const itens = gerar(funcsSetor, ano, mes, {
         feriados: INITIAL_FERIADOS,
         minFuncionariosPorDia: minDia,
         minFuncionariosDomingo: minDom,
@@ -83,7 +95,7 @@ export function runEscalaGeneratorSpec(): void {
       const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => (f.setor === setor || f.setores_cobertura?.includes(setor)) && f.ativo);
       if (funcsSetor.length === 0) continue;
 
-      const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });
+      const itens = gerar(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });
 
       itens.forEach(item => {
         let consecutivos = 0;
@@ -116,7 +128,7 @@ export function runEscalaGeneratorSpec(): void {
       const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => (f.setor === setor || f.setores_cobertura?.includes(setor)) && f.ativo);
       if (funcsSetor.length === 0) continue;
 
-      const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });
+      const itens = gerar(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });
 
       itens.forEach(item => {
         domingos.forEach(dDom => {
@@ -153,7 +165,7 @@ export function runEscalaGeneratorSpec(): void {
       const setorClean = setor.toLowerCase();
       const eExcecaoDomingo = setorClean.includes('padaria') || setorClean.includes('acougue') || setorClean.includes('açougue');
 
-      const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });
+      const itens = gerar(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });
 
       itens.forEach(item => {
         const domingosTrab = Object.entries(item.dias)
@@ -192,7 +204,7 @@ export function runEscalaGeneratorSpec(): void {
   ];
 
   const funcsCaixa = INITIAL_FUNCIONARIOS.filter(f => f.setor === 'Frente de Caixa' && f.ativo);
-  const itensDez = service.gerarEscalaMensal(funcsCaixa, 2026, 12, { feriados: feriadosEspeciais });
+  const itensDez = gerar(funcsCaixa, 2026, 12, { feriados: feriadosEspeciais });
 
   // Checar 25/12/2026 (Natal - Fechado)
   itensDez.forEach(item => {
@@ -205,7 +217,7 @@ export function runEscalaGeneratorSpec(): void {
 
   // Checar Feriado Aberto (07/09/2026 - Independência do Brasil)
   const funcsRep = INITIAL_FUNCIONARIOS.filter(f => f.setor === 'Reposição' && f.ativo);
-  const itensSet = service.gerarEscalaMensal(funcsRep, 2026, 9, {
+  const itensSet = gerar(funcsRep, 2026, 9, {
     feriados: INITIAL_FERIADOS,
     minFuncionariosFeriado: 4
   });
@@ -220,7 +232,7 @@ export function runEscalaGeneratorSpec(): void {
   const funcsPadaria = INITIAL_FUNCIONARIOS.filter(f => f.setor === 'Padaria (Produção)' && f.ativo);
   for (let mes = 1; mes <= 12; mes++) {
     const totalDiasMes = new Date(ano, mes, 0).getDate();
-    const itensPad = service.gerarEscalaMensal(funcsPadaria, ano, mes, { feriados: INITIAL_FERIADOS });
+    const itensPad = gerar(funcsPadaria, ano, mes, { feriados: INITIAL_FERIADOS });
 
     const maxFolgasPadaria = Math.max(1, Math.ceil(funcsPadaria.length / 6));
     for (let d = 1; d <= totalDiasMes; d++) {
@@ -256,7 +268,7 @@ export function runEscalaGeneratorSpec(): void {
     const totalDiasMes = new Date(ano, mes, 0).getDate();
 
     // Frente de Caixa
-    const itensFC = service.gerarEscalaMensal(funcsCaixa, ano, mes, { feriados: INITIAL_FERIADOS, minFuncionariosPorDia: 6 });
+    const itensFC = gerar(funcsCaixa, ano, mes, { feriados: INITIAL_FERIADOS, minFuncionariosPorDia: 6 });
     for (let d = 1; d <= totalDiasMes; d++) {
       const isFeriadoFechado = INITIAL_FERIADOS.some(f => f.data === `2026-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}` && f.funcionamento_proibido);
       if (isFeriadoFechado) continue;
@@ -267,13 +279,15 @@ export function runEscalaGeneratorSpec(): void {
 
     // Fiscal de Caixa (Titulares + Grupo de Cobertura Elegível: Ualas, Lane, Thiago, Cleide)
     const funcsFiscal = INITIAL_FUNCIONARIOS.filter(f => (f.setor === 'Fiscal de Caixa' || f.setores_cobertura?.includes('Fiscal de Caixa')) && f.ativo);
-    const itensFisc = service.gerarEscalaMensal(funcsFiscal, ano, mes, { feriados: INITIAL_FERIADOS });
+    const itensFisc = gerar(funcsFiscal, ano, mes, { feriados: INITIAL_FERIADOS });
     for (let d = 1; d <= totalDiasMes; d++) {
       const isFeriadoFechado = INITIAL_FERIADOS.some(f => f.data === `2026-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}` && f.funcionamento_proibido);
       if (isFeriadoFechado) continue;
 
       const trabFisc = itensFisc.filter(i => i.dias[d] === 'T' || i.dias[d] === 'TD' || i.dias[d] === 'TF').length;
-      assert.strictEqual(trabFisc >= 2, true, `No dia ${d}/${mes} o setor Fiscal de Caixa teve apenas ${trabFisc} fiscais trabalhando (mínimo 2 em duplas)!`);
+      // Config real do setor (s6): mínimo 2 em dias úteis, mínimo 1 no domingo (rotação 1T:2F)
+      const minFisc = new Date(ano, mes - 1, d).getDay() === 0 ? 1 : 2;
+      assert.strictEqual(trabFisc >= minFisc, true, `No dia ${d}/${mes} o setor Fiscal de Caixa teve apenas ${trabFisc} fiscais trabalhando (mínimo ${minFisc})!`);
     }
   }
   console.log('  ✅ Frente de Caixa (mínimo 6) e Fiscal de Caixa (duplas de abertura/fechamento) com cobertura garantida 100% dos dias.\n');
@@ -344,7 +358,7 @@ export function runEscalaGeneratorSpec(): void {
   assert.strictEqual(calc2.excedeLimite, true, 'Jornada líquida de 11h (660 min) deve sinalizar excedeLimite = true');
 
   // 9.2 Métricas do Colaborador
-  const itensMetrics = service.gerarEscalaMensal(funcsCaixa, 2026, 7, { feriados: INITIAL_FERIADOS });
+  const itensMetrics = gerar(funcsCaixa, 2026, 7, { feriados: INITIAL_FERIADOS });
   const metrics = service.calcularResumoMetrics(itensMetrics, funcsCaixa, [], 2026, 7);
   assert.strictEqual(metrics.length, funcsCaixa.length, 'Deveria retornar resumo de métricas para todos os colaboradores');
   metrics.forEach((m: any) => {
@@ -381,7 +395,7 @@ export function runEscalaGeneratorSpec(): void {
       const funcsSetor = INITIAL_FUNCIONARIOS.filter(f => (f.setor === setor || f.setores_cobertura?.includes(setor)) && f.ativo);
       if (funcsSetor.length === 0) continue;
 
-      const itens = service.gerarEscalaMensal(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });
+      const itens = gerar(funcsSetor, ano, mes, { feriados: INITIAL_FERIADOS });
       const valHoraria = service.validarEscala(itens, ano, mes, 2, [], INITIAL_FERIADOS);
 
       const errosHorariosDia2 = valHoraria.itensValidados.filter((e: any) => e.dia === 2 && e.tipo === 'ERRO_COBERTURA_HORARIA');
@@ -396,7 +410,7 @@ export function runEscalaGeneratorSpec(): void {
   console.log('▶️  SUÍTE 12: Auditoria de Recursos Avançados Fase 2 (5x1, Interjornada 11h, Virada de Mês, AF/FR)');
 
   // 12.1 Teste do Modelo 5x1
-  const itens5x1 = service.gerarEscalaMensal(funcsCaixa, 2026, 8, {
+  const itens5x1 = gerar(funcsCaixa, 2026, 8, {
     modeloEscala: '5x1',
     feriados: INITIAL_FERIADOS
   });
@@ -409,7 +423,7 @@ export function runEscalaGeneratorSpec(): void {
   funcsCaixa.forEach(f => {
     histJulho6[f.matricula_aleatoria] = ['T', 'T', 'T', 'T', 'T', 'T'];
   });
-  const itensAgostoContinuo = service.gerarEscalaMensal(funcsCaixa, 2026, 8, {
+  const itensAgostoContinuo = gerar(funcsCaixa, 2026, 8, {
     feriados: INITIAL_FERIADOS,
     historicoMesAnterior: histJulho6
   });
@@ -445,7 +459,7 @@ export function runEscalaGeneratorSpec(): void {
       data_fim: '2026-08-10'
     }
   ];
-  const itensComFerias = service.gerarEscalaMensal(funcsCaixa, 2026, 8, {
+  const itensComFerias = gerar(funcsCaixa, 2026, 8, {
     feriados: INITIAL_FERIADOS,
     afastamentos: afastamentosMock
   });
@@ -454,7 +468,7 @@ export function runEscalaGeneratorSpec(): void {
   assert.strictEqual(funcFerias?.dias[10], 'FR', 'Dia 10 do funcionário de férias deve ser marcado como FR');
 
   // Print Laísa July -> August transition
-  const laisaJulio = service.gerarEscalaMensal(funcsCaixa, 2026, 7, { feriados: INITIAL_FERIADOS });
+  const laisaJulio = gerar(funcsCaixa, 2026, 7, { feriados: INITIAL_FERIADOS });
   const laisaJulioItem = laisaJulio.find(i => i.nome.includes('Laísa'));
   const laisaJulioDiasArray: TipoDia[] = [];
   for (let d = 1; d <= 31; d++) laisaJulioDiasArray.push(laisaJulioItem!.dias[d]);
@@ -466,7 +480,7 @@ export function runEscalaGeneratorSpec(): void {
     histJulio[item.matricula] = arr;
   }
 
-  const laisaAgosto = service.gerarEscalaMensal(funcsCaixa, 2026, 8, {
+  const laisaAgosto = gerar(funcsCaixa, 2026, 8, {
     feriados: INITIAL_FERIADOS,
     historicoMesAnterior: histJulio
   });
